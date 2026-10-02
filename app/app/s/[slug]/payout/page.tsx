@@ -39,7 +39,7 @@ export default function PayoutPage({ params }: { params: Promise<{ slug: string 
       <div className="relative mt-8 overflow-hidden rounded-lg border border-rule bg-paper px-4 pt-2 pb-16">
         <motion.span
           aria-hidden
-          className="ink absolute right-4 bottom-4 border-[3px] border-stamp px-3 py-1 font-mono text-lg font-medium tracking-[0.08em] text-stamp"
+          className="ink ink-2 absolute right-4 bottom-4 border-[3px] border-stamp px-3 py-1 font-mono text-lg font-medium tracking-[0.08em] text-stamp"
           initial={reduce ? false : { scale: 2.2, rotate: -26, opacity: 0 }}
           animate={{ scale: 1, rotate: -12, opacity: 0.88 }}
           transition={{ type: "spring", stiffness: 420, damping: 20, delay: 0.25 }}
@@ -59,7 +59,7 @@ export default function PayoutPage({ params }: { params: Promise<{ slug: string 
           href={`https://wa.me/?text=${encodeURIComponent(share)}`}
           target="_blank"
           rel="noreferrer"
-          className="flex min-h-14 items-center justify-center gap-2 rounded-lg bg-palm font-semibold text-on-palm active:scale-[0.98]"
+          className="flex min-h-14 items-center justify-center gap-2 rounded-lg bg-ink font-semibold text-manila active:scale-[0.98]"
         >
           <WhatsappLogo size={22} weight="fill" aria-hidden />
           Tell the squad

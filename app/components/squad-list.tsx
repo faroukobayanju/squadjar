@@ -58,7 +58,7 @@ function SquadRow({ squad: q }: { squad: Squad }) {
             {iPaid ? (
               <span className="text-stamp">paid</span>
             ) : (
-              <span className="font-medium text-palm">
+              <span className="font-medium text-ink">
                 due in <Countdown to={q.roundDeadline} />
               </span>
             )}

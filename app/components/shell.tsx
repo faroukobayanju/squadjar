@@ -16,7 +16,7 @@ export function AppShell({ children, action }: { children: React.ReactNode; acti
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[480px] flex-col">
       <main className="flex-1 px-4 pt-6 pb-6">{children}</main>
-      <div className="sticky bottom-0 z-20 bg-manila/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-[2px]">
+      <div className="sticky bottom-0 z-20 bg-manila pb-[env(safe-area-inset-bottom)]">
         {action && <div className="px-4 pt-3">{action}</div>}
         <nav aria-label="Main" className="mt-3 grid grid-cols-3 border-t border-rule">
           {TABS.map(({ href, label, icon: Icon }) => {

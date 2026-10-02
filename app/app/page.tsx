@@ -26,14 +26,16 @@ export default function Landing() {
           </p>
           <Link
             href="/login"
-            className="mt-8 inline-flex min-h-14 items-center rounded-lg bg-palm px-7 font-semibold text-on-palm transition-transform active:scale-[0.98] active:bg-palm-press"
+            className="mt-8 inline-flex min-h-14 items-center rounded-lg bg-ink px-7 font-semibold text-manila transition-transform active:scale-[0.98]"
           >
             Start a squad
           </Link>
         </div>
         {sample && (
-          <figure className="min-w-0 md:-rotate-1">
-            <StampCard squad={sample} />
+          <figure className="min-w-0">
+            <div className="md:-rotate-1">
+              <StampCard squad={sample} />
+            </div>
             <figcaption className="mt-3 text-sm text-muted">
               An example squad card: {sample.members.length} classmates, {naira(sample.contribution)} a week. Every box is
               stamped when someone pays.

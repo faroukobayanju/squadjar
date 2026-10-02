@@ -74,15 +74,23 @@ body {
   min-height: 100dvh;
 }
 
-/* Paper grain lives on a fixed, non-interactive layer so scrolling never repaints it. */
+/* Paper fibre lives on a fixed, non-interactive layer so scrolling never repaints it.
+   Tile: public/textures/paper.png (tools/gen-textures.py). */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-image: radial-gradient(rgb(var(--shadow) / 0.05) 1px, transparent 1px);
-  background-size: 3px 3px;
+  background-image: url("/textures/paper.png");
+  background-size: 256px 256px;
+  opacity: 0.55;
+}
+@media (prefers-color-scheme: dark) {
+  body::before {
+    filter: invert(1);
+    opacity: 0.25;
+  }
 }
 
 ::selection {
@@ -123,11 +131,17 @@ a {
   );
 }
 
-/* Ink stamp: rough edge from a radial mask so no two read as vector-perfect. */
+/* Ink stamp: uneven coverage from raster pressure masks (public/textures/ink-N.png). */
 .ink {
-  -webkit-mask-image: radial-gradient(circle at 35% 40%, #000 62%, rgb(0 0 0 / 0.8) 63%, #000 72%);
-  mask-image: radial-gradient(circle at 35% 40%, #000 62%, rgb(0 0 0 / 0.8) 63%, #000 72%);
+  -webkit-mask-image: var(--ink-mask, url("/textures/ink-1.png"));
+  mask-image: var(--ink-mask, url("/textures/ink-1.png"));
+  -webkit-mask-size: cover;
+  mask-size: cover;
 }
+.ink-1 { --ink-mask: url("/textures/ink-1.png"); }
+.ink-2 { --ink-mask: url("/textures/ink-2.png"); }
+.ink-3 { --ink-mask: url("/textures/ink-3.png"); }
+.ink-4 { --ink-mask: url("/textures/ink-4.png"); }
 
 @media (prefers-reduced-motion: reduce) {
   *,

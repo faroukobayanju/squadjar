@@ -60,7 +60,8 @@ export default function SquadPage({ params }: { params: Promise<{ slug: string }
       <header>
         <h1 className="font-display text-[2.1rem] leading-none font-extrabold tracking-[-0.03em] text-balance">{squad.name}</h1>
         <p className="mt-2 font-mono text-xs text-muted">
-          {done ? "Completed" : `Round ${r} of ${squad.members.length}`} · {naira(squad.contribution)} each · {squad.period}
+          {done ? "Completed" : `Round ${r} of ${squad.members.length}`} ·{" "}
+          <span className="font-money text-[13px] font-bold text-ink">{naira(squad.contribution)}</span> each · {squad.period}
         </p>
       </header>
 
@@ -72,11 +73,11 @@ export default function SquadPage({ params }: { params: Promise<{ slug: string }
           </p>
         </section>
       ) : (
-        <section aria-labelledby="next-payout" className="mt-8">
+        <section aria-labelledby="next-payout" className="mt-10">
           <h2 id="next-payout" className="font-display text-[1.6rem] leading-tight font-extrabold tracking-[-0.03em]">
             {collector.id === ME ? "You collect" : `${collector.name} collects`} in <Countdown to={squad.roundDeadline} />
           </h2>
-          <p className="mt-1 font-money text-[clamp(3.4rem,17vw,4.6rem)] leading-[0.95] font-bold tnum">
+          <p className="mt-2 font-money text-[clamp(4rem,23vw,7rem)] leading-[0.9] font-bold tracking-[-0.02em] tnum">
             {naira(payoutAmount(squad))}
           </p>
           <p className="mt-2 text-sm text-muted">
@@ -95,17 +96,17 @@ export default function SquadPage({ params }: { params: Promise<{ slug: string }
               {paidIds.length} of {squad.members.length} paid
             </p>
           </div>
-          <ul className="mt-3 grid grid-cols-4 gap-y-4">
+          <ul className="mt-4 grid grid-cols-4 gap-y-5">
             {squad.members.map((m) => {
               const paid = paidIds.includes(m.id);
               return (
                 <li key={m.id} className="flex flex-col items-center gap-1.5">
                   {paid ? (
-                    <Stamp memberId={m.id} name={m.name} round={r} size="md" fresh={fresh?.round === r && m.id === ME} />
+                    <Stamp memberId={m.id} name={m.name} round={r} size="lg" fresh={fresh?.round === r && m.id === ME} />
                   ) : (
-                    <EmptyBox size="md" label={`${m.name} hasn't paid yet`} />
+                    <EmptyBox size="lg" label={`${m.name} hasn't paid yet`} />
                   )}
-                  <span className={`max-w-full truncate text-xs ${m.id === ME ? "font-semibold text-palm" : "text-ink"}`}>
+                  <span className={`max-w-full truncate text-xs ${m.id === ME ? "font-bold" : ""}`}>
                     {m.id === ME ? "You" : m.name}
                   </span>
                 </li>
@@ -116,7 +117,7 @@ export default function SquadPage({ params }: { params: Promise<{ slug: string }
         </section>
       )}
 
-      <section aria-labelledby="card" className="mt-10">
+      <section aria-labelledby="card" className="mt-12">
         <h2 id="card" className="mb-3 font-semibold">
           The card
         </h2>

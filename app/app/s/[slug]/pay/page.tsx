@@ -45,9 +45,8 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
   }
 
   return (
-    <Frame slug={slug}>
-      <p className="font-semibold">{squad.name}</p>
-      <h1 className="mt-6 font-display text-[1.6rem] leading-tight font-extrabold tracking-[-0.03em]">
+    <Frame slug={slug} label={squad.name}>
+      <h1 className="mt-4 font-display text-[1.6rem] leading-tight font-extrabold tracking-[-0.03em]">
         Round {r} contribution
       </h1>
       <p className="mt-1 font-money text-[clamp(3.6rem,19vw,5rem)] leading-[0.95] font-bold tnum">{naira(squad.contribution)}</p>
@@ -74,6 +73,13 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
           )}
         </ul>
       </div>
+
+      {!alreadyPaid && (
+        <div className="mt-10 flex items-center gap-4">
+          <EmptyBox size="lg" label="Your box for this round" />
+          <p className="max-w-[24ch] text-sm text-muted">Your stamp lands here when you pay.</p>
+        </div>
+      )}
 
       <div className="mt-auto pt-10">
         {error && (
@@ -119,10 +125,10 @@ function Row({ k, v }: { k: string; v: string }) {
   );
 }
 
-function Frame({ slug, children }: { slug: string; children: React.ReactNode }) {
+function Frame({ slug, label = "Squad", children }: { slug: string; label?: string; children: React.ReactNode }) {
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[480px] flex-col px-4 pt-2 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-      <BackLink href={`/s/${slug}`} label="Squad" />
+      <BackLink href={`/s/${slug}`} label={label} />
       <main className="mt-2 flex flex-1 flex-col">{children}</main>
     </div>
   );

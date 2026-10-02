@@ -1,0 +1,564 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-02T22:09:38+00:00",
+  "title": "Design System: Squadjar",
+  "extensions": {
+    "colorMeta": {
+      "manila": {
+        "role": "neutral",
+        "displayName": "Manila",
+        "canonical": "#F2EADB",
+        "tonalRamp": [
+          "#100A03",
+          "#2A2419",
+          "#484135",
+          "#676053",
+          "#898174",
+          "#ACA496",
+          "#D0C8BA",
+          "#F6EEDF"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Card Paper",
+        "canonical": "#FFFAF1",
+        "tonalRamp": [
+          "#0E0B06",
+          "#28251E",
+          "#45413A",
+          "#656159",
+          "#86827A",
+          "#A9A49C",
+          "#CDC8C0",
+          "#F3EEE5"
+        ]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#1C1915",
+        "tonalRamp": [
+          "#0D0B07",
+          "#282420",
+          "#45413D",
+          "#64615C",
+          "#85827C",
+          "#A8A49F",
+          "#CDC8C3",
+          "#F2EEE8"
+        ]
+      },
+      "text-muted": {
+        "role": "neutral",
+        "displayName": "Faded Ink",
+        "canonical": "#6F6253",
+        "tonalRamp": [
+          "#130901",
+          "#2E2316",
+          "#4C4032",
+          "#6C5F50",
+          "#8D8070",
+          "#B1A292",
+          "#D5C7B6",
+          "#FBECDA"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Pencil Rule",
+        "canonical": "#E2D6C0",
+        "tonalRamp": [
+          "#110A00",
+          "#2D2412",
+          "#4A412E",
+          "#6A604C",
+          "#8C816D",
+          "#AFA48F",
+          "#D4C8B2",
+          "#F9EDD7"
+        ]
+      },
+      "primary": {
+        "role": "primary",
+        "displayName": "Palm-Oil Orange",
+        "canonical": "#E4572E",
+        "tonalRamp": [
+          "#1C0200",
+          "#460F01",
+          "#742207",
+          "#AA3002",
+          "#D94D23",
+          "#FA7A56",
+          "#FCB5A1",
+          "#FFE9E3"
+        ]
+      },
+      "primary-press": {
+        "role": "primary",
+        "displayName": "Palm-Oil Pressed",
+        "canonical": "#C9461F",
+        "tonalRamp": [
+          "#1B0300",
+          "#451103",
+          "#761E02",
+          "#A73410",
+          "#D5522C",
+          "#FE7651",
+          "#FFB49F",
+          "#FEE9E4"
+        ]
+      },
+      "on-primary": {
+        "role": "primary",
+        "displayName": "On Palm",
+        "canonical": "#FFFFFF",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#A5A5A5",
+          "#C9C9C9",
+          "#EEEEEE"
+        ]
+      },
+      "accent": {
+        "role": "secondary",
+        "displayName": "Stamp-Pad Blue",
+        "canonical": "#2B3CC4",
+        "tonalRamp": [
+          "#030034",
+          "#0F0475",
+          "#1F24AE",
+          "#364DD5",
+          "#5372FD",
+          "#83A0FB",
+          "#B4C7FF",
+          "#E8EEFE"
+        ]
+      },
+      "success": {
+        "role": "semantic",
+        "displayName": "Success",
+        "canonical": "#2E7D4F",
+        "tonalRamp": [
+          "#000F05",
+          "#032E17",
+          "#0E4F2D",
+          "#217245",
+          "#489565",
+          "#6CB987",
+          "#90DEAA",
+          "#C6FFD8"
+        ]
+      },
+      "warning": {
+        "role": "semantic",
+        "displayName": "Warning",
+        "canonical": "#B7791F",
+        "tonalRamp": [
+          "#130800",
+          "#352003",
+          "#5D3900",
+          "#85560E",
+          "#B17315",
+          "#D69643",
+          "#FDBB69",
+          "#FEEBD6"
+        ]
+      },
+      "error": {
+        "role": "semantic",
+        "displayName": "Error",
+        "canonical": "#B42318",
+        "tonalRamp": [
+          "#1E0100",
+          "#4D0100",
+          "#7E0B05",
+          "#B12015",
+          "#DA4A3B",
+          "#FB7866",
+          "#FDB4A8",
+          "#FFE9E5"
+        ]
+      },
+      "dark-manila": {
+        "role": "neutral",
+        "displayName": "Manila (dark)",
+        "canonical": "#1A1712",
+        "tonalRamp": [
+          "#0D0B06",
+          "#28251F",
+          "#45413C",
+          "#64615B",
+          "#86827B",
+          "#A8A49E",
+          "#CDC8C2",
+          "#F2EEE7"
+        ]
+      },
+      "dark-surface": {
+        "role": "neutral",
+        "displayName": "Card Paper (dark)",
+        "canonical": "#24201A",
+        "tonalRamp": [
+          "#0E0B06",
+          "#28241E",
+          "#46413B",
+          "#656059",
+          "#87827A",
+          "#A9A49C",
+          "#CEC8C0",
+          "#F3EEE5"
+        ]
+      },
+      "dark-text": {
+        "role": "neutral",
+        "displayName": "Ink (dark)",
+        "canonical": "#F2EADB",
+        "tonalRamp": [
+          "#100A03",
+          "#2A2419",
+          "#484135",
+          "#676053",
+          "#898174",
+          "#ACA496",
+          "#D0C8BA",
+          "#F6EEDF"
+        ]
+      },
+      "dark-text-muted": {
+        "role": "neutral",
+        "displayName": "Faded Ink (dark)",
+        "canonical": "#A99A86",
+        "tonalRamp": [
+          "#120900",
+          "#2F2312",
+          "#4D402E",
+          "#6D5F4C",
+          "#8E806C",
+          "#B2A38E",
+          "#D6C7B2",
+          "#FCECD6"
+        ]
+      },
+      "dark-rule": {
+        "role": "neutral",
+        "displayName": "Pencil Rule (dark)",
+        "canonical": "#3A3328",
+        "tonalRamp": [
+          "#100A03",
+          "#2B2419",
+          "#484136",
+          "#686054",
+          "#898174",
+          "#ACA497",
+          "#D1C8BA",
+          "#F6EDDF"
+        ]
+      },
+      "dark-primary": {
+        "role": "primary",
+        "displayName": "Palm-Oil Orange (dark)",
+        "canonical": "#F06A43",
+        "tonalRamp": [
+          "#1B0300",
+          "#451102",
+          "#761F00",
+          "#A7350D",
+          "#D5522A",
+          "#FE774F",
+          "#FFB49F",
+          "#FEE9E4"
+        ]
+      },
+      "dark-primary-press": {
+        "role": "primary",
+        "displayName": "Palm-Oil Pressed (dark)",
+        "canonical": "#E4572E",
+        "tonalRamp": [
+          "#1C0200",
+          "#460F01",
+          "#742207",
+          "#AA3002",
+          "#D94D23",
+          "#FA7A56",
+          "#FCB5A1",
+          "#FFE9E3"
+        ]
+      },
+      "dark-on-primary": {
+        "role": "primary",
+        "displayName": "On Palm (dark)",
+        "canonical": "#1A1712",
+        "tonalRamp": [
+          "#0D0B06",
+          "#28251F",
+          "#45413C",
+          "#64615B",
+          "#86827B",
+          "#A8A49E",
+          "#CDC8C2",
+          "#F2EEE7"
+        ]
+      },
+      "dark-accent": {
+        "role": "secondary",
+        "displayName": "Stamp-Pad Blue (dark)",
+        "canonical": "#8E99FF",
+        "tonalRamp": [
+          "#07012E",
+          "#1C0B6A",
+          "#33328E",
+          "#4F54B3",
+          "#6E76D9",
+          "#919CF7",
+          "#BCC5FD",
+          "#EAEDFE"
+        ]
+      },
+      "dark-success": {
+        "role": "semantic",
+        "displayName": "Success (dark)",
+        "canonical": "#5FBF86",
+        "tonalRamp": [
+          "#000F05",
+          "#052D18",
+          "#04502C",
+          "#167345",
+          "#349861",
+          "#5CBC83",
+          "#81E1A6",
+          "#C8FEDA"
+        ]
+      },
+      "dark-warning": {
+        "role": "semantic",
+        "displayName": "Warning (dark)",
+        "canonical": "#E0A84A",
+        "tonalRamp": [
+          "#130900",
+          "#342100",
+          "#583C06",
+          "#7E5916",
+          "#A87821",
+          "#D19A3A",
+          "#F7BE61",
+          "#FEECD1"
+        ]
+      },
+      "dark-error": {
+        "role": "semantic",
+        "displayName": "Error (dark)",
+        "canonical": "#F07466",
+        "tonalRamp": [
+          "#1F0000",
+          "#4B0404",
+          "#7C120F",
+          "#A83229",
+          "#CF564A",
+          "#F77A6C",
+          "#FBB5AB",
+          "#FEE9E6"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Screen titles and squad names."
+      },
+      "display-moment": {
+        "displayName": "Display Moment",
+        "purpose": "The payout headline only."
+      },
+      "headline": {
+        "displayName": "Countdown Headline",
+        "purpose": "Who collects and when, on the squad screen."
+      },
+      "money-hero": {
+        "displayName": "Monumental Naira",
+        "purpose": "The round's payout figure on the squad screen."
+      },
+      "money": {
+        "displayName": "Naira",
+        "purpose": "Pay button label and inline amounts."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Explanatory copy, 34 to 38ch."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Tab labels, member names under stamps."
+      },
+      "mono": {
+        "displayName": "Ledger Mono",
+        "purpose": "Round headers, counts, receipt rows, meta lines."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "stamp-thunk",
+        "value": "spring(stiffness 520, damping 22, mass 0.9) from scale 1.9, rotate -24deg, opacity 0 to scale 1, member tilt, opacity 0.92",
+        "purpose": "A freshly paid stamp lands on the card and round row; paired with navigator.vibrate(20). Instant under prefers-reduced-motion."
+      },
+      {
+        "name": "collected-thunk",
+        "value": "spring(stiffness 420, damping 20), delay 250ms, from scale 2.2, rotate -26deg to scale 1, rotate -12deg, opacity 0.88",
+        "purpose": "The COLLECTED mark on the payout receipt. Instant under prefers-reduced-motion."
+      },
+      {
+        "name": "press",
+        "value": "scale(0.98), 75ms",
+        "purpose": "Active state on all buttons and chips."
+      },
+      {
+        "name": "ease-out-expo",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Theme easing token for non-spring transitions."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "column",
+        "value": "480px"
+      }
+    ],
+    "textures": [
+      {
+        "name": "paper",
+        "value": "/textures/paper.png, 256px tile, opacity 0.55 (dark: invert, 0.25)",
+        "purpose": "Fixed paper-fiber ground."
+      },
+      {
+        "name": "ink-1..4",
+        "value": "/textures/ink-{1..4}.png as mask-image, cover",
+        "purpose": "Ink-pressure masks for stamps and marks; edges break up, center stays solid. Generated by tools/gen-textures.py."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Pay Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The only filled palm action: Pay, and Add money on its own screen. Label carries the amount.",
+      "html": "<button class=\"ds-btn-pay\">Pay ₦5,000</button>",
+      "css": ".ds-btn-pay{display:flex;align-items:center;justify-content:center;width:100%;min-height:56px;border:0;border-radius:14px;background:var(--palm,#E4572E);color:var(--on-palm,#fff);font-family:var(--font-money), 'Zilla Slab', serif;font-size:1.25rem;font-weight:700;font-variant-numeric:tabular-nums;transition:transform 75ms;cursor:pointer}.ds-btn-pay:active{transform:scale(.98);background:var(--palm-press,#C9461F)}.ds-btn-pay:focus-visible{outline:3px solid var(--stamp,#2B3CC4);outline-offset:3px}"
+    },
+    {
+      "name": "Ink Button",
+      "kind": "button",
+      "refersTo": "button-ink",
+      "description": "Every CTA that doesn't move money: Start a squad, Invite on WhatsApp, Tell the squad.",
+      "html": "<button class=\"ds-btn-ink\">Start a squad</button>",
+      "css": ".ds-btn-ink{display:inline-flex;align-items:center;justify-content:center;min-height:56px;padding:0 28px;border:0;border-radius:14px;background:var(--ink,#1C1915);color:var(--manila,#F2EADB);font-family:var(--font-instrument),'Instrument Sans',sans-serif;font-weight:600;font-size:1rem;transition:transform 150ms;cursor:pointer}.ds-btn-ink:active{transform:scale(.98)}.ds-btn-ink:focus-visible{outline:3px solid var(--stamp,#2B3CC4);outline-offset:3px}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary navigation action such as Back to squad.",
+      "html": "<button class=\"ds-btn-ghost\">Back to squad</button>",
+      "css": ".ds-btn-ghost{display:flex;align-items:center;justify-content:center;min-height:52px;padding:0 24px;border:1.5px solid var(--ink,#1C1915);border-radius:14px;background:transparent;color:var(--ink,#1C1915);font-family:var(--font-instrument),'Instrument Sans',sans-serif;font-weight:600;cursor:pointer}.ds-btn-ghost:active{transform:scale(.98)}.ds-btn-ghost:focus-visible{outline:3px solid var(--stamp,#2B3CC4);outline-offset:3px}"
+    },
+    {
+      "name": "Paid Label",
+      "kind": "custom",
+      "refersTo": "paid-label",
+      "description": "Replaces Pay in the dock once the member has paid the round.",
+      "html": "<p class=\"ds-paid\">Paid round 3. Your stamp is on the card.</p>",
+      "css": ".ds-paid{display:flex;align-items:center;justify-content:center;min-height:56px;margin:0;border:1px solid var(--rule,#E2D6C0);border-radius:14px;color:var(--muted,#6F6253);font-family:var(--font-instrument),'Instrument Sans',sans-serif;font-weight:600}"
+    },
+    {
+      "name": "Amount Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "52px field, label above, stamp-blue border on focus, palm caret.",
+      "html": "<label class=\"ds-field\"><span>Amount each round</span><input class=\"ds-input\" inputmode=\"numeric\" value=\"5,000\"></label>",
+      "css": ".ds-field{display:grid;gap:6px;font-family:var(--font-instrument),'Instrument Sans',sans-serif;font-size:.875rem;font-weight:600;color:var(--ink,#1C1915)}.ds-input{min-height:52px;padding:0 12px;border:1.5px solid color-mix(in srgb,var(--muted,#6F6253) 60%,transparent);border-radius:10px;background:var(--paper,#FFFAF1);color:var(--ink,#1C1915);font:inherit;font-weight:400;caret-color:var(--palm,#E4572E);outline:none}.ds-input:focus{border-color:var(--stamp,#2B3CC4)}"
+    },
+    {
+      "name": "Amount Chip",
+      "kind": "chip",
+      "refersTo": "chip-amount",
+      "description": "Quick-pick amount pills; selected fills with ink.",
+      "html": "<div class=\"ds-chips\"><button class=\"ds-chip\">₦2,000</button><button class=\"ds-chip ds-chip-on\">₦5,000</button></div>",
+      "css": ".ds-chips{display:flex;gap:8px}.ds-chip{min-height:44px;padding:0 16px;border:1.5px solid var(--rule,#E2D6C0);border-radius:9999px;background:transparent;color:var(--ink,#1C1915);font-family:var(--font-money), 'Zilla Slab', serif;font-weight:700;font-variant-numeric:tabular-nums;cursor:pointer}.ds-chip:hover{border-color:var(--ink,#1C1915)}.ds-chip:focus-visible{outline:3px solid var(--stamp,#2B3CC4);outline-offset:3px}.ds-chip-on{background:var(--ink,#1C1915);border-color:var(--ink,#1C1915);color:var(--manila,#F2EADB)}"
+    },
+    {
+      "name": "Tab Bar",
+      "kind": "nav",
+      "refersTo": "tab-active",
+      "description": "Three-tab bottom nav on solid manila; active is ink with filled icon.",
+      "html": "<nav class=\"ds-tabs\"><a class=\"ds-tab\" href=\"#\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M219.31,108.68l-80-80a16,16,0,0,0-22.62,0l-80,80A15.87,15.87,0,0,0,32,120v96a8,8,0,0,0,8,8h64a8,8,0,0,0,8-8V160h32v56a8,8,0,0,0,8,8h64a8,8,0,0,0,8-8V120A15.87,15.87,0,0,0,219.31,108.68Z\"/></svg>Home</a><a class=\"ds-tab ds-tab-on\" aria-current=\"page\" href=\"#\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 256 256\" fill=\"currentColor\"><circle cx=\"96\" cy=\"104\" r=\"48\"/><path d=\"M168 152c40 0 64 32 64 56H104c0-24 24-56 64-56Z\"/></svg>Squads</a><a class=\"ds-tab\" href=\"#\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 256 256\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"16\"><circle cx=\"128\" cy=\"128\" r=\"96\"/><circle cx=\"128\" cy=\"112\" r=\"36\"/></svg>Profile</a></nav>",
+      "css": ".ds-tabs{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--rule,#E2D6C0);background:var(--manila,#F2EADB)}.ds-tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;color:var(--muted,#6F6253);font-family:var(--font-instrument),'Instrument Sans',sans-serif;font-size:.75rem;font-weight:600;text-decoration:none}.ds-tab:hover,.ds-tab-on{color:var(--ink,#1C1915)}.ds-tab:focus-visible{outline:3px solid var(--stamp,#2B3CC4);outline-offset:3px}"
+    },
+    {
+      "name": "Stamp and Empty Box",
+      "kind": "custom",
+      "refersTo": "stamp-lg",
+      "description": "The round row: inked initials stamps (raster pressure mask, solid center) beside dashed empty boxes of the same size.",
+      "html": "<div class=\"ds-row\"><span class=\"ds-stamp\" style=\"transform:rotate(-8deg)\">BA</span><span class=\"ds-stamp\" style=\"transform:rotate(-3deg)\">YO</span><span class=\"ds-empty\"></span></div>",
+      "css": ".ds-row{display:flex;gap:20px;align-items:center}.ds-stamp{display:inline-grid;place-items:center;width:64px;height:64px;border:3px solid var(--stamp,#2B3CC4);border-radius:9999px;color:var(--stamp,#2B3CC4);font-family:var(--font-jetbrains),'JetBrains Mono',monospace;font-weight:500;font-size:16px;opacity:.92;-webkit-mask-image:url('/textures/ink-1.png');mask-image:url('/textures/ink-1.png');-webkit-mask-size:cover;mask-size:cover}.ds-empty{display:inline-block;width:64px;height:64px;border:1.5px dashed color-mix(in srgb,var(--muted,#6F6253) 70%,transparent);border-radius:4px}"
+    },
+    {
+      "name": "Stamp Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The ledger: paper card, 40px ruled rows, current round tinted palm at 10%.",
+      "html": "<table class=\"ds-ledger\"><tr><th>Turn</th><th>R1</th><th class=\"ds-now\">R2</th></tr><tr><th>Bola</th><td><span class=\"ds-mark\">PAID OUT</span></td><td class=\"ds-now\"><span class=\"ds-empty-sm\"></span></td></tr></table>",
+      "css": ".ds-ledger{border:1px solid var(--rule,#E2D6C0);border-radius:14px;border-spacing:0;overflow:hidden;background-color:var(--paper,#FFFAF1);background-image:repeating-linear-gradient(to bottom,transparent 0 39px,var(--rule,#E2D6C0) 39px 40px);font-family:var(--font-instrument),'Instrument Sans',sans-serif;font-size:.875rem}.ds-ledger tr{height:40px}.ds-ledger th{padding:0 12px;text-align:left;font-weight:600}.ds-ledger tr:first-child th{font-family:var(--font-jetbrains),'JetBrains Mono',monospace;font-size:11px;font-weight:400;color:var(--muted,#6F6253)}.ds-ledger td{width:48px;text-align:center}.ds-now{background:color-mix(in srgb,var(--palm,#E4572E) 10%,transparent)}.ds-mark{display:inline-block;transform:rotate(-6deg);border:2px solid var(--stamp,#2B3CC4);padding:1px 4px;font-family:var(--font-jetbrains),'JetBrains Mono',monospace;font-size:8px;font-weight:500;color:var(--stamp,#2B3CC4)}.ds-empty-sm{display:inline-block;width:28px;height:28px;border:1.5px dashed color-mix(in srgb,var(--muted,#6F6253) 70%,transparent);border-radius:4px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Stamped Card",
+    "overview": "The esusu collector's cardboard contribution card, owned by a squad of students. It earns trust from a ritual Nigerian families already believe in, not from shields, locks or navy blue. The surface is manila paper with a real fiber grain, cards are lighter paper with ruled ledger lines, and a payment is a rubber stamp pressed in blue ink. Ink is permanent, so a stamp reads as \"can't be erased\".\n\nThe system is dense where it records (the card, the ledger meta) and loud in only two places: the payout figure and the palm-orange action that moves money. Everything else is ink on paper. Depth comes from paper on paper, never from light.",
+    "keyCharacteristics": [
+      "People come before money. The squad screen leads with who collects next, and the balance is one quiet line.",
+      "Payments are ink stamps with initials, not checkmarks.",
+      "Paper and ink materials: a raster fiber ground, 40px ruled ledger lines, raster ink-pressure masks on every stamp.",
+      "One loud color. Palm-oil orange belongs to Pay, Add money and the current-round tint, nothing else.",
+      "One authored motion: the stamp thunk."
+    ],
+    "rules": [
+      {
+        "name": "The Money Moves Rule",
+        "body": "Palm orange appears only on Pay, Add money and the current-round tint. Every other CTA (\"Start a squad\", \"Invite on WhatsApp\", \"Tell the squad\", \"Add ₦X\" when short) is an ink button.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ink Means Recorded Rule",
+        "body": "Stamp blue marks something already done. Never use it for a pending action.",
+        "section": "colors"
+      },
+      {
+        "name": "The Stamped Naira Rule",
+        "body": "Every amount is Zilla Slab with `₦` and thousands separators (`₦40,000`), tabular figures on.",
+        "section": "typography"
+      },
+      {
+        "name": "The Paper Not Light Rule",
+        "body": "No shadows, glows, blurs or frosted glass. The action bar is solid manila.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep palm orange for Pay, Add money and the current-round tint only.",
+      "Do render every amount in Zilla Slab with `₦` and thousands separators.",
+      "Do name people. \"Bola collects this round\" beats \"Recipient: 0x…\".",
+      "Do size empty boxes to the stamp they wait for, so the row reads as gaps in ink.",
+      "Do land ledger rows on the 40px rules."
+    ],
+    "donts": [
+      "Don't use green checkmarks for payments. Payments are blue stamps.",
+      "Don't use shadows, glows, blur, gradients or confetti.",
+      "Don't lead a screen with the user's balance.",
+      "Don't use system-ui or an unloaded font as the visible face."
+    ]
+  }
+}

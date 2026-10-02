@@ -39,7 +39,7 @@ export function StampCard({ squad, fresh }: { squad: Squad; fresh?: { round: num
                 <tr key={m.id} className="h-10">
                   <th
                     scope="row"
-                    className={`sticky left-0 z-10 bg-paper pr-3 pl-3 text-left font-semibold whitespace-nowrap ${mine ? "text-palm" : ""}`}
+                    className={`sticky left-0 z-10 bg-paper pr-3 pl-3 text-left font-semibold whitespace-nowrap ${mine ? "font-extrabold underline decoration-2 underline-offset-4" : ""}`}
                   >
                     <span className="mr-2 inline-block w-4 font-mono text-[11px] font-normal text-muted tnum">{i + 1}</span>
                     {mine ? "You" : m.name}
