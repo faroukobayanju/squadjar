@@ -7,3 +7,6 @@ cache/
 broadcast/
 .vercel/
 .DS_Store
+
+.impeccable/review/
+.impeccable/surface-round.json

@@ -1,0 +1,139 @@
+@import "tailwindcss";
+
+/* Squadjar: "The Stamped Card". Tokens mirror DESIGN.md; change them there first. */
+:root {
+  --manila: #f2eadb;
+  --paper: #fffaf1;
+  --ink: #1c1915;
+  --muted: #6f6253; /* DESIGN.md text-muted #7A6D5E darkened one step to hold 4.5:1 on manila */
+  --rule: #e2d6c0;
+  --palm: #e4572e;
+  --palm-press: #c9461f;
+  --on-palm: #ffffff;
+  --stamp: #2b3cc4;
+  --ok: #2e7d4f;
+  --warn: #b7791f;
+  --bad: #b42318;
+  --shadow: 28 25 21;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --manila: #1a1712;
+    --paper: #24201a;
+    --ink: #f2eadb;
+    --muted: #a99a86;
+    --rule: #3a3328;
+    --palm: #f06a43;
+    --palm-press: #e4572e;
+    --on-palm: #1a1712;
+    --stamp: #8e99ff;
+    --ok: #5fbf86;
+    --warn: #e0a84a;
+    --bad: #f07466;
+    --shadow: 0 0 0;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-manila: var(--manila);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-rule: var(--rule);
+  --color-palm: var(--palm);
+  --color-palm-press: var(--palm-press);
+  --color-on-palm: var(--on-palm);
+  --color-stamp: var(--stamp);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+  --font-display: var(--font-bricolage);
+  --font-money: var(--font-zilla);
+  --font-sans: var(--font-instrument);
+  --font-mono: var(--font-jetbrains);
+  --radius-sm: 4px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html {
+  background: var(--manila);
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--manila);
+  color: var(--ink);
+  font-family: var(--font-instrument), ui-sans-serif, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  min-height: 100dvh;
+}
+
+/* Paper grain lives on a fixed, non-interactive layer so scrolling never repaints it. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgb(var(--shadow) / 0.05) 1px, transparent 1px);
+  background-size: 3px 3px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--stamp) 22%, transparent);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 3px solid var(--stamp);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+input,
+textarea {
+  caret-color: var(--palm);
+}
+
+a {
+  text-underline-offset: 3px;
+}
+
+* {
+  scrollbar-color: var(--rule) transparent;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ruled ledger paper inside the stamp card: rows land on the rules. */
+.ledger {
+  background-color: var(--paper);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 39px,
+    var(--rule) 39px 40px
+  );
+}
+
+/* Ink stamp: rough edge from a radial mask so no two read as vector-perfect. */
+.ink {
+  -webkit-mask-image: radial-gradient(circle at 35% 40%, #000 62%, rgb(0 0 0 / 0.8) 63%, #000 72%);
+  mask-image: radial-gradient(circle at 35% 40%, #000 62%, rgb(0 0 0 / 0.8) 63%, #000 72%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
