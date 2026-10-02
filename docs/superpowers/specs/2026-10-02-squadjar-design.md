@@ -14,7 +14,7 @@ Who is affected: Nigerian undergraduates (18 to 24) in class, department, or fri
 
 ## Current State
 
-Greenfield. Verified 2026-10-02: `/Users/zorak/Desktop/metropolis` contains only `CONTEXT.md` and `docs/`. It is not a git repo yet. The `gh` CLI is authenticated as `faroukobayanju`.
+Greenfield. Verified 2026-10-02: The repo root contains only `CONTEXT.md` and `docs/`. Public repo: github.com/faroukobayanju/squadjar.
 
 Verified platform facts (2026-10-02):
 
