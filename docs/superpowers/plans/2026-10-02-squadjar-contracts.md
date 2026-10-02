@@ -28,7 +28,7 @@
 - Trust score `onTime - 2*late - 10*missed + 3*completed` (int256). Tiers: New < 5, Building 5 to 19, Reliable >= 20.
 - Deposit for turn p of n: `max(c, min(c*(n-p), cap))`, where cap is `3c` for Reliable members and unbounded otherwise.
 - Period timing (seconds): Demo 300/60/300, Weekly 604800/43200/172800, Monthly 2592000/172800/259200 (roundLength/grace/depositWindow).
-- A squad writes trust (on-time, late, missed, completed) only if it activated with `n >= 5` and `c >= 1000e18`. Smaller squads write nothing. `completed` is credited only to members with zero misses who did not stop paying.
+- A squad writes trust (on-time, late, missed, completed) only if it activated with `n >= 5`, `c >= 1000e18`, and a Weekly or Monthly period (Demo squads never write trust). Smaller squads write nothing. `completed` is credited only to members with zero misses who did not stop paying.
 - Contracts are not upgradeable. Fixing a squad or factory bug means deploying a new factory and allowlisting it in the existing `TrustRegistry`, so trust history survives.
 - `_finish` must never revert. Refunds are paid from the jar's actual balance (pro rata when short).
 
@@ -304,8 +304,12 @@ abstract contract Base is Test {
 
     /// users[0] organizes; users[1..n-1] join with the invite code. Everyone approves the squad.
     function _squad(uint256 n, uint256 c) internal returns (Squad s) {
+        return _squadWith(n, c, SquadFactory.Period.Demo);
+    }
+
+    function _squadWith(uint256 n, uint256 c, SquadFactory.Period period) internal returns (Squad s) {
         vm.prank(users[0]);
-        s = Squad(factory.createSquad(c, uint8(n), SquadFactory.Period.Demo, INVITE));
+        s = Squad(factory.createSquad(c, uint8(n), period, INVITE));
         vm.prank(users[0]);
         token.approve(address(s), type(uint256).max);
         for (uint256 i = 1; i < n; i++) {
@@ -790,6 +794,7 @@ contract Squad {
     uint8 public constant RELIABLE = 2;
     uint256 public constant TRUST_MIN_MEMBERS = 5;
     uint256 public constant TRUST_MIN_CONTRIBUTION = 1000e18;
+    uint32 public constant TRUST_MIN_ROUND_LENGTH = 604800; // Weekly or longer
 
     IERC20 public immutable token;
     ITrust public immutable trust;
@@ -1216,7 +1221,9 @@ Expected: compile error, `Member "start" not found`.
 
     function _activate() internal {
         state = State.Active;
-        countsForTrust = members.length >= TRUST_MIN_MEMBERS && contribution >= TRUST_MIN_CONTRIBUTION;
+        // Demo squads (5-minute rounds) never write trust: otherwise sybils farm Reliable in an hour.
+        countsForTrust = members.length >= TRUST_MIN_MEMBERS && contribution >= TRUST_MIN_CONTRIBUTION
+            && roundLength >= TRUST_MIN_ROUND_LENGTH;
         currentRound = 1;
         roundDeadline = uint64(block.timestamp + roundLength);
         emit Activated(roundDeadline);
@@ -1265,6 +1272,7 @@ pragma solidity ^0.8.24;
 
 import {Base} from "./Base.t.sol";
 import {Squad} from "../src/Squad.sol";
+import {SquadFactory} from "../src/SquadFactory.sol";
 
 contract SquadRoundsTest is Base {
     function _active(uint256 n, uint256 c) internal returns (Squad s) {
@@ -1303,7 +1311,9 @@ contract SquadRoundsTest is Base {
     }
 
     function test_lateContributionRecordedLate() public {
-        Squad s = _active(5, C); // 5 members at ₦1000 counts for trust
+        Squad s = _squadWith(5, C, SquadFactory.Period.Weekly); // 5 members, ₦1000, Weekly: counts for trust
+        _start(s);
+        _lockAll(s);
         address m = _turn(s, 2);
         vm.warp(uint256(s.roundDeadline()) + 10);
         vm.prank(m);
@@ -1479,7 +1489,12 @@ contract SquadRoundsTest is Base {
         (,,, uint32 doneSmall) = registry.records(users[1]);
         assertEq(doneSmall, 0);
 
-        Squad big = _squad(5, C); // new squad, same users
+        Squad demo = _active(5, C); // right size but Demo period: no trust
+        for (uint256 r; r < 5; r++) _payAllExcept(demo, address(0));
+        (,,, uint32 doneDemo) = registry.records(users[1]);
+        assertEq(doneDemo, 0);
+
+        Squad big = _squadWith(5, C, SquadFactory.Period.Weekly); // new squad, same users
         _start(big);
         _lockAll(big);
         for (uint256 r; r < 5; r++) _payAllExcept(big, address(0));
@@ -2526,3 +2541,6 @@ GAP: fairness properties under fuzz (TODOS P2)
 | 24 | Eng | Organizer `remove()` | Mechanical | P2 | invite squatting | cancel only |
 | 25 | Eng | Cap fixed at start | Mechanical | P5 | removes dead branch | re-read tier |
 | 26 | Eng | Demo-period trust / Reliable cap | **User Challenge** | — | sybil steal still works | — |
+
+### Final gate (2026-10-02)
+User chose **A**: Demo-period squads never write trust (`TRUST_MIN_ROUND_LENGTH = 604800`), and the Reliable 3c cap stays. Tests updated: `test_lateContributionRecordedLate` and `test_completedRecordedOnlyForBigEnoughSquads` use Weekly squads, and the latter also asserts that a Demo squad writes nothing. Status: **APPROVED**.
