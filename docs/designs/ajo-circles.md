@@ -7,7 +7,7 @@ Mode: Builder (hackathon: Monad Metropolis, Consumer Products & Payments track)
 
 ## Problem Statement
 
-Nigerian students run rotating savings (ajo/esusu) and class or departmental dues through one person's bank account plus a WhatsApp list. The treasurer or an early recipient disappears, ticks get forged, and everyone after them loses. Existing apps (Corral, Ajo, Kashlet) digitize the ledger but still let an admin hold the cash, mark unpaid members as paid, or swap payout accounts (Simpa Labs test, Aug 2026).
+Nigerian students run rotating savings (ajo/esusu) and class or departmental dues through one person's bank account plus a WhatsApp list. The treasurer or an early recipient disappears, ticks get forged, and everyone after them loses. Typical group-savings apps digitize the ledger but still leave one admin in control of the cash and the records.
 
 Target user: Nigerian undergraduates (18 to 24) in class, department, or friend circles of 5 to 20 people, organized by a class rep.
 
