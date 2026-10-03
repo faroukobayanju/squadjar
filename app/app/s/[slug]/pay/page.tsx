@@ -5,18 +5,33 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BackLink, useRequireLogin } from "@/components/shell";
 import { EmptyBox, Stamp } from "@/components/stamp";
+import { Bar } from "@/components/skeleton";
 import { naira } from "@/lib/format";
-import { DemoError, ME, collectorOf, payRound, squadBySlug, useStore } from "@/lib/store";
+import { DemoError, ME, collectorOf, useActions, useMe, useSquad } from "@/lib/data";
 
 export default function PayPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const router = useRouter();
-  const state = useStore((s) => s);
-  const squad = squadBySlug(state, slug);
+  const squad = useSquad(slug);
+  const me = useMe();
+  const { pay: payRound } = useActions();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const gated = useRequireLogin();
   if (gated) return null;
+
+  if (squad === undefined || (squad && !me)) {
+    return (
+      <Frame slug={slug}>
+        <div aria-busy="true" aria-label="Loading">
+          <Bar className="mt-4 h-8 w-56" />
+          <Bar className="mt-1 h-[clamp(3.6rem,19vw,5rem)] w-48" />
+          <Bar className="mt-8 h-36 w-full" />
+        </div>
+        <Bar className="mt-auto h-14 w-full rounded-lg" />
+      </Frame>
+    );
+  }
 
   if (!squad || squad.state !== "Active") {
     return (
@@ -27,9 +42,10 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
     );
   }
 
+  const balance = me!.balance;
   const r = squad.currentRound;
   const alreadyPaid = (squad.paid[r] ?? []).includes(ME);
-  const short = squad.contribution - state.balance;
+  const short = squad.contribution - balance;
   const collector = collectorOf(squad);
   const paidCount = (squad.paid[r] ?? []).length;
 
@@ -37,8 +53,7 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
     setBusy(true);
     setError(null);
     try {
-      await new Promise((ok) => setTimeout(ok, 650)); // network-shaped pause so the press reads as a real action
-      const res = payRound(slug);
+      const res = await payRound(slug);
       router.push(res.settled ? `/s/${slug}/payout` : `/s/${slug}`);
     } catch (e) {
       setError(e instanceof DemoError ? e.message : "Payment didn't go through. Your money is safe. Try again.");
@@ -56,7 +71,7 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
       <dl className="mt-8 divide-y divide-rule border-y border-rule text-sm">
         <Row k="Goes into" v={`${squad.name} jar`} />
         <Row k="This round's collector" v={collector.id === ME ? "You" : collector.name} />
-        <Row k="Your balance after" v={naira(Math.max(0, state.balance - squad.contribution))} />
+        <Row k="Your balance after" v={naira(Math.max(0, balance - squad.contribution))} />
       </dl>
 
       <div className="mt-8">
@@ -94,7 +109,7 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
         ) : short > 0 ? (
           <>
             <p className="mb-3 text-sm">
-              You need {naira(short)} more. Your balance is {naira(state.balance)}.
+              You need {naira(short)} more. Your balance is {naira(balance)}.
             </p>
             <Link
               href={`/add-money?amount=${Math.ceil(short / 100) * 100}&next=/s/${slug}/pay`}

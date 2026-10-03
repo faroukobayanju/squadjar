@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Plus } from "@phosphor-icons/react";
 import { Countdown } from "@/components/countdown";
 import { naira } from "@/lib/format";
-import { ME, collectorOf, type Squad } from "@/lib/store";
+import { ME, collectorOf, type Squad } from "@/lib/data";
 
 export function SquadList({ squads }: { squads: Squad[] }) {
   return (

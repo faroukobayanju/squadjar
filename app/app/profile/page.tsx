@@ -1,7 +1,8 @@
 "use client";
 
 import { AppShell } from "@/components/shell";
-import { resetDemo, useStore, type Tier } from "@/lib/store";
+import { Bar } from "@/components/skeleton";
+import { isLive, resetDemo, useMe, type Tier } from "@/lib/data";
 
 const TIERS: { tier: Tier; points: string; means: string }[] = [
   { tier: "New", points: "under 5", means: "You start in later turns while you build a record." },
@@ -10,11 +11,15 @@ const TIERS: { tier: Tier; points: string; means: string }[] = [
 ];
 
 export default function Profile() {
-  const me = useStore((s) => s.me);
+  const me = useMe();
   return (
     <AppShell>
-      <h1 className="font-display text-[2.1rem] leading-none font-extrabold tracking-[-0.03em]">{me.name}</h1>
-      <p className="mt-6 font-money text-6xl leading-none font-bold tnum">{me.onTime}</p>
+      {me ? (
+        <h1 className="font-display text-[2.1rem] leading-none font-extrabold tracking-[-0.03em]">{me.name}</h1>
+      ) : (
+        <Bar className="h-[2.1rem] w-40" />
+      )}
+      {me ? <p className="mt-6 font-money text-6xl leading-none font-bold tnum">{me.onTime}</p> : <Bar className="mt-6 h-[3.75rem] w-24" />}
       <p className="mt-1 text-muted">payments on time across all your squads</p>
 
       <h2 className="mt-10 font-semibold">How turns are earned</h2>
@@ -26,7 +31,7 @@ export default function Profile() {
         {TIERS.map((t) => (
           <li key={t.tier} className="flex gap-4 px-4 py-3">
             <span
-              className={`mt-0.5 inline-flex h-7 shrink-0 items-center rounded-full border-[1.5px] px-2.5 font-mono text-xs ${t.tier === me.tier ? "border-stamp bg-stamp/10 text-stamp" : "border-rule text-muted"}`}
+              className={`mt-0.5 inline-flex h-7 shrink-0 items-center rounded-full border-[1.5px] px-2.5 font-mono text-xs ${t.tier === me?.tier ? "border-stamp bg-stamp/10 text-stamp" : "border-rule text-muted"}`}
             >
               {t.tier}
             </span>
@@ -37,15 +42,17 @@ export default function Profile() {
         ))}
       </ol>
 
-      <button
-        type="button"
-        onClick={() => {
-          if (confirm("Reset the demo squads and balance?")) resetDemo();
-        }}
-        className="mt-10 min-h-12 text-sm font-semibold text-muted underline"
-      >
-        Reset demo data
-      </button>
+      {!isLive && (
+        <button
+          type="button"
+          onClick={() => {
+            if (confirm("Reset the demo squads and balance?")) resetDemo();
+          }}
+          className="mt-10 min-h-12 text-sm font-semibold text-muted underline"
+        >
+          Reset demo data
+        </button>
+      )}
     </AppShell>
   );
 }

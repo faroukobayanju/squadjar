@@ -7,24 +7,15 @@ import { AppShell } from "@/components/shell";
 import { Countdown } from "@/components/countdown";
 import { EmptyBox, Stamp } from "@/components/stamp";
 import { StampCard } from "@/components/stamp-card";
+import { Bar } from "@/components/skeleton";
 import { naira } from "@/lib/format";
 import { useOrigin } from "@/lib/origin";
-import {
-  ME,
-  clearJustStamped,
-  collectorOf,
-  myTurn,
-  payoutAmount,
-  squadBySlug,
-  useStore,
-  type Squad,
-} from "@/lib/store";
+import { ME, clearJustStamped, collectorOf, myTurn, payoutAmount, useJustStamped, useSquad, type Squad } from "@/lib/data";
 
 export default function SquadPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
-  const state = useStore((s) => s);
-  const squad = squadBySlug(state, slug);
-  const fresh = state.justStamped?.slug === slug ? state.justStamped : undefined;
+  const squad = useSquad(slug);
+  const fresh = useJustStamped(slug);
 
   useEffect(() => {
     if (!fresh) return;
@@ -33,8 +24,10 @@ export default function SquadPage({ params }: { params: Promise<{ slug: string }
     return () => clearTimeout(t);
   }, [fresh]);
 
+  if (squad === undefined) return <SquadSkeleton />;
   if (!squad) return <NotFound />;
-  if (squad.state === "Open") return <OpenSquad squad={squad} />;
+  // ponytail: Depositing and Cancelled borrow the Open view until Task 4 gives them their own.
+  if (squad.state !== "Active" && squad.state !== "Completed") return <OpenSquad squad={squad} />;
 
   const r = squad.currentRound;
   const paidIds = squad.paid[r] ?? [];
@@ -183,7 +176,7 @@ function OpenSquad({ squad }: { squad: Squad }) {
       <ul className="mt-6 divide-y divide-rule rounded-lg border border-rule bg-paper">
         {squad.members.map((m) => (
           <li key={m.id} className="flex min-h-12 items-center justify-between px-4">
-            <span className="font-semibold">{m.id === ME ? "You (organizer)" : m.name}</span>
+            <span className="font-semibold">{m.id === ME ? (m.id === squad.organizerId ? "You (organizer)" : "You") : m.name}</span>
             <span className="font-mono text-xs text-stamp">{m.tier}</span>
           </li>
         ))}
@@ -193,6 +186,34 @@ function OpenSquad({ squad }: { squad: Squad }) {
           </li>
         ))}
       </ul>
+    </AppShell>
+  );
+}
+
+function SquadSkeleton() {
+  return (
+    <AppShell action={<Bar className="h-14 w-full rounded-lg" />}>
+      <div aria-busy="true" aria-label="Loading squad">
+        <Bar className="h-[2.1rem] w-56" />
+        <Bar className="mt-2 h-4 w-48" />
+        <Bar className="mt-10 h-8 w-64" />
+        <Bar className="mt-2 h-[clamp(4rem,23vw,7rem)] w-full max-w-72" />
+        <Bar className="mt-2 h-4 w-60" />
+        <div className="mt-8 flex items-baseline justify-between">
+          <h2 className="font-semibold">This round</h2>
+          <Bar className="h-4 w-16" />
+        </div>
+        <ul className="mt-4 grid grid-cols-4 gap-y-5">
+          {Array.from({ length: 4 }, (_, i) => (
+            <li key={i} className="flex flex-col items-center gap-1.5">
+              <Bar className="size-16 rounded-full" />
+              <Bar className="h-3 w-10" />
+            </li>
+          ))}
+        </ul>
+        <h2 className="mt-12 mb-3 font-semibold">The card</h2>
+        <Bar className="h-40 w-full rounded-lg" />
+      </div>
     </AppShell>
   );
 }

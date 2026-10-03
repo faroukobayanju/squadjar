@@ -6,7 +6,7 @@ import { Sparkle } from "@phosphor-icons/react";
 import { BackLink } from "@/components/shell";
 import { parseDraft } from "@/lib/draft";
 import { naira } from "@/lib/format";
-import { DemoError, createSquad, type Period } from "@/lib/store";
+import { DemoError, useActions, type Period } from "@/lib/data";
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: "Weekly", label: "Weekly" },
@@ -16,6 +16,7 @@ const PERIODS: { value: Period; label: string }[] = [
 
 export default function NewSquad() {
   const router = useRouter();
+  const { createSquad } = useActions();
   const [ask, setAsk] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -34,11 +35,11 @@ export default function NewSquad() {
     setNote(missing.length ? `Filled what I could. Still need: ${missing.join(", ")}.` : "Filled in below. Check it, then create.");
   }
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     try {
-      const slug = createSquad({ name, contribution: Number(amount.replace(/\D/g, "")), size: Number(size), period });
+      const slug = await createSquad({ name, contribution: Number(amount.replace(/\D/g, "")), size: Number(size), period });
       router.push(`/s/${slug}`);
     } catch (err) {
       setError(err instanceof DemoError ? err.message : "Couldn't create the squad. Try again.");
