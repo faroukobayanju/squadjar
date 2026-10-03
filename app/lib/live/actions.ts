@@ -15,6 +15,7 @@ import type { Actions, Payout, Period } from "../types";
 const PERIOD_INDEX: Record<Period, number> = { Demo: 0, Weekly: 1, Monthly: 2 };
 const PAYOUT_KEY = "squadjar-payout";
 const MAX = { amount: maxUint256 };
+const pendingKey = (address: string) => `squadjar-pending-${address.toLowerCase()}`;
 
 /** An error friendlyError() maps by contract error name, without a round trip. */
 const named = (errorName: string) => Object.assign(new Error(errorName), { errorName });
@@ -66,12 +67,21 @@ export function useLiveActions(): Actions {
         // The squad exists now, so nothing below may throw (a retry would create a second one).
         // A failed approve is recovered by the approve-if-needed on lockDeposit / contribute / refill.
         await write({ address: TOKEN, abi: tokenAbi, functionName: "approve", args: [squad, maxUint256] }).catch(() => {});
+        try {
+          localStorage.setItem(pendingKey(squad), JSON.stringify({ address: squad, name, code }));
+        } catch {
+          // storage blocked: the invite code then only lives in memory
+        }
         const register = async () => {
           const r = await authed("/api/squads", { method: "POST", body: JSON.stringify({ address: squad, name, inviteCode: code }) });
           if (!r.ok) throw new Error(`register ${r.status}`);
-          return ((await r.json()) as { slug: string }).slug;
+          const { slug } = (await r.json()) as { slug: string };
+          try {
+            localStorage.removeItem(pendingKey(squad));
+          } catch {}
+          return slug;
         };
-        // ponytail: if both registers fail the invite code is lost and the squad lives at /s/<its id> with no invite link; persist the code locally if this shows up
+        // If both fail the squad lives at /s/<its id>; the code stays in the pending entry and OpenView retries the registration.
         return register()
           .catch(register)
           .catch(() => squad.toLowerCase());
@@ -96,13 +106,18 @@ export function useLiveActions(): Actions {
         await refreshAll();
         if (!settled || !me || settled.args.collector.toLowerCase() !== me.toLowerCase()) return { settled: false };
         const { round, amount } = settled.args;
-        const view = await publicClient.readContract({ address, abi: squadAbi, functionName: "getState" });
-        const paid = await publicClient.multicall({
-          allowFailure: false,
-          contracts: view.members.map((m: Address) => ({ address, abi: squadAbi, functionName: "paid", args: [BigInt(round), m] }) as const),
-        });
-        const covered = amount - BigInt(paid.filter(Boolean).length) * view.contribution; // the rest came out of deposits
-        const payout: Payout = { slug, squadName: name, round, amount: fromUnits(amount), covered: Math.max(0, fromUnits(covered)), at: Date.now() };
+        // The money has moved: nothing below may throw. If the reads fail, covered is 0.
+        let covered = 0;
+        try {
+          const view = await publicClient.readContract({ address, abi: squadAbi, functionName: "getState" });
+          const paid = await publicClient.multicall({
+            allowFailure: false,
+            contracts: view.members.map((m: Address) => ({ address, abi: squadAbi, functionName: "paid", args: [BigInt(round), m] }) as const),
+          });
+          // ponytail: covered comes from the net RoundSettled amount (after owed repayment), so it can under-state the deposit share
+          covered = Math.max(0, fromUnits(amount - BigInt(paid.filter(Boolean).length) * view.contribution)); // the rest came out of deposits
+        } catch {}
+        const payout: Payout = { slug, squadName: name, round, amount: fromUnits(amount), covered, at: Date.now() };
         try {
           sessionStorage.setItem(PAYOUT_KEY, JSON.stringify(payout));
         } catch {
@@ -136,18 +151,33 @@ export function useLivePayout(): Payout | undefined {
   }, [raw]);
 }
 
-/** The squad's invite code, for members (the API refuses everyone else). */
-export function useLiveInviteCode(slug: string, enabled: boolean): string | undefined {
+/** The squad's invite code, for members (the API refuses everyone else). null: it could not be loaded. */
+export function useLiveInviteCode(slug: string, enabled: boolean): string | null | undefined {
   const { getAccessToken } = usePrivy();
-  const [got, setGot] = useState<{ slug: string; code: string }>();
+  const [got, setGot] = useState<{ slug: string; code: string | null }>();
   useEffect(() => {
     if (!enabled) return;
     let alive = true;
+    const set = (code: string | null) => alive && setGot({ slug, code });
     (async () => {
       const token = await getAccessToken();
-      const r = await fetch(`/api/squads/${encodeURIComponent(slug)}/invite`, { headers: { authorization: `Bearer ${token}` } });
-      if (r.ok && alive) setGot({ slug, code: ((await r.json()) as { code: string }).code });
-    })().catch(() => {}); // no link: the invite button stays hidden
+      const headers = { "content-type": "application/json", authorization: `Bearer ${token}` };
+      const r = await fetch(`/api/squads/${encodeURIComponent(slug)}/invite`, { headers });
+      if (r.ok) return set(((await r.json()) as { code: string }).code);
+      // Registration failed at creation: use the local code now and retry the registration.
+      let pending: { address: string; name: string; code: string } | null = null;
+      try {
+        pending = JSON.parse(localStorage.getItem(pendingKey(slug)) ?? "null");
+      } catch {}
+      if (!pending) return set(null);
+      set(pending.code);
+      const reg = await fetch("/api/squads", { method: "POST", headers, body: JSON.stringify({ address: pending.address, name: pending.name, inviteCode: pending.code }) });
+      if (reg.ok) {
+        try {
+          localStorage.removeItem(pendingKey(slug));
+        } catch {}
+      }
+    })().catch(() => set(null));
     return () => {
       alive = false;
     };

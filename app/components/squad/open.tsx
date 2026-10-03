@@ -24,6 +24,8 @@ export function OpenView({ squad }: { squad: Squad }) {
   const text = `Join "${squad.name}" on Squadjar: ${naira(squad.contribution)} each ${squad.period.toLowerCase()}, ${squad.maxMembers} of us. Nobody holds the jar. ${link}`;
   const invite = link && seatsLeft > 0 && `https://wa.me/?text=${encodeURIComponent(text)}`;
 
+  const noLink = isLive && code === null;
+
   const action = canStart ? (
     <ConfirmButton
       label="Start squad"
@@ -67,6 +69,8 @@ export function OpenView({ squad }: { squad: Squad }) {
           </li>
         ))}
       </ul>
+
+      {noLink && <p className="mt-5 text-sm text-muted">Invite link isn&apos;t ready yet. Try again in a moment.</p>}
 
       {canStart && invite && (
         <a

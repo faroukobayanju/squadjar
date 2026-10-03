@@ -36,7 +36,7 @@ export const useJustStamped = (slug: string) => store.useStore((s) => (!isLive &
 const useDemoPayout = () => store.useStore((s) => s.lastPayout);
 export const useLastPayout = isLive ? useLivePayout : useDemoPayout;
 /** Members' invite code (live only; the demo has no joining). */
-export const useInviteCode: (slug: string, enabled: boolean) => string | undefined = isLive ? useLiveInviteCode : () => undefined;
+export const useInviteCode: (slug: string, enabled: boolean) => string | null | undefined = isLive ? useLiveInviteCode : () => undefined;
 export const clearJustStamped = store.clearJustStamped;
 export const resetDemo = store.resetDemo;
 
