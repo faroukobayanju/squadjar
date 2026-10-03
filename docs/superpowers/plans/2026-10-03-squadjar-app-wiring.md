@@ -25,7 +25,7 @@
 - Every user write is sponsored (`sponsor: true`); a new user with 0 MON completes the flow.
 - Write failures: one automatic retry, then "Payment didn't go through. Your money is safe." with Retry (non-payment writes: "That didn't go through. Try again."). Known contract errors map to specific copy (Task 4).
 - No new dependencies beyond `@privy-io/react-auth`, the Privy server SDK, `viem`, `@neondatabase/serverless`.
-- Env vars: `NEXT_PUBLIC_PRIVY_APP_ID`, `PRIVY_APP_SECRET`, `DATABASE_URL`, `NEXT_PUBLIC_FACTORY`, `NEXT_PUBLIC_TOKEN`, `RELAYER_PRIVATE_KEY`, `CRON_SECRET`. Document all in `app/.env.example`. Never commit `.env.local`.
+- Env vars: `NEXT_PUBLIC_PRIVY_APP_ID`, `PRIVY_APP_SECRET`, `DATABASE_URL`, `NEXT_PUBLIC_FACTORY`, `NEXT_PUBLIC_TOKEN`, `RELAYER_PRIVATE_KEY`, `CRON_SECRET`, `PRIVY_AUTH_PRIVATE_KEY`, `NEXT_PUBLIC_PRIVY_SIGNER_ID`, `NEXT_PUBLIC_PRIVY_AUTOPAY_POLICY_ID`. Document all in `app/.env.example`. Never commit `.env.local`.
 - Dev server port 3100 (`.claude/launch.json`, name `squadjar-app`).
 - Checks follow the repo idiom: `lib/<name>.check.ts`, run with `node lib/<name>.check.ts` (Node 24 strips types), excluded from `tsc` by the existing `lib/*.check.ts` exclude.
 - Commits end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
@@ -236,7 +236,43 @@ export type Squad = {
 
 ---
 
+### Task 6: Auto-pay
+
+Members can let Squadjar pay their contribution each round. Privy enforces the limits: Squadjar is added as a *signer* on the member's account with a policy that allows only `contribute()` calls with zero value. The squad contract decides the amount (exactly the contribution), so the signer can never move more. The member can switch it off anytime. See `docs/privy-security-notes.md`.
+
+**Files:**
+- Create: `app/lib/autopay.ts`, `app/app/api/autopay/route.ts`, `app/app/api/cron/autopay/route.ts`, `app/components/autopay-toggle.tsx`
+- Modify: `app/db/schema.sql`, `app/app/s/[slug]/page.tsx`, `app/.env.example`, `docs/privy-notes.md`
+
+**Interfaces:**
+- Consumes: Task 1 (`useMyAccount`, Privy provider), Task 2 (`requireUser`, `sql`), Task 3 (`useSquad`), Task 5 (`squadCount`/`squads(i)` scan pattern).
+- Produces:
+  - Schema (additive):
+
+```sql
+create table if not exists autopay (
+  member text not null,
+  squad text not null references squads(address),
+  enabled boolean not null default true,
+  updated_at timestamptz not null default now(),
+  primary key (member, squad)
+);
+```
+
+  - `POST /api/autopay` `{ squad, enabled }` (auth; caller must be `Squad.isMember`) → upsert → `{ ok: true }`. `GET /api/autopay?squad=` (auth) → `{ enabled }`.
+  - `GET /api/cron/autopay` (header `x-cron-secret`): for each Active squad with enabled rows, for each such member who has not paid `currentRound`, when `now >= roundOpensAt` and `balanceOf(member) >= contribution`: simulate `contribute()` from the member, then send it through Privy's server API on the member's account with the app's authorization key and gas sponsorship. Returns `{ paid, skippedLowBalance, failed }`. Never sends after a reverted simulation.
+  - `<AutopayToggle squad={...} />`: on enable, adds the app signer to the member's account through Privy's client signer API with the auto-pay policy (only if not already added), then `POST /api/autopay`. On disable, `POST /api/autopay { enabled: false }` (keep the signer; removing it is the "turn off for all squads" action in Profile).
+  - Env: `PRIVY_AUTH_PRIVATE_KEY` (authorization key for the app signer), `NEXT_PUBLIC_PRIVY_SIGNER_ID` (key quorum / signer id), `NEXT_PUBLIC_PRIVY_AUTOPAY_POLICY_ID`.
+
+- [ ] **Step 1: Docs first.** From docs.privy.io, find the current APIs for: adding a signer to a user's embedded account from the client (e.g. `useSigners().addSigners`), creating a policy (allow `eth_sendTransaction` only when calldata starts with the `contribute()` selector `0xd7bb99ba` (viem `toFunctionSelector("contribute()")`), value 0, chain 10143), and sending a sponsored transaction from the server on a user's account with an authorization key. Record exact calls and the dashboard steps the user must do (create authorization key, policy) in `docs/privy-notes.md`. If a policy cannot restrict by selector, restrict to the narrowest rule available and say so in the report.
+- [ ] **Step 2:** Schema, `/api/autopay`, `lib/autopay.ts` (server helpers), cron route.
+- [ ] **Step 3: Toggle UI** on `/s/[slug]` for members of Open, Depositing and Active squads, below the round card. Copy: title "Auto-pay", body "Squadjar pays your {₦c} each round, only into {squad name}. Turn it off anytime." Off state shows "Turn on"; on state shows a stamp-blue "On" and "Turn off". Profile gets "Stop auto-pay everywhere" (removes the signer). No banned words.
+- [ ] **Step 4: Verify.** `npx tsc --noEmit`, `npm run build`, `npm run check:copy`; `curl -i localhost:3100/api/cron/autopay` → 401 without the header; with no `PRIVY_AUTH_PRIVATE_KEY` the cron returns 503 `{ error: "auto-pay not configured" }`. Live run deferred until contracts deploy and the user finishes the dashboard steps.
+- [ ] **Step 5: Commit** `feat(app): auto-pay through a policy-limited Privy signer`.
+
+---
+
 ## After this plan
 
-- Live E2E (spec AC 2, 3, 6, 7, 8) once the contracts are deployed: set `NEXT_PUBLIC_FACTORY`/`NEXT_PUBLIC_TOKEN` from `contracts/deployments/10143.json`, fund the relayer with testnet MON, point cron-job.org at `/api/cron/settle` every minute.
+- Live E2E (spec AC 2, 3, 6, 7, 8, plus auto-pay paying one round) once the contracts are deployed: set `NEXT_PUBLIC_FACTORY`/`NEXT_PUBLIC_TOKEN` from `contracts/deployments/10143.json`, fund the relayer with testnet MON, point cron-job.org at `/api/cron/settle` and `/api/cron/autopay` every minute.
 - Day 6: Kimi draft and nudges (spec §4). Day 8: README judge instructions, demo seed script.
