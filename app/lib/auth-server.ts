@@ -10,15 +10,16 @@ const json = (body: unknown, status: number) => Response.json(body, { status });
 const unauthorized = () => json({ error: "unauthorized" }, 401);
 
 let client: PrivyClient | undefined;
+/** The one server Privy client. Callers check `configured` (or their own env) first. */
+export const privy = () => (client ??= new PrivyClient({ appId: appId ?? "", appSecret: appSecret ?? "" }));
 
 /** Verifies the bearer Privy access token and resolves the user's embedded account. Throws a 401 Response. */
 export async function requireUser(req: Request): Promise<{ privyId: string; address: Address; email?: string }> {
   const token = req.headers.get("authorization")?.match(/^Bearer (.+)$/)?.[1];
   if (!token || !appId || !appSecret) throw unauthorized();
   try {
-    client ??= new PrivyClient({ appId, appSecret });
-    const { user_id } = await client.utils().auth().verifyAccessToken(token);
-    const user = await client.users()._get(user_id);
+    const { user_id } = await privy().utils().auth().verifyAccessToken(token);
+    const user = await privy().users()._get(user_id);
     const accounts = user.linked_accounts as { type: string; address?: string; email?: string; wallet_client_type?: string; chain_type?: string }[];
     const wallet = accounts.find((a) => a.type === "wallet" && a.wallet_client_type === "privy" && a.chain_type === "ethereum");
     if (!wallet?.address || !isAddress(wallet.address)) throw unauthorized();

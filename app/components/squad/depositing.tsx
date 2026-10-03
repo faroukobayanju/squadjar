@@ -2,6 +2,7 @@
 
 import { LockSimple } from "@phosphor-icons/react";
 import { AppShell } from "@/components/shell";
+import { AutopayToggle } from "@/components/autopay-toggle";
 import { Countdown } from "@/components/countdown";
 import { naira } from "@/lib/format";
 import { ME, myTurn, useActions, type Squad } from "@/lib/data";
@@ -74,6 +75,8 @@ export function DepositingView({ squad }: { squad: Squad }) {
           })}
         </ol>
       </section>
+
+      <AutopayToggle squad={squad} />
 
       <div className="mt-10">
         <ErrorNote error={lock.error ?? cancel.error} />

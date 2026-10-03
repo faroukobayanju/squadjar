@@ -4,6 +4,7 @@ import { use, useEffect, useRef } from "react";
 import Link from "next/link";
 import { WhatsappLogo, LockSimple } from "@phosphor-icons/react";
 import { AppShell } from "@/components/shell";
+import { AutopayToggle } from "@/components/autopay-toggle";
 import { Countdown, useNow } from "@/components/countdown";
 import { EmptyBox, Stamp } from "@/components/stamp";
 import { StampCard } from "@/components/stamp-card";
@@ -167,6 +168,8 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
           {paidIds.length < squad.members.length && <RemindSquad squad={squad} />}
         </section>
       )}
+
+      {!done && !iStopped && <AutopayToggle squad={squad} />}
 
       <section aria-labelledby="card" className="mt-12">
         <h2 id="card" className="mb-3 font-semibold">

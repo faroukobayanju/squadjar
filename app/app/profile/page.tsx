@@ -1,6 +1,7 @@
 "use client";
 
 import { AppShell } from "@/components/shell";
+import { StopAutopayEverywhere } from "@/components/autopay-toggle";
 import { Bar } from "@/components/skeleton";
 import { isLive, resetDemo, useMe, type Tier } from "@/lib/data";
 
@@ -43,6 +44,8 @@ export default function Profile() {
           </li>
         ))}
       </ol>
+
+      <StopAutopayEverywhere />
 
       {!isLive && (
         <button

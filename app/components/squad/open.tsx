@@ -2,6 +2,7 @@
 
 import { WhatsappLogo } from "@phosphor-icons/react";
 import { AppShell } from "@/components/shell";
+import { AutopayToggle } from "@/components/autopay-toggle";
 import { KNOWN } from "@/lib/errors";
 import { naira } from "@/lib/format";
 import { useOrigin } from "@/lib/origin";
@@ -83,6 +84,8 @@ export function OpenView({ squad }: { squad: Squad }) {
           Invite more on WhatsApp
         </a>
       )}
+
+      <AutopayToggle squad={squad} />
 
       {isLive && (
         <div className="mt-10">

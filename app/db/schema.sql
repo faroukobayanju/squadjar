@@ -15,3 +15,10 @@ create table if not exists squads (
   last_poke timestamptz,
   created_at timestamptz not null default now()
 );
+create table if not exists autopay (
+  member text not null,
+  squad text not null references squads(address),
+  enabled boolean not null default true,
+  updated_at timestamptz not null default now(),
+  primary key (member, squad)
+);
