@@ -4,18 +4,26 @@ import { use, useEffect } from "react";
 import Link from "next/link";
 import { WhatsappLogo, LockSimple } from "@phosphor-icons/react";
 import { AppShell } from "@/components/shell";
-import { Countdown } from "@/components/countdown";
+import { Countdown, useNow } from "@/components/countdown";
 import { EmptyBox, Stamp } from "@/components/stamp";
 import { StampCard } from "@/components/stamp-card";
 import { Bar } from "@/components/skeleton";
-import { naira } from "@/lib/format";
+import { DepositingView } from "@/components/squad/depositing";
+import { JoinView, OpenView } from "@/components/squad/open";
+import { ErrorNote, Notice, PAID_LABEL, PALM_BTN, useRun } from "@/components/squad/ui";
+import { KNOWN } from "@/lib/errors";
+import { dueLabel, naira } from "@/lib/format";
 import { useOrigin } from "@/lib/origin";
-import { ME, clearJustStamped, collectorOf, myTurn, payoutAmount, useJustStamped, useSquad, type Squad } from "@/lib/data";
+import { ME, clearJustStamped, collectorOf, myTurn, payoutAmount, useActions, useJustStamped, useSquad, type Squad } from "@/lib/data";
 
-export default function SquadPage({ params }: { params: Promise<{ slug: string }> }) {
+export default function SquadPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ code?: string }> }) {
   const { slug } = use(params);
+  const { code } = use(searchParams);
   const squad = useSquad(slug);
   const fresh = useJustStamped(slug);
+  const now = useNow();
+  const { refill } = useActions();
+  const topUp = useRun("payment");
 
   useEffect(() => {
     if (!fresh) return;
@@ -25,25 +33,39 @@ export default function SquadPage({ params }: { params: Promise<{ slug: string }
   }, [fresh]);
 
   if (squad === undefined) return <SquadSkeleton />;
-  if (!squad) return <NotFound />;
-  // ponytail: Depositing and Cancelled borrow the Open view until Task 4 gives them their own.
-  if (squad.state !== "Active" && squad.state !== "Completed") return <OpenSquad squad={squad} />;
+  if (!squad) return <Notice title="We can't find that squad." body="The link may be old. Ask whoever invited you for a fresh one." />;
+  if (squad.state === "Cancelled") return <Notice title="This squad was cancelled." body="Deposits were returned." />;
+  if (!squad.amMember) {
+    return squad.state === "Open" ? (
+      <JoinView squad={squad} code={code} />
+    ) : (
+      <Notice title="This squad has already started." body="Ask the organizer about the next one, or start your own." />
+    );
+  }
+  if (squad.state === "Open") return <OpenView squad={squad} />;
+  if (squad.state === "Depositing") return <DepositingView squad={squad} />;
 
   const r = squad.currentRound;
   const paidIds = squad.paid[r] ?? [];
   const iPaid = paidIds.includes(ME);
   const collector = collectorOf(squad);
   const done = squad.state === "Completed";
+  const notOpenYet = now !== null && now < squad.roundOpensAt;
+  const iStopped = squad.stopped.includes(ME);
+  const refillOwed = Math.max(0, squad.myRequired - squad.myDeposit);
 
-  const action = done ? null : iPaid ? (
-    <p className="flex min-h-14 items-center justify-center rounded-lg border border-rule font-semibold text-muted">
-      Paid round {r}. Your stamp is on the card.
+  const action = done ? null : iStopped ? (
+    <p className={PAID_LABEL}>{KNOWN.MemberStoppedPaying}</p>
+  ) : iPaid ? (
+    <p className={PAID_LABEL}>Paid round {r}. Your stamp is on the card.</p>
+  ) : notOpenYet ? (
+    <p className={PAID_LABEL}>
+      <span>
+        Round {r} opens in <Countdown to={squad.roundOpensAt} />
+      </span>
     </p>
   ) : (
-    <Link
-      href={`/s/${slug}/pay`}
-      className="flex min-h-14 items-center justify-center rounded-lg bg-palm font-money text-[1.25rem] font-bold text-on-palm transition-transform duration-75 active:scale-[0.98] active:bg-palm-press"
-    >
+    <Link href={`/s/${slug}/pay`} className={PALM_BTN}>
       Pay {naira(squad.contribution)}
     </Link>
   );
@@ -57,6 +79,21 @@ export default function SquadPage({ params }: { params: Promise<{ slug: string }
           <span className="font-money text-[13px] font-bold text-ink">{naira(squad.contribution)}</span> each · {squad.period}
         </p>
       </header>
+
+      {!done && !iStopped && refillOwed > 0 && (
+        <section aria-label="Top up your deposit" className="mt-8 rounded-md border border-warn/40 bg-warn/8 p-4">
+          <p className="text-sm">
+            Top up your deposit by <span className="font-money font-bold">{naira(refillOwed)}</span> before {dueLabel(squad.settleableAfter)} to stay in good
+            standing.
+          </p>
+          <div className="mt-3">
+            <ErrorNote error={topUp.error} />
+            <button type="button" disabled={topUp.busy} onClick={() => topUp.run(() => refill(slug))} className={PALM_BTN}>
+              {topUp.busy ? "Topping up…" : topUp.error ? `Retry ${naira(refillOwed)}` : `Top up ${naira(refillOwed)}`}
+            </button>
+          </div>
+        </section>
+      )}
 
       {done ? (
         <section className="mt-10">
@@ -102,6 +139,7 @@ export default function SquadPage({ params }: { params: Promise<{ slug: string }
                   <span className={`max-w-full truncate text-xs ${m.id === ME ? "font-bold" : ""}`}>
                     {m.id === ME ? "You" : m.name}
                   </span>
+                  {squad.stopped.includes(m.id) && <span className="font-mono text-[10px] text-bad">Stopped paying</span>}
                 </li>
               );
             })}
@@ -145,51 +183,6 @@ function RemindSquad({ squad }: { squad: Squad }) {
   );
 }
 
-function OpenSquad({ squad }: { squad: Squad }) {
-  const link = `${useOrigin()}/s/${squad.slug}`;
-  const text = `Join "${squad.name}" on Squadjar: ${naira(squad.contribution)} each ${squad.period.toLowerCase()}, ${squad.maxMembers} of us. Nobody holds the jar. ${link}`;
-  const short = Math.max(0, 3 - squad.members.length);
-  return (
-    <AppShell
-      action={
-        <a
-          href={`https://wa.me/?text=${encodeURIComponent(text)}`}
-          target="_blank"
-          rel="noreferrer"
-          className="flex min-h-14 items-center justify-center gap-2 rounded-lg bg-ink font-semibold text-manila active:scale-[0.98]"
-        >
-          <WhatsappLogo size={22} weight="fill" aria-hidden />
-          Invite on WhatsApp
-        </a>
-      }
-    >
-      <h1 className="font-display text-[2.1rem] leading-none font-extrabold tracking-[-0.03em] text-balance">{squad.name}</h1>
-      <p className="mt-2 font-mono text-xs text-muted">
-        Open · {naira(squad.contribution)} each · {squad.period} · {squad.members.length} of {squad.maxMembers} joined
-      </p>
-      <p className="mt-8 font-display text-2xl leading-tight font-extrabold tracking-[-0.02em]">
-        {short > 0 ? `Invite ${short} more to start.` : "Ready when you are."}
-      </p>
-      <p className="mt-2 max-w-[38ch] text-muted">
-        Turns are set when you start: people with the best payment record go first. Everyone then locks a refundable deposit.
-      </p>
-      <ul className="mt-6 divide-y divide-rule rounded-lg border border-rule bg-paper">
-        {squad.members.map((m) => (
-          <li key={m.id} className="flex min-h-12 items-center justify-between px-4">
-            <span className="font-semibold">{m.id === ME ? (m.id === squad.organizerId ? "You (organizer)" : "You") : m.name}</span>
-            <span className="font-mono text-xs text-stamp">{m.tier}</span>
-          </li>
-        ))}
-        {Array.from({ length: squad.maxMembers - squad.members.length }, (_, i) => (
-          <li key={`empty-${i}`} className="flex min-h-12 items-center px-4 text-muted">
-            Open seat
-          </li>
-        ))}
-      </ul>
-    </AppShell>
-  );
-}
-
 function SquadSkeleton() {
   return (
     <AppShell action={<Bar className="h-14 w-full rounded-lg" />}>
@@ -214,18 +207,6 @@ function SquadSkeleton() {
         <h2 className="mt-12 mb-3 font-semibold">The card</h2>
         <Bar className="h-40 w-full rounded-lg" />
       </div>
-    </AppShell>
-  );
-}
-
-function NotFound() {
-  return (
-    <AppShell>
-      <h1 className="font-display text-3xl font-extrabold tracking-[-0.03em]">We can&apos;t find that squad.</h1>
-      <p className="mt-2 text-muted">The link may be old. Ask whoever invited you for a fresh one.</p>
-      <Link href="/home" className="mt-6 inline-flex min-h-12 items-center font-semibold underline">
-        Go to your squads
-      </Link>
     </AppShell>
   );
 }

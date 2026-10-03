@@ -44,5 +44,6 @@ assert.equal(q.contribution, 5000);
 assert.equal(q.myDeposit, 10000);
 assert.equal(q.myRequired, 12000);
 assert.equal(q.myOwed, 0);
+assert.deepStrictEqual(q.depositsIn, [A.toLowerCase(), C.toLowerCase()]); // locked >= required
 assert.equal(toSquad({ ...{ address: A, slug: "x", name: "x", history: {}, names: {}, tiers: {}, me: ME_ADDR }, view: { ...view, roundLength: 604800 } }).period, "Weekly");
 console.log("chain-map ok");

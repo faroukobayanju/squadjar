@@ -23,9 +23,23 @@ export type Squad = {
   paid: Record<number, string[]>; // round -> member ids
   missed: Record<number, string[]>;
   stopped: string[];
+  depositsIn: string[]; // member ids whose deposit is fully locked
   myDeposit: number;
   myRequired: number;
   myOwed: number;
 };
 
 export type Payout = { slug: string; squadName: string; round: number; amount: number; covered: number; at: number };
+
+/** Screens call these through useActions(); demo and live implement the same shape. `due` is round 1's deadline anchor (epoch seconds, 0 = none). */
+export type Actions = {
+  addMoney(amount: number): Promise<void>;
+  createSquad(input: { name: string; contribution: number; size: number; period: Period; due: number }): Promise<string>;
+  join(slug: string, code: string): Promise<void>;
+  leave(slug: string): Promise<void>;
+  start(slug: string): Promise<void>;
+  lockDeposit(slug: string): Promise<void>;
+  pay(slug: string): Promise<{ settled: boolean; payout?: Payout }>;
+  refill(slug: string): Promise<void>;
+  cancel(slug: string): Promise<void>;
+};

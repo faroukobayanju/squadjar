@@ -70,7 +70,20 @@ function SquadRow({ squad: q }: { squad: Squad }) {
           Inviting · {q.members.length} of {q.maxMembers} joined
         </p>
       )}
+      {q.state === "Depositing" && (
+        <p className="mt-2 flex justify-between gap-3 font-mono text-xs">
+          <span className="text-muted">Locking deposits</span>
+          {q.myDeposit < q.myRequired ? (
+            <span className="font-medium text-ink">
+              lock yours in <Countdown to={q.depositDeadline} />
+            </span>
+          ) : (
+            <span className="text-stamp">deposit in</span>
+          )}
+        </p>
+      )}
       {q.state === "Completed" && <p className="mt-2 font-mono text-xs text-muted">Completed · deposits returned</p>}
+      {q.state === "Cancelled" && <p className="mt-2 font-mono text-xs text-muted">Cancelled · deposits returned</p>}
     </Link>
   );
 }

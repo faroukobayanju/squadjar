@@ -19,14 +19,16 @@ export default function Profile() {
       ) : (
         <Bar className="h-[2.1rem] w-40" />
       )}
-      {me ? <p className="mt-6 font-money text-6xl leading-none font-bold tnum">{me.onTime}</p> : <Bar className="mt-6 h-[3.75rem] w-24" />}
-      <p className="mt-1 text-muted">payments on time across all your squads</p>
+      {me ? <p className="mt-6 font-money text-6xl leading-none font-bold tnum">{me.score}</p> : <Bar className="mt-6 h-[3.75rem] w-24" />}
+      <p className="mt-1 text-muted">
+        Trust score{me && `, ${me.tier} tier · ${me.onTime} paid on time across all your squads`}
+      </p>
 
       <h2 className="mt-10 font-semibold">How turns are earned</h2>
       <p className="mt-1 max-w-[42ch] text-sm text-muted">
-        Each on-time payment is a point. Late costs 2, a miss costs 10. Weekly and monthly squads count; quick demo squads
-        don&apos;t.
+        Each on-time payment is a point. Late costs 2, a miss costs 10. Weekly and monthly squads of 5 or more people, at <span className="font-money font-bold">₦1,000</span> or more each, count.
       </p>
+      <p className="mt-1 max-w-[42ch] text-sm text-muted">Quick demo squads don&apos;t count toward your trust score.</p>
       <ol className="mt-4 divide-y divide-rule rounded-lg border border-rule bg-paper">
         {TIERS.map((t) => (
           <li key={t.tier} className="flex gap-4 px-4 py-3">

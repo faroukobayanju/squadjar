@@ -57,6 +57,7 @@ export function toSquad(input: {
     paid,
     missed,
     stopped: v.members.filter((_, i) => v.stopped[i]).map(id),
+    depositsIn: v.members.filter((_, i) => v.locked[i] >= v.required[i]).map(id),
     myDeposit: mine >= 0 ? naira(v.locked[mine]) : 0,
     myRequired: mine >= 0 ? naira(v.required[mine]) : 0,
     myOwed: mine >= 0 ? naira(v.owed[mine]) : 0,

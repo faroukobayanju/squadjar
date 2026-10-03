@@ -5,14 +5,21 @@ import { useRouter } from "next/navigation";
 import { Sparkle } from "@phosphor-icons/react";
 import { BackLink } from "@/components/shell";
 import { parseDraft } from "@/lib/draft";
+import { nextDue } from "@/lib/due";
 import { naira } from "@/lib/format";
-import { DemoError, useActions, type Period } from "@/lib/data";
+import { friendlyError } from "@/lib/errors";
+import { DemoError, isLive, useActions, type Period } from "@/lib/data";
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: "Weekly", label: "Weekly" },
   { value: "Monthly", label: "Monthly" },
   { value: "Demo", label: "Quick demo (5-minute rounds)" },
 ];
+
+// Mon first, as people say it; values are Date.getDay() (0 = Sunday).
+const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0].map((d) => ({ d, label: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d] }));
+const HOURS = Array.from({ length: 24 }, (_, h) => ({ h, label: `${h % 12 || 12}:00 ${h < 12 ? "am" : "pm"}` }));
+const MONTH_DAYS = Array.from({ length: 28 }, (_, i) => i + 1);
 
 export default function NewSquad() {
   const router = useRouter();
@@ -23,6 +30,11 @@ export default function NewSquad() {
   const [amount, setAmount] = useState("5000");
   const [size, setSize] = useState("8");
   const [period, setPeriod] = useState<Period>("Weekly");
+  const [weekday, setWeekday] = useState(5);
+  const [monthDay, setMonthDay] = useState(25);
+  const [weeklyHour, setWeeklyHour] = useState(18);
+  const [monthlyHour, setMonthlyHour] = useState(9);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function fill() {
@@ -31,6 +43,7 @@ export default function NewSquad() {
     if (d.contribution) setAmount(String(d.contribution));
     if (d.size) setSize(String(d.size));
     if (d.period) setPeriod(d.period);
+    if (d.weekday !== undefined) setWeekday(d.weekday);
     const missing = [!d.contribution && "how much each person pays", !d.size && "how many of you", !d.period && "weekly or monthly"].filter(Boolean);
     setNote(missing.length ? `Filled what I could. Still need: ${missing.join(", ")}.` : "Filled in below. Check it, then create.");
   }
@@ -38,11 +51,15 @@ export default function NewSquad() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setBusy(true);
     try {
-      const slug = await createSquad({ name, contribution: Number(amount.replace(/\D/g, "")), size: Number(size), period });
+      const hour = period === "Monthly" ? monthlyHour : weeklyHour;
+      const due = nextDue(period, { weekday, monthDay, hour }, new Date());
+      const slug = await createSquad({ name, contribution: Number(amount.replace(/\D/g, "")), size: Number(size), period, due });
       router.push(`/s/${slug}`);
     } catch (err) {
-      setError(err instanceof DemoError ? err.message : "Couldn't create the squad. Try again.");
+      setError(err instanceof DemoError ? err.message : isLive ? friendlyError(err, "other") : "Couldn't create the squad. Try again.");
+      setBusy(false);
     }
   }
 
@@ -113,6 +130,41 @@ export default function NewSquad() {
           </select>
         </Field>
 
+        {period === "Weekly" && (
+          <fieldset className="grid gap-2">
+            <legend className="mb-2 text-sm font-semibold">Due day</legend>
+            <div className="flex flex-wrap gap-2">
+              {WEEKDAYS.map(({ d, label }) => (
+                <button
+                  key={d}
+                  type="button"
+                  aria-pressed={weekday === d}
+                  onClick={() => setWeekday(d)}
+                  className={`min-h-11 rounded-full border-[1.5px] px-3.5 text-sm font-semibold ${weekday === d ? "border-ink bg-ink text-manila" : "border-rule"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <HourSelect id="weekly-hour" value={weeklyHour} onChange={setWeeklyHour} />
+          </fieldset>
+        )}
+        {period === "Monthly" && (
+          <fieldset>
+            <legend className="mb-2 text-sm font-semibold">Due day</legend>
+            <div className="grid grid-cols-2 gap-3">
+              <select aria-label="Day of the month" value={monthDay} onChange={(e) => setMonthDay(Number(e.target.value))} className={INPUT}>
+                {MONTH_DAYS.map((d) => (
+                  <option key={d} value={d}>
+                    Day {d}
+                  </option>
+                ))}
+              </select>
+              <HourSelect id="monthly-hour" value={monthlyHour} onChange={setMonthlyHour} />
+            </div>
+          </fieldset>
+        )}
+
         {each > 0 && n >= 3 && (
           <p className="text-sm text-muted">
             Each payout is <span className="font-money font-bold text-ink">{naira(each * n)}</span>. The squad runs {n} rounds,
@@ -126,8 +178,12 @@ export default function NewSquad() {
               {error}
             </p>
           )}
-          <button type="submit" className="flex min-h-14 w-full items-center justify-center rounded-lg bg-ink font-semibold text-manila active:scale-[0.98]">
-            Create squad
+          <button
+            type="submit"
+            disabled={busy}
+            className="flex min-h-14 w-full items-center justify-center rounded-lg bg-ink font-semibold text-manila active:scale-[0.98] disabled:opacity-70"
+          >
+            {busy ? "Creating…" : "Create squad"}
           </button>
         </div>
       </form>
@@ -145,5 +201,17 @@ function Field({ id, label, children }: { id: string; label: string; children: R
       </label>
       {children}
     </div>
+  );
+}
+
+function HourSelect({ id, value, onChange }: { id: string; value: number; onChange: (h: number) => void }) {
+  return (
+    <select id={id} aria-label="Time" value={value} onChange={(e) => onChange(Number(e.target.value))} className={INPUT}>
+      {HOURS.map(({ h, label }) => (
+        <option key={h} value={h}>
+          {label}
+        </option>
+      ))}
+    </select>
   );
 }

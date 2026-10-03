@@ -1,4 +1,4 @@
-const KNOWN: Record<string, string> = {
+export const KNOWN: Record<string, string> = {
   AlreadyPaid: "You've already paid this round.",
   PastGrace: "This round has closed. The jar covered it from your deposit.",
   RoundNotOpen: "This round isn't open yet.",

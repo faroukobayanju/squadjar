@@ -13,7 +13,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         loginMethods: ["email", "google"],
         defaultChain: monadTestnet,
         supportedChains: [monadTestnet],
-        embeddedWallets: { ethereum: { createOnLogin: "users-without-wallets" }, showWalletUIs: false },
+        embeddedWallets: { ethereum: { createOnLogin: "users-without-wallets" }, showWalletUIs: false }, // copy-ok: Privy config, never shown
       }}
     >
       {children}

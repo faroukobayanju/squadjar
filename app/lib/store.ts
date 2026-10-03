@@ -24,7 +24,7 @@ export const PERIOD_MS: Record<Period, number> = { Demo: 5 * 60_000, Weekly: 7 *
 const GRACE_MS: Record<Period, number> = { Demo: 60_000, Weekly: 12 * H, Monthly: 2 * D };
 
 // Fields the chain view adds; the demo derives them so screens see one shape.
-function full(q: Omit<Squad, "organizerId" | "amMember" | "roundOpensAt" | "settleableAfter" | "depositDeadline" | "stopped" | "myRequired" | "myOwed">): Squad {
+function full(q: Omit<Squad, "organizerId" | "amMember" | "roundOpensAt" | "settleableAfter" | "depositDeadline" | "stopped" | "depositsIn" | "myRequired" | "myOwed">): Squad {
   return {
     ...q,
     organizerId: q.members[0]?.id ?? ME,
@@ -33,6 +33,7 @@ function full(q: Omit<Squad, "organizerId" | "amMember" | "roundOpensAt" | "sett
     settleableAfter: q.roundDeadline + GRACE_MS[q.period],
     depositDeadline: 0,
     stopped: [],
+    depositsIn: q.members.map((m) => m.id),
     myRequired: q.myDeposit,
     myOwed: 0,
   };

@@ -3,11 +3,10 @@
 // The one module screens read from. Demo (localStorage store) or live (chain read model), picked at build time.
 import { useMemo } from "react";
 import * as store from "./store";
-import { isLive, toUnits, TOKEN } from "./live/chain";
-import { tokenAbi } from "./live/abi";
-import { useWrite } from "./live/tx";
+import { isLive } from "./live/chain";
 import { useLiveMe, useLiveSquad, useLiveSquads } from "./live/squads";
-import type { Period, Squad, Tier } from "./types";
+import { useLiveActions, useLiveInviteCode, useLivePayout } from "./live/actions";
+import type { Actions, Squad, Tier } from "./types";
 
 export type { Member, Payout, Period, Squad, SquadState, Tier } from "./types";
 export { isLive };
@@ -32,23 +31,14 @@ export const useMe: () => Me | undefined = isLive ? useLiveMe : useDemoMe;
 /** The landing page's example card is always the demo squad, signed in or not. */
 export const useSampleSquad = () => store.useStore((s) => s.squads[0]);
 
-// Demo-only moments (the fresh stamp and the payout receipt). Live returns nothing until Task 4 wires events.
+// The fresh stamp is demo-only. The payout receipt comes from the store (demo) or pay()'s sessionStorage handoff (live).
 export const useJustStamped = (slug: string) => store.useStore((s) => (!isLive && s.justStamped?.slug === slug ? s.justStamped : undefined));
-export const useLastPayout = () => store.useStore((s) => (isLive ? undefined : s.lastPayout));
+const useDemoPayout = () => store.useStore((s) => s.lastPayout);
+export const useLastPayout = isLive ? useLivePayout : useDemoPayout;
+/** Members' invite code (live only; the demo has no joining). */
+export const useInviteCode: (slug: string, enabled: boolean) => string | undefined = isLive ? useLiveInviteCode : () => undefined;
 export const clearJustStamped = store.clearJustStamped;
 export const resetDemo = store.resetDemo;
-
-type Actions = {
-  addMoney(amount: number): Promise<void>;
-  createSquad(input: { name: string; contribution: number; size: number; period: Period }): Promise<string>;
-  join(slug: string, code: string): Promise<void>;
-  leave(slug: string): Promise<void>;
-  start(slug: string): Promise<void>;
-  lockDeposit(slug: string): Promise<void>;
-  pay(slug: string): Promise<{ settled: boolean }>;
-  refill(slug: string): Promise<void>;
-  cancel(slug: string): Promise<void>;
-};
 
 const pause = (ms: number) => new Promise((ok) => setTimeout(ok, ms)); // network-shaped, so a press reads as a real action
 const notInDemo = async () => {
@@ -65,28 +55,5 @@ const demoActions: Actions = {
   refill: notInDemo,
   cancel: notInDemo,
 };
-
-const notReady = async (): Promise<never> => {
-  throw new Error("Not ready yet");
-};
-function useLiveActions(): Actions {
-  const { write } = useWrite();
-  return useMemo(
-    () => ({
-      addMoney: async (amount) => {
-        await write({ address: TOKEN, abi: tokenAbi, functionName: "faucet", args: [toUnits(amount)] });
-      },
-      createSquad: notReady,
-      join: notReady,
-      leave: notReady,
-      start: notReady,
-      lockDeposit: notReady,
-      pay: notReady,
-      refill: notReady,
-      cancel: notReady,
-    }),
-    [write],
-  );
-}
 
 export const useActions: () => Actions = isLive ? useLiveActions : () => demoActions;

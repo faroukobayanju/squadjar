@@ -11,34 +11,49 @@ import type { Squad, Tier } from "../types";
 
 const POLL_MS = 4000;
 
-/** Runs `fn` now and every 4s while `key` is set; skips a tick while the last fetch is still running. `key` must cover everything `fn` reads. */
-function usePoll<T>(key: string | null, fn: () => Promise<T>): T | undefined {
+// Every live poll's tick, so a write can refresh screens now instead of on the next 4s tick.
+const ticks = new Set<() => Promise<void>>();
+export const refreshAll = () => Promise.all([...ticks].map((t) => t())).then(() => {});
+
+/**
+ * Runs `fn` now and every 4s while `key` is set; skips a tick while the last fetch is still running. `key` must cover everything `fn` reads.
+ * With `throwAfter`, that many failures in a row before any value throws during render, so the route's error.tsx offers Retry.
+ */
+function usePoll<T>(key: string | null, fn: () => Promise<T>, throwAfter = Infinity): T | undefined {
   const [got, setGot] = useState<{ key: string; v: T }>();
+  const [fails, setFails] = useState<{ key: string; n: number }>();
   useEffect(() => {
     if (!key) return;
     let alive = true;
-    let busy = false;
-    const tick = async () => {
-      if (busy) return;
-      busy = true;
-      try {
-        const v = await fn();
-        if (alive) setGot({ key, v });
-      } catch {
-        // keep the last good value; the next tick retries
-      } finally {
-        busy = false;
-      }
-    };
+    let running: Promise<void> | undefined;
+    const tick = () =>
+      (running ??= (async () => {
+        try {
+          const v = await fn();
+          if (alive) {
+            setGot({ key, v });
+            setFails(undefined);
+          }
+        } catch {
+          // keep the last good value; the next tick retries
+          if (alive) setFails((f) => ({ key, n: f?.key === key ? f.n + 1 : 1 }));
+        } finally {
+          running = undefined;
+        }
+      })());
+    ticks.add(tick);
     tick();
     const t = setInterval(tick, POLL_MS);
     return () => {
       alive = false;
+      ticks.delete(tick);
       clearInterval(t);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- key covers fn's inputs
   }, [key]);
-  return got && got.key === key ? got.v : undefined;
+  const v = got && got.key === key ? got.v : undefined;
+  if (v === undefined && fails?.key === key && fails.n >= throwAfter) throw new Error("Couldn't load this right now");
+  return v;
 }
 
 async function getJson<T>(url: string): Promise<T | null> {
@@ -108,10 +123,12 @@ async function loadMySquads(me: Address): Promise<Squad[]> {
   return Promise.all(mine.map((a) => loadSquad(a, meta[a.toLowerCase()]?.slug ?? a.toLowerCase(), meta[a.toLowerCase()]?.name ?? "Squad", me)));
 }
 
-const slugCache = new Map<string, { address: Address; name: string } | null>();
+// Hits only: a 404 may be a squad whose row is still being written (right after create), so misses are re-asked each poll.
+const slugCache = new Map<string, { address: Address; name: string }>();
 
-async function resolveSlug(slug: string): Promise<{ address: Address; name: string } | null> {
-  if (slugCache.has(slug)) return slugCache.get(slug)!;
+export async function resolveSlug(slug: string): Promise<{ address: Address; name: string } | null> {
+  const cached = slugCache.get(slug);
+  if (cached) return cached;
   let hit: { address: Address; name: string } | null;
   if (/^0x[0-9a-fA-F]{40}$/.test(slug)) {
     const address = slug as Address;
@@ -124,7 +141,7 @@ async function resolveSlug(slug: string): Promise<{ address: Address; name: stri
     else if (!r.ok) throw new Error("squad lookup unavailable"); // retried on the next poll
     else hit = (await r.json()) as { address: Address; name: string };
   }
-  slugCache.set(slug, hit);
+  if (hit) slugCache.set(slug, hit);
   return hit;
 }
 
@@ -135,10 +152,14 @@ export function useLiveSquads(): Squad[] | undefined {
 
 export function useLiveSquad(slug: string): Squad | null | undefined {
   const { address: me } = useMyAccount();
-  return usePoll(me ? `squad:${me}:${slug}` : null, async () => {
-    const hit = await resolveSlug(slug);
-    return hit ? loadSquad(hit.address, slug, hit.name, me!) : null;
-  });
+  return usePoll(
+    me ? `squad:${me}:${slug}` : null,
+    async () => {
+      const hit = await resolveSlug(slug);
+      return hit ? loadSquad(hit.address, slug, hit.name, me!) : null;
+    },
+    3,
+  );
 }
 
 export function useLiveMe() {

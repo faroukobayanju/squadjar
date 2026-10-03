@@ -4,6 +4,9 @@ import { use, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BackLink, useRequireLogin } from "@/components/shell";
+import { Countdown, useNow } from "@/components/countdown";
+import { ErrorNote, PAID_LABEL, PALM_BTN } from "@/components/squad/ui";
+import { friendlyError } from "@/lib/errors";
 import { EmptyBox, Stamp } from "@/components/stamp";
 import { Bar } from "@/components/skeleton";
 import { naira } from "@/lib/format";
@@ -17,6 +20,7 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
   const { pay: payRound } = useActions();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const now = useNow();
   const gated = useRequireLogin();
   if (gated) return null;
 
@@ -48,6 +52,7 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
   const short = squad.contribution - balance;
   const collector = collectorOf(squad);
   const paidCount = (squad.paid[r] ?? []).length;
+  const notOpenYet = now !== null && now < squad.roundOpensAt;
 
   async function pay() {
     setBusy(true);
@@ -56,7 +61,7 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
       const res = await payRound(slug);
       router.push(res.settled ? `/s/${slug}/payout` : `/s/${slug}`);
     } catch (e) {
-      setError(e instanceof DemoError ? e.message : "Payment didn't go through. Your money is safe. Try again.");
+      setError(e instanceof DemoError ? e.message : friendlyError(e, "payment"));
       setBusy(false);
     }
   }
@@ -99,13 +104,15 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
       )}
 
       <div className="mt-auto pt-10">
-        {error && (
-          <p role="alert" className="mb-4 rounded-md border border-bad/40 bg-bad/8 px-4 py-3 text-sm">
-            {error}
-          </p>
-        )}
+        <ErrorNote error={error} />
         {alreadyPaid ? (
           <p className="text-center font-semibold text-muted">You&apos;ve paid round {r}.</p>
+        ) : notOpenYet ? (
+          <p className={PAID_LABEL}>
+            <span>
+              Round {r} opens in <Countdown to={squad.roundOpensAt} />
+            </span>
+          </p>
         ) : short > 0 ? (
           <>
             <p className="mb-3 text-sm">
@@ -119,13 +126,8 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
             </Link>
           </>
         ) : (
-          <button
-            type="button"
-            onClick={pay}
-            disabled={busy}
-            className="flex min-h-14 w-full items-center justify-center rounded-lg bg-palm font-money text-[1.25rem] font-bold text-on-palm transition-transform duration-75 active:scale-[0.98] active:bg-palm-press disabled:opacity-70"
-          >
-            {busy ? "Stamping…" : `Pay ${naira(squad.contribution)}`}
+          <button type="button" onClick={pay} disabled={busy} className={PALM_BTN}>
+            {busy ? "Stamping…" : error ? `Retry ${naira(squad.contribution)}` : `Pay ${naira(squad.contribution)}`}
           </button>
         )}
       </div>
