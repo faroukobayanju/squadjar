@@ -1,0 +1,7 @@
+# Keep LF everywhere so Windows, WSL, and macOS checkouts agree.
+# Shell scripts run in WSL break with CRLF.
+* text=auto eol=lf
+*.ico binary
+*.png binary
+*.jpg binary
+*.webp binary
