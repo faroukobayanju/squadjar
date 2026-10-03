@@ -2,35 +2,58 @@
 
 import { useCallback, useState } from "react";
 import { useSendTransaction, useWallets } from "@privy-io/react-auth";
-import { encodeFunctionData, maxUint256, type Abi, type Address, type TransactionReceipt } from "viem";
-import { monadTestnet, publicClient, TOKEN } from "./chain";
+import { encodeFunctionData, maxUint256, type Abi, type Address, type ContractFunctionArgs, type ContractFunctionName, type TransactionReceipt } from "viem";
+import { hasPrivy, monadTestnet, publicClient, TOKEN } from "./chain";
 import { tokenAbi } from "./abi";
 
-export type Call = { address: Address; abi: Abi; functionName: string; args?: readonly unknown[] };
+type Call<A extends Abi = Abi, F extends string = string> = { address: Address; abi: A; functionName: F; args?: readonly unknown[] };
+export type WriteCall<A extends Abi, F extends ContractFunctionName<A, "nonpayable" | "payable">> = {
+  address: Address;
+  abi: A;
+  functionName: F;
+  args?: ContractFunctionArgs<A, "nonpayable" | "payable", F>;
+};
 type Opts = { approve?: { spender: Address; amount: bigint } };
+type Write = <const A extends Abi, F extends ContractFunctionName<A, "nonpayable" | "payable">>(call: WriteCall<A, F>, opts?: Opts) => Promise<TransactionReceipt>;
 
-export function useWrite() {
+// Network/RPC trouble only. Never user rejection, contract reverts, or sponsorship/policy rejection.
+function transient(e: unknown): boolean {
+  for (let x = e as { name?: string; message?: string; cause?: unknown } | undefined, i = 0; x && i < 8; i++) {
+    if (/reject|denied|policy|sponsor|revert/i.test(`${x.name} ${x.message}`)) return false;
+    x = x.cause as typeof x;
+  }
+  for (let x = e as { name?: string; message?: string; cause?: unknown } | undefined, i = 0; x && i < 8; i++) {
+    if (/HttpRequestError|TimeoutError|WebSocketRequestError|failed to fetch|network|timed? ?out|ECONN|fetch failed/i.test(`${x.name} ${x.message}`)) return true;
+    x = x.cause as typeof x;
+  }
+  return false;
+}
+
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (e) {
+    if (!transient(e)) throw e;
+    return fn();
+  }
+}
+
+function usePrivyWrite() {
   const { sendTransaction } = useSendTransaction();
   const { wallets } = useWallets();
   const [busy, setBusy] = useState(false);
 
-  const write = useCallback(
-    async (call: Call, opts?: Opts): Promise<TransactionReceipt> => {
+  const write = useCallback<Write>(
+    async (call, opts) => {
       const wallet = wallets.find((w) => w.walletClientType === "privy") ?? wallets[0];
       if (!wallet) throw new Error("No account ready");
       const account = wallet.address as Address;
 
       async function send(c: Call): Promise<TransactionReceipt> {
         // Simulate first so contract errors surface decoded (ContractFunctionRevertedError.data.errorName).
-        await publicClient.simulateContract({ ...c, account } as never);
-        const data = encodeFunctionData({ abi: c.abi, functionName: c.functionName, args: c.args } as never);
-        const attempt = () => sendTransaction({ to: c.address, data, chainId: monadTestnet.id }, { address: account, sponsor: true });
-        let hash: `0x${string}`;
-        try {
-          ({ hash } = await attempt());
-        } catch {
-          ({ hash } = await attempt()); // one retry for network errors
-        }
+        await withRetry(() => publicClient.simulateContract({ ...c, account }));
+        const data = encodeFunctionData({ abi: c.abi, functionName: c.functionName, args: c.args });
+        const { hash } = await withRetry(() => sendTransaction({ to: c.address, data, chainId: monadTestnet.id }, { address: account, sponsor: true }));
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
         if (receipt.status === "reverted") throw new Error("Transaction reverted");
         return receipt;
@@ -40,10 +63,10 @@ export function useWrite() {
       try {
         if (opts?.approve) {
           const { spender, amount } = opts.approve;
-          const allowance = await publicClient.readContract({ address: TOKEN, abi: tokenAbi, functionName: "allowance", args: [account, spender] });
-          if (allowance < amount) await send({ address: TOKEN, abi: tokenAbi as Abi, functionName: "approve", args: [spender, maxUint256] });
+          const allowance = await withRetry(() => publicClient.readContract({ address: TOKEN, abi: tokenAbi, functionName: "allowance", args: [account, spender] }));
+          if (allowance < amount) await send({ address: TOKEN, abi: tokenAbi, functionName: "approve", args: [spender, maxUint256] });
         }
-        return await send(call);
+        return await send(call as Call); // generic boundary: the public signature carries the typing
       } finally {
         setBusy(false);
       }
@@ -53,3 +76,13 @@ export function useWrite() {
 
   return { write, busy };
 }
+
+const stub = (): { write: Write; busy: boolean } => ({
+  write: async () => {
+    throw new Error("Writes need sign-in");
+  },
+  busy: false,
+});
+
+// hasPrivy is a build-time constant, so the hook order never changes; demo mode never touches Privy hooks.
+export const useWrite: () => { write: Write; busy: boolean } = hasPrivy ? usePrivyWrite : stub;

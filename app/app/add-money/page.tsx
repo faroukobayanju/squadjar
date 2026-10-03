@@ -2,12 +2,11 @@
 
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatUnits, parseUnits } from "viem";
 import { BackLink } from "@/components/shell";
 import { naira } from "@/lib/format";
 import { friendlyError } from "@/lib/errors";
 import { useMyAccount } from "@/lib/live/account";
-import { isLive, publicClient, TOKEN } from "@/lib/live/chain";
+import { isLive, readBalance, toUnits, TOKEN } from "@/lib/live/chain";
 import { tokenAbi } from "@/lib/live/abi";
 import { useWrite } from "@/lib/live/tx";
 import { DemoError, addMoney, useStore } from "@/lib/store";
@@ -26,10 +25,7 @@ export default function AddMoney({ searchParams }: { searchParams: Promise<{ amo
   // isLive is a build-time constant, so the effect is either always or never registered.
   useEffect(() => {
     if (!isLive || !address) return;
-    const read = () =>
-      publicClient
-        .readContract({ address: TOKEN, abi: tokenAbi, functionName: "balanceOf", args: [address] })
-        .then((b) => setLiveBalance(Number(formatUnits(b, 18))), () => {});
+    const read = () => readBalance(address).then(setLiveBalance, () => {});
     read();
     const t = setInterval(read, 4000);
     return () => clearInterval(t);
@@ -46,7 +42,7 @@ export default function AddMoney({ searchParams }: { searchParams: Promise<{ amo
     setError(null);
     try {
       if (isLive) {
-        await write({ address: TOKEN, abi: tokenAbi, functionName: "faucet", args: [parseUnits(String(value), 18)] });
+        await write({ address: TOKEN, abi: tokenAbi, functionName: "faucet", args: [toUnits(value)] });
       } else {
         await new Promise((ok) => setTimeout(ok, 700));
         addMoney(value);

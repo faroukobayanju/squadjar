@@ -51,6 +51,16 @@ function PrivyLogin({ next }: { next: string }) {
     setBusy(false);
   }
 
+  async function resend() {
+    setError(null);
+    setCode("");
+    try {
+      await sendCode({ email });
+    } catch {
+      setError("We couldn't send a code. Check your email and try again.");
+    }
+  }
+
   return (
     <LoginView
       email={email}
@@ -58,6 +68,12 @@ function PrivyLogin({ next }: { next: string }) {
         setEmail(v);
         setError(null);
       }}
+      onBack={() => {
+        setSent(false);
+        setCode("");
+        setError(null);
+      }}
+      onResend={resend}
       code={sent ? code : undefined}
       onCode={(v) => {
         setCode(v.replace(/\D/g, "").slice(0, 6));
@@ -104,13 +120,15 @@ type ViewProps = {
   onEmail(v: string): void;
   code?: string;
   onCode?(v: string): void;
+  onBack?(): void;
+  onResend?(): void;
   error: string | null;
   busy?: boolean;
   onSubmit(e: React.FormEvent): void;
   onGoogle(): void;
 };
 
-function LoginView({ email, onEmail, code, onCode, error, busy, onSubmit, onGoogle }: ViewProps) {
+function LoginView({ email, onEmail, code, onCode, onBack, onResend, error, busy, onSubmit, onGoogle }: ViewProps) {
   const asking = code !== undefined;
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[420px] flex-col px-4 pt-2 pb-8">
@@ -161,6 +179,16 @@ function LoginView({ email, onEmail, code, onCode, error, busy, onSubmit, onGoog
         <button type="submit" disabled={busy} className="mt-3 flex min-h-14 items-center justify-center rounded-lg bg-ink font-semibold text-manila active:scale-[0.98] disabled:opacity-60">
           {asking ? "Log in" : "Send my code"}
         </button>
+        {asking && (
+          <div className="mt-1 flex justify-between text-sm font-semibold">
+            <button type="button" onClick={onBack} className="min-h-11 underline underline-offset-4">
+              Use a different email
+            </button>
+            <button type="button" onClick={onResend} className="min-h-11 underline underline-offset-4">
+              Send a new code
+            </button>
+          </div>
+        )}
       </form>
 
       <div className="my-6 flex items-center gap-3 text-sm text-muted" aria-hidden>
