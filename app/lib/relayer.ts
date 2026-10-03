@@ -1,6 +1,6 @@
 import { createWalletClient, http, isAddress, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { monadTestnet, publicClient } from "./live/chain";
+import { RPC, monadTestnet, publicClient } from "./live/chain";
 import { squadAbi } from "./live/abi";
 import { plan } from "./poke-plan";
 
@@ -14,6 +14,15 @@ function relayerAccount() {
 }
 export const relayerConfigured = () => relayerAccount() !== null;
 
+// One send at a time per instance so concurrent pokes can't reuse a nonce.
+// ponytail: per-instance only; multiple instances need a per-key lock or a nonce manager.
+let chain: Promise<unknown> = Promise.resolve();
+const serialized = <T>(fn: () => Promise<T>): Promise<T> => {
+  const run = chain.then(fn, fn);
+  chain = run.catch(() => {});
+  return run;
+};
+
 export type PokeResult = "settled" | "finalized" | "nothing";
 
 /** Settles an overdue round or finalizes expired deposits. Never sends a write whose simulation reverted. */
@@ -23,18 +32,24 @@ export async function poke(squad: Address): Promise<PokeResult> {
   const v = await publicClient.readContract({ address: squad, abi: squadAbi, functionName: "getState" });
   const what = plan(v, BigInt(Math.floor(Date.now() / 1000)));
   if (!what) return "nothing";
+  const call =
+    what === "settle"
+      ? ({ address: squad, abi: squadAbi, functionName: "settleRound", args: [v.currentRound], account } as const)
+      : ({ address: squad, abi: squadAbi, functionName: "finalizeDeposits", account } as const);
+  let request: object;
+  let gas: bigint;
   try {
-    const call =
-      what === "settle"
-        ? ({ address: squad, abi: squadAbi, functionName: "settleRound", args: [v.currentRound], account } as const)
-        : ({ address: squad, abi: squadAbi, functionName: "finalizeDeposits", account } as const);
-    const { request } = await publicClient.simulateContract(call as never);
-    const gas = ((await publicClient.estimateContractGas(call as never)) * BigInt(12)) / BigInt(10); // Monad charges the gas limit
-    const wallet = createWalletClient({ account, chain: monadTestnet, transport: http("https://testnet-rpc.monad.xyz") });
-    const hash = await wallet.writeContract({ ...(request as object), gas } as never);
-    await publicClient.waitForTransactionReceipt({ hash, timeout: 30_000 });
-    return what === "settle" ? "settled" : "finalized";
+    request = (await publicClient.simulateContract(call as never)).request as object;
+    gas = ((await publicClient.estimateContractGas(call as never)) * BigInt(12)) / BigInt(10); // Monad charges the gas limit
   } catch {
     return "nothing"; // simulation reverted (someone else got there first, or not yet due on-chain): nothing was sent
   }
+  // Send errors, reverted receipts and RPC failures throw: the caller must not report them as done.
+  const ok = await serialized(async () => {
+    const wallet = createWalletClient({ account, chain: monadTestnet, transport: http(RPC) });
+    const hash = await wallet.writeContract({ ...request, gas } as never);
+    return (await publicClient.waitForTransactionReceipt({ hash, timeout: 30_000 })).status === "success";
+  });
+  if (!ok) throw new Error("transaction reverted");
+  return what === "settle" ? "settled" : "finalized";
 }
