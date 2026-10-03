@@ -20,7 +20,7 @@ export default function Login({ searchParams }: { searchParams: Promise<{ next?:
 // Hooks live in separate components: Privy hooks only work inside PrivyProvider.
 function PrivyLogin({ next }: { next: string }) {
   const router = useRouter();
-  const { ready, authenticated } = useMyAccount();
+  const { ready, authenticated, address } = useMyAccount();
   const { sendCode, loginWithCode } = useLoginWithEmail();
   const { initOAuth } = useLoginWithOAuth();
   const [email, setEmail] = useState("");
@@ -30,8 +30,13 @@ function PrivyLogin({ next }: { next: string }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (ready && authenticated) router.replace(next);
-  }, [ready, authenticated, next, router]);
+    if (!ready || !authenticated || !address) return;
+    // New users pick a display name first. A 503 (no database) or any failure skips it.
+    fetch(`/api/names?a=${address.toLowerCase()}`)
+      .then((r) => (r.ok ? r.json() : { [address.toLowerCase()]: true }))
+      .catch(() => ({ [address.toLowerCase()]: true }))
+      .then((names) => router.replace(names[address.toLowerCase()] ? next : `/welcome?next=${encodeURIComponent(next)}`));
+  }, [ready, authenticated, address, next, router]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
