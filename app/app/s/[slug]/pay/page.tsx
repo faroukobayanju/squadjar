@@ -3,7 +3,7 @@
 import { use, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BackLink } from "@/components/shell";
+import { BackLink, useRequireLogin } from "@/components/shell";
 import { EmptyBox, Stamp } from "@/components/stamp";
 import { naira } from "@/lib/format";
 import { DemoError, ME, collectorOf, payRound, squadBySlug, useStore } from "@/lib/store";
@@ -15,6 +15,8 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
   const squad = squadBySlug(state, slug);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const gated = useRequireLogin();
+  if (gated) return null;
 
   if (!squad || squad.state !== "Active") {
     return (

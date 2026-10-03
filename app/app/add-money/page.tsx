@@ -1,9 +1,15 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { formatUnits, parseUnits } from "viem";
 import { BackLink } from "@/components/shell";
 import { naira } from "@/lib/format";
+import { friendlyError } from "@/lib/errors";
+import { useMyAccount } from "@/lib/live/account";
+import { isLive, publicClient, TOKEN } from "@/lib/live/chain";
+import { tokenAbi } from "@/lib/live/abi";
+import { useWrite } from "@/lib/live/tx";
 import { DemoError, addMoney, useStore } from "@/lib/store";
 
 const QUICK = [2000, 5000, 10000, 20000];
@@ -11,7 +17,23 @@ const QUICK = [2000, 5000, 10000, 20000];
 export default function AddMoney({ searchParams }: { searchParams: Promise<{ amount?: string; next?: string }> }) {
   const sp = use(searchParams);
   const router = useRouter();
-  const balance = useStore((s) => s.balance);
+  const demoBalance = useStore((s) => s.balance);
+  const { address } = useMyAccount();
+  const { write } = useWrite();
+  const [liveBalance, setLiveBalance] = useState<number>();
+  const balance = isLive ? (liveBalance ?? 0) : demoBalance;
+
+  // isLive is a build-time constant, so the effect is either always or never registered.
+  useEffect(() => {
+    if (!isLive || !address) return;
+    const read = () =>
+      publicClient
+        .readContract({ address: TOKEN, abi: tokenAbi, functionName: "balanceOf", args: [address] })
+        .then((b) => setLiveBalance(Number(formatUnits(b, 18))), () => {});
+    read();
+    const t = setInterval(read, 4000);
+    return () => clearInterval(t);
+  }, [address]);
   const [amount, setAmount] = useState(sp.amount ?? "5000");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,11 +45,21 @@ export default function AddMoney({ searchParams }: { searchParams: Promise<{ amo
     setBusy(true);
     setError(null);
     try {
-      await new Promise((ok) => setTimeout(ok, 700));
-      addMoney(value);
+      if (isLive) {
+        await write({ address: TOKEN, abi: tokenAbi, functionName: "faucet", args: [parseUnits(String(value), 18)] });
+      } else {
+        await new Promise((ok) => setTimeout(ok, 700));
+        addMoney(value);
+      }
       router.push(next);
     } catch (err) {
-      setError(err instanceof DemoError ? err.message : "That didn't go through. Nothing was charged. Try again.");
+      setError(
+        err instanceof DemoError
+          ? err.message
+          : isLive
+            ? friendlyError(err, "other")
+            : "That didn't go through. Nothing was charged. Try again.",
+      );
       setBusy(false);
     }
   }

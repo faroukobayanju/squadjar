@@ -1,0 +1,131 @@
+// Hand-written from docs/superpowers/plans/2026-10-02-squadjar-contracts.md.
+const squadViewComponents = [
+  { name: "state", type: "uint8" },
+  { name: "contribution", type: "uint256" },
+  { name: "maxMembers", type: "uint8" },
+  { name: "roundLength", type: "uint32" },
+  { name: "grace", type: "uint32" },
+  { name: "depositDeadline", type: "uint64" },
+  { name: "roundDeadline", type: "uint64" },
+  { name: "currentRound", type: "uint8" },
+  { name: "organizer", type: "address" },
+  { name: "members", type: "address[]" },
+  { name: "locked", type: "uint256[]" },
+  { name: "required", type: "uint256[]" },
+  { name: "paidThisRound", type: "bool[]" },
+  { name: "stopped", type: "bool[]" },
+  { name: "misses", type: "uint8[]" },
+  { name: "refillBy", type: "uint8[]" },
+  { name: "owed", type: "uint256[]" },
+  { name: "countsForTrust", type: "bool" },
+  { name: "activeCount", type: "uint8" },
+  { name: "totalLocked", type: "uint256" },
+  { name: "settleableAfter", type: "uint64" },
+] as const;
+
+const fn = (name: string, inputs: readonly { name: string; type: string }[], outputs: readonly { name: string; type: string }[] = [], view = false) =>
+  ({ type: "function", name, inputs, outputs, stateMutability: view ? "view" : "nonpayable" }) as const;
+const ev = (name: string, inputs: readonly { name: string; type: string; indexed?: boolean }[]) =>
+  ({ type: "event", name, anonymous: false, inputs: inputs.map((i) => ({ indexed: false, ...i })) }) as const;
+const err = (name: string, inputs: readonly { name: string; type: string }[] = []) => ({ type: "error", name, inputs }) as const;
+const a = (name: string) => ({ name, type: "address" }) as const;
+const u = (name: string, type = "uint256") => ({ name, type }) as const;
+
+export const tokenAbi = [
+  fn("faucet", [u("amount")]),
+  fn("approve", [a("spender"), u("value")], [{ name: "", type: "bool" }]),
+  fn("allowance", [a("owner"), a("spender")], [u("")], true),
+  fn("balanceOf", [a("account")], [u("")], true),
+  fn("FAUCET_MAX", [], [u("")], true),
+  err("FaucetCapExceeded"),
+  err("ERC20InsufficientBalance", [a("sender"), u("balance"), u("needed")]),
+  err("ERC20InsufficientAllowance", [a("spender"), u("allowance"), u("needed")]),
+  err("ERC20InvalidSender", [a("sender")]),
+  err("ERC20InvalidReceiver", [a("receiver")]),
+  err("ERC20InvalidApprover", [a("approver")]),
+  err("ERC20InvalidSpender", [a("spender")]),
+] as const;
+
+export const registryAbi = [
+  fn("trustScore", [a("user")], [u("", "int256")], true),
+  fn("tier", [a("user")], [u("", "uint8")], true),
+  fn("isSquad", [a("squad")], [{ name: "", type: "bool" }], true),
+  fn("isWriter", [a("factory")], [{ name: "", type: "bool" }], true),
+  err("NotWriter"),
+  err("NotSquad"),
+] as const;
+
+export const factoryAbi = [
+  fn("createSquad", [u("contribution"), u("maxMembers", "uint8"), u("period", "uint8"), u("inviteHash", "bytes32"), u("firstDeadline", "uint64")], [a("")]),
+  fn("squads", [u("")], [a("")], true),
+  fn("squadCount", [], [u("")], true),
+  fn("registry", [], [a("")], true),
+  fn("token", [], [a("")], true),
+  fn("isSquad", [a("")], [{ name: "", type: "bool" }], true),
+  fn("timing", [u("p", "uint8")], [u("roundLength", "uint32"), u("grace", "uint32"), u("depositWindow", "uint32")], true),
+  ev("SquadCreated", [
+    { name: "squad", type: "address", indexed: true },
+    { name: "organizer", type: "address", indexed: true },
+    u("contribution"),
+    u("maxMembers", "uint8"),
+    u("period", "uint8"),
+  ]),
+  ev("Membership", [
+    { name: "member", type: "address", indexed: true },
+    { name: "squad", type: "address", indexed: true },
+    { name: "joined", type: "bool" },
+  ]),
+  err("ContributionTooLow", [u("min")]),
+  err("SizeOutOfRange", [u("min", "uint8"), u("max", "uint8")]),
+  err("EmptyInvite"),
+  err("DeadlineInPast"),
+  err("NotSquad"),
+] as const;
+
+export const squadAbi = [
+  fn("getState", [], [{ name: "v", type: "tuple", components: squadViewComponents } as never], true),
+  fn("paid", [u("round"), a("member")], [{ name: "", type: "bool" }], true),
+  fn("isMember", [a("")], [{ name: "", type: "bool" }], true),
+  fn("memberCount", [], [u("")], true),
+  fn("memberAt", [u("i")], [a("")], true),
+  fn("inviteHash", [], [u("", "bytes32")], true),
+  fn("join", [u("code", "bytes32")]),
+  fn("joinWithPermit", [u("code", "bytes32"), u("deadline"), u("v", "uint8"), u("r", "bytes32"), u("s", "bytes32")]),
+  fn("leave", []),
+  fn("remove", [a("m")]),
+  fn("cancel", []),
+  fn("start", []),
+  fn("lockDeposit", []),
+  fn("finalizeDeposits", []),
+  fn("contribute", []),
+  fn("refillDeposit", []),
+  fn("settleRound", [u("round", "uint8")]),
+  fn("settleableAfter", [], [u("", "uint64")], true),
+  ev("Joined", [{ name: "member", type: "address", indexed: true }]),
+  ev("Left", [{ name: "member", type: "address", indexed: true }]),
+  ev("Cancelled", []),
+  ev("Started", [{ name: "order", type: "address[]" }]),
+  ev("DepositLocked", [{ name: "member", type: "address", indexed: true }, u("amount")]),
+  ev("Dropped", [{ name: "member", type: "address", indexed: true }]),
+  ev("Activated", [u("roundDeadline", "uint64")]),
+  ev("Contributed", [{ name: "member", type: "address", indexed: true }, u("round", "uint8"), { name: "late", type: "bool" }]),
+  ev("RoundSettled", [u("round", "uint8"), { name: "collector", type: "address", indexed: true }, u("amount"), { name: "missed", type: "address[]" }]),
+  ev("StoppedPaying", [{ name: "member", type: "address", indexed: true }]),
+  ev("Completed", []),
+  err("WrongState", [u("current", "uint8")]),
+  err("NotOrganizer"),
+  err("NotMember"),
+  err("AlreadyMember"),
+  err("Full"),
+  err("OrganizerCannotLeave"),
+  err("BadInvite"),
+  err("TooFewMembers"),
+  err("NothingOwed"),
+  err("DepositWindowOpen"),
+  err("AlreadyPaid"),
+  err("PastGrace"),
+  err("MemberStoppedPaying"),
+  err("TooEarly", [u("settleableAfter", "uint64")]),
+  err("RoundNotOpen", [u("opensAt", "uint64")]),
+  err("AlreadySettled"),
+] as const;

@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { useMyAccount } from "@/lib/live/account";
+import { hasPrivy } from "@/lib/live/chain";
 import { ArrowLeft, House, UsersThree, UserCircle } from "@phosphor-icons/react";
 
 const TABS = [
@@ -10,9 +13,24 @@ const TABS = [
   { href: "/profile", label: "Profile", icon: UserCircle },
 ] as const;
 
+/** Redirects through /login when signed out (Privy mode only). Returns true while the page should render nothing. */
+export function useRequireLogin(): boolean {
+  const path = usePathname();
+  const router = useRouter();
+  const { ready, authenticated } = useMyAccount();
+  const signedOut = hasPrivy && ready && !authenticated;
+  useEffect(() => {
+    if (!signedOut) return;
+    // Keep ?code= on invite links so the same URL is restored after login.
+    router.replace("/login?next=" + encodeURIComponent(path + window.location.search));
+  }, [signedOut, path, router]);
+  return hasPrivy && (!ready || !authenticated);
+}
+
 /** Phone-width column with the bottom tab bar. `action` docks above the tabs. */
 export function AppShell({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
   const path = usePathname();
+  if (useRequireLogin()) return null;
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[480px] flex-col">
       <main className="flex-1 px-4 pt-6 pb-6">{children}</main>
