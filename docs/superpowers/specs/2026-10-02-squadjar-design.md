@@ -211,8 +211,8 @@ A member can turn on auto-pay per squad. Squadjar is added as a Privy signer on 
 9. Kimi draft: "8 of us, 5k every Friday" (English) and the same in Pidgin both produce a draft with contribution 5000, size 8, period Weekly.
 10. Nudges are sent at the configured stages and never twice for the same `(member, squad, round, stage, channel)`.
 11. A real squad of 5 or more classmates completes at least 3 Demo rounds, with feedback recorded in `docs/user-test.md`.
-13. With auto-pay on, a member's round is paid by the cron without them opening the app, and turning it off stops the next round's payment.
 12. The app is live on a public Vercel URL. The README has judge instructions (login, add money, join the demo squad).
+13. With auto-pay on, a member's round is paid by the cron without them opening the app, and turning it off stops the next round's payment.
 
 ## Testing Plan
 
