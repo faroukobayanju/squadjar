@@ -12,7 +12,7 @@ Next.js (App Router) + Tailwind CSS, deployed on Vercel as an installable PWA. P
 
 ## Users
 
-Nigerian undergraduates (18–24) in class, department, or friend squads of 3–20 people, usually started by a class rep. They coordinate on WhatsApp, use mid-range Android phones on patchy mobile data, and are new to web3.
+Anyone in Nigeria who already does ajo/esusu: students, young workers, traders, friend and family groups. Launch wedge: undergraduates (18–24) in class, department, or friend squads of 3–20 people, usually started by a class rep. They coordinate on WhatsApp, use mid-range Android phones on patchy mobile data, and are new to web3.
 
 ## Product Purpose
 

@@ -32,6 +32,10 @@
 - Contracts are not upgradeable. Fixing a squad or factory bug means deploying a new factory and allowlisting it in the existing `TrustRegistry`, so trust history survives.
 - `_finish` must never revert. Refunds are paid from the jar's actual balance (pro rata when short).
 
+## Amendment 2026-10-03: `firstDeadline`
+
+`createSquad` takes `uint64 firstDeadline` so a squad's deadlines land on a chosen weekday/time ("5k every Friday"). 0 keeps the old behavior (activation + roundLength). If activation runs past the anchor, round 1's deadline rolls forward by whole rounds so the weekday/time is kept. Monthly is still a fixed 30 days and drifts against calendar months (TODOS).
+
 ## Review Focus
 
 1. A member who stops paying **before** collecting, while the jar has little deposit liquidity: settle must never revert, and fronting is capped by `totalLocked - frontedTotal` (test: `test_frontingCappedByLiquidity`).
@@ -238,7 +242,7 @@ git commit -m "feat(contracts): add AjoNGN test naira with capped faucet and per
     - `records(address) returns (uint32 onTime, uint32 late, uint32 missed, uint32 completed)`
   - `SquadFactory(IERC20 token, TrustRegistry registry)` implementing `IMembership`, plus:
     - `enum Period { Demo, Weekly, Monthly }`
-    - `createSquad(uint256 contribution, uint8 maxMembers, Period period, bytes32 inviteHash) returns (address)`
+    - `createSquad(uint256 contribution, uint8 maxMembers, Period period, bytes32 inviteHash, uint64 firstDeadline) returns (address)`. `firstDeadline` anchors round 1's deadline to a chosen weekday/time (e.g. Friday 6pm); 0 = one roundLength after activation. Error `DeadlineInPast()` when nonzero and not in the future.
     - `timing(Period) pure returns (uint32,uint32,uint32)`
     - `isSquad(address)`, `squadCount()`
     - Event `Membership(address indexed member, address indexed squad, bool joined)`
@@ -309,7 +313,7 @@ abstract contract Base is Test {
 
     function _squadWith(uint256 n, uint256 c, SquadFactory.Period period) internal returns (Squad s) {
         vm.prank(users[0]);
-        s = Squad(factory.createSquad(c, uint8(n), period, INVITE));
+        s = Squad(factory.createSquad(c, uint8(n), period, INVITE, 0));
         vm.prank(users[0]);
         token.approve(address(s), type(uint256).max);
         for (uint256 i = 1; i < n; i++) {
@@ -362,7 +366,7 @@ abstract contract Base is Test {
     /// Gives `u` a trust score of 20 (Reliable) by writing as a registered squad.
     function _makeReliable(address u) internal {
         vm.prank(users[7]);
-        address dummy = factory.createSquad(C, 3, SquadFactory.Period.Demo, INVITE);
+        address dummy = factory.createSquad(C, 3, SquadFactory.Period.Demo, INVITE, 0);
         vm.startPrank(dummy);
         for (uint256 i; i < 20; i++) registry.recordContribution(u, false);
         vm.stopPrank();
@@ -408,13 +412,13 @@ contract TrustRegistryTest is Base {
 
     function test_factoryRegistersItsSquads() public {
         vm.prank(users[0]);
-        address s = factory.createSquad(C, 5, SquadFactory.Period.Demo, INVITE);
+        address s = factory.createSquad(C, 5, SquadFactory.Period.Demo, INVITE, 0);
         assertTrue(registry.isSquad(s));
     }
 
     function test_revokedFactorySquadsCannotWrite() public {
         vm.prank(users[0]);
-        address s = factory.createSquad(C, 5, SquadFactory.Period.Demo, INVITE);
+        address s = factory.createSquad(C, 5, SquadFactory.Period.Demo, INVITE, 0);
         registry.setWriter(address(factory), false);
         vm.prank(s);
         vm.expectRevert(TrustRegistry.NotSquad.selector);
@@ -428,13 +432,13 @@ contract TrustRegistryTest is Base {
         registry.setWriter(address(factory), false);
         assertEq(registry.trustScore(users[2]), 20);
         vm.prank(users[0]);
-        address s = factory2.createSquad(C, 5, SquadFactory.Period.Demo, INVITE);
+        address s = factory2.createSquad(C, 5, SquadFactory.Period.Demo, INVITE, 0);
         assertTrue(registry.isSquad(s));
     }
 
     function test_trustScoreMathAndTiers() public {
         vm.prank(users[7]);
-        address s = factory.createSquad(C, 3, SquadFactory.Period.Demo, INVITE);
+        address s = factory.createSquad(C, 3, SquadFactory.Period.Demo, INVITE, 0);
         address u = users[1];
         assertEq(registry.tier(u), 0);
         vm.startPrank(s);
@@ -467,7 +471,7 @@ contract SquadFactoryTest is Base {
 
     function test_createSquadRegistersAndSetsOrganizer() public {
         vm.prank(users[0]);
-        address s = factory.createSquad(C, 5, SquadFactory.Period.Weekly, INVITE);
+        address s = factory.createSquad(C, 5, SquadFactory.Period.Weekly, INVITE, 0);
         assertTrue(factory.isSquad(s));
         assertEq(Squad(s).organizer(), users[0]);
         assertEq(Squad(s).memberCount(), 1);
@@ -481,24 +485,30 @@ contract SquadFactoryTest is Base {
         vm.expectEmit(true, false, false, true, address(factory));
         emit Membership(users[0], address(0), true);
         vm.prank(users[0]);
-        factory.createSquad(C, 5, SquadFactory.Period.Demo, INVITE);
+        factory.createSquad(C, 5, SquadFactory.Period.Demo, INVITE, 0);
     }
 
     function test_createSquadRejectsSmallContribution() public {
         vm.expectRevert(abi.encodeWithSelector(SquadFactory.ContributionTooLow.selector, 100e18));
-        factory.createSquad(100e18 - 1, 5, SquadFactory.Period.Demo, INVITE);
+        factory.createSquad(100e18 - 1, 5, SquadFactory.Period.Demo, INVITE, 0);
     }
 
     function test_createSquadRejectsSizeOutOfRange() public {
         vm.expectRevert(abi.encodeWithSelector(SquadFactory.SizeOutOfRange.selector, uint8(3), uint8(20)));
-        factory.createSquad(C, 2, SquadFactory.Period.Demo, INVITE);
+        factory.createSquad(C, 2, SquadFactory.Period.Demo, INVITE, 0);
         vm.expectRevert(abi.encodeWithSelector(SquadFactory.SizeOutOfRange.selector, uint8(3), uint8(20)));
-        factory.createSquad(C, 21, SquadFactory.Period.Demo, INVITE);
+        factory.createSquad(C, 21, SquadFactory.Period.Demo, INVITE, 0);
     }
 
     function test_createSquadRejectsEmptyInvite() public {
         vm.expectRevert(SquadFactory.EmptyInvite.selector);
-        factory.createSquad(C, 5, SquadFactory.Period.Demo, bytes32(0));
+        factory.createSquad(C, 5, SquadFactory.Period.Demo, bytes32(0), 0);
+    }
+
+    function test_createSquadRejectsPastDeadline() public {
+        vm.warp(1000);
+        vm.expectRevert(SquadFactory.DeadlineInPast.selector);
+        factory.createSquad(C, 5, SquadFactory.Period.Demo, INVITE, 1000);
     }
 
     function test_timingPresets() public view {
@@ -536,7 +546,7 @@ contract SquadSetupTest is Base {
 
     function test_joinRequiresInviteCode() public {
         vm.prank(users[0]);
-        Squad open = Squad(factory.createSquad(C, 5, SquadFactory.Period.Demo, INVITE));
+        Squad open = Squad(factory.createSquad(C, 5, SquadFactory.Period.Demo, INVITE, 0));
         vm.prank(users[4]);
         vm.expectRevert(Squad.BadInvite.selector);
         open.join(keccak256("wrong"));
@@ -584,7 +594,7 @@ contract SquadSetupTest is Base {
 
     function test_joinWithPermitApprovesAndJoins() public {
         vm.prank(users[0]);
-        Squad open = Squad(factory.createSquad(C, 5, SquadFactory.Period.Demo, INVITE));
+        Squad open = Squad(factory.createSquad(C, 5, SquadFactory.Period.Demo, INVITE, 0));
         (address joiner, uint256 key) = makeAddrAndKey("permitJoiner");
         uint256 deadline = block.timestamp + 1 hours;
         bytes32 structHash = keccak256(
@@ -731,6 +741,7 @@ contract SquadFactory is IMembership {
     error ContributionTooLow(uint256 min);
     error SizeOutOfRange(uint8 min, uint8 max);
     error EmptyInvite();
+    error DeadlineInPast();
     error NotSquad();
 
     constructor(IERC20 _token, TrustRegistry _registry) {
@@ -744,16 +755,20 @@ contract SquadFactory is IMembership {
         return (2592000, 172800, 259200);
     }
 
-    function createSquad(uint256 contribution, uint8 maxMembers, Period period, bytes32 inviteHash)
-        external
-        returns (address)
-    {
+    function createSquad(
+        uint256 contribution,
+        uint8 maxMembers,
+        Period period,
+        bytes32 inviteHash,
+        uint64 firstDeadline
+    ) external returns (address) {
         if (contribution < 100e18) revert ContributionTooLow(100e18);
         if (maxMembers < 3 || maxMembers > 20) revert SizeOutOfRange(3, 20);
         if (inviteHash == bytes32(0)) revert EmptyInvite();
+        if (firstDeadline != 0 && firstDeadline <= block.timestamp) revert DeadlineInPast();
         (uint32 rl, uint32 g, uint32 dw) = timing(period);
         Squad s = new Squad(
-            token, ITrust(address(registry)), IMembership(address(this)), msg.sender, contribution, maxMembers, rl, g, dw, inviteHash
+            token, ITrust(address(registry)), IMembership(address(this)), msg.sender, contribution, maxMembers, rl, g, dw, inviteHash, firstDeadline
         );
         isSquad[address(s)] = true;
         squads.push(address(s));
@@ -806,6 +821,7 @@ contract Squad {
     uint32 public immutable grace;
     uint32 public immutable depositWindow;
     bytes32 public immutable inviteHash;
+    uint64 public immutable firstDeadline; // round 1 deadline anchor (weekday/payday); 0 = activation + roundLength
 
     State public state;
     address[] internal members; // join order while Open; turn order (index + 1) after start
@@ -863,7 +879,8 @@ contract Squad {
         uint32 _roundLength,
         uint32 _grace,
         uint32 _depositWindow,
-        bytes32 _inviteHash
+        bytes32 _inviteHash,
+        uint64 _firstDeadline
     ) {
         token = _token;
         trust = _trust;
@@ -875,6 +892,7 @@ contract Squad {
         grace = _grace;
         depositWindow = _depositWindow;
         inviteHash = _inviteHash;
+        firstDeadline = _firstDeadline;
         members.push(_organizer);
         isMember[_organizer] = true;
         emit Joined(_organizer); // the factory emits the organizer's Membership event
@@ -959,7 +977,7 @@ contract Squad {
 - [ ] **Step 10: Run the tests to verify they pass**
 
 Run: `cd contracts && forge test --match-contract "TrustRegistryTest|SquadFactoryTest|SquadSetupTest"`
-Expected: 24 tests pass (8 registry + 7 factory + 9 setup).
+Expected: 25 tests pass (8 registry + 8 factory + 9 setup).
 
 - [ ] **Step 11: Commit**
 
@@ -1094,6 +1112,35 @@ git commit -m "feat(contracts): trust registry, invite-only squads, factory memb
         // Requirements never rise after a drop, so the squad activates immediately.
         assertEq(uint8(s.state()), uint8(Squad.State.Active));
     }
+
+    function _anchored(uint64 firstDeadline) internal returns (Squad s) {
+        vm.prank(users[0]);
+        s = Squad(factory.createSquad(C, 3, SquadFactory.Period.Demo, INVITE, firstDeadline));
+        vm.prank(users[0]);
+        token.approve(address(s), type(uint256).max);
+        for (uint256 i = 1; i < 3; i++) {
+            vm.startPrank(users[i]);
+            token.approve(address(s), type(uint256).max);
+            s.join(CODE);
+            vm.stopPrank();
+        }
+        _start(s);
+    }
+
+    function test_firstDeadlineAnchorsRoundOne() public {
+        uint64 anchor = uint64(block.timestamp + 1000);
+        Squad s = _anchored(anchor);
+        _lockAll(s);
+        assertEq(s.roundDeadline(), anchor);
+    }
+
+    function test_firstDeadlineRollsForwardWholeRounds() public {
+        uint64 anchor = uint64(block.timestamp + 100);
+        Squad s = _anchored(anchor);
+        vm.warp(anchor + 250); // activation lands after the anchor
+        _lockAll(s);
+        assertEq(s.roundDeadline(), anchor + 300); // same phase, next whole round
+    }
 ```
 
 - [ ] **Step 2: Run the tests to verify they fail**
@@ -1225,7 +1272,11 @@ Expected: compile error, `Member "start" not found`.
         countsForTrust = members.length >= TRUST_MIN_MEMBERS && contribution >= TRUST_MIN_CONTRIBUTION
             && roundLength >= TRUST_MIN_ROUND_LENGTH;
         currentRound = 1;
-        roundDeadline = uint64(block.timestamp + roundLength);
+        uint64 d = firstDeadline;
+        // Keep the chosen weekday/time: if activation ran past the anchor, roll forward whole rounds.
+        if (d == 0) d = uint64(block.timestamp + roundLength);
+        else if (d <= block.timestamp) d += uint64(((block.timestamp - d) / roundLength + 1) * roundLength);
+        roundDeadline = d;
         emit Activated(roundDeadline);
     }
 
@@ -1239,7 +1290,7 @@ Expected: compile error, `Member "start" not found`.
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `cd contracts && forge test --match-contract SquadSetupTest`
-Expected: 18 tests pass.
+Expected: 20 tests pass.
 
 - [ ] **Step 5: Commit**
 
@@ -1808,7 +1859,7 @@ Expected: 19 tests pass. If `test_reliableStopperReducesLaterPayouts` is off by 
 - [ ] **Step 5: Run the full suite**
 
 Run: `cd contracts && forge test`
-Expected: 57 tests pass (5 token + 8 registry + 7 factory + 18 setup + 19 rounds).
+Expected: 60 tests pass (5 token + 8 registry + 8 factory + 20 setup + 19 rounds).
 
 - [ ] **Step 6: Commit**
 
@@ -1901,7 +1952,7 @@ contract InvariantTest is Test {
             vm.prank(us[i]);
             token.faucet(200_000e18);
         }
-        address dummy = factory.createSquad(1000e18, 3, SquadFactory.Period.Demo, invite);
+        address dummy = factory.createSquad(1000e18, 3, SquadFactory.Period.Demo, invite, 0);
         vm.startPrank(dummy);
         for (uint256 i; i < 20; i++) {
             registry.recordContribution(us[0], false);
@@ -1909,7 +1960,7 @@ contract InvariantTest is Test {
         }
         vm.stopPrank();
         vm.prank(us[0]);
-        s = Squad(factory.createSquad(1000e18, 6, SquadFactory.Period.Demo, invite));
+        s = Squad(factory.createSquad(1000e18, 6, SquadFactory.Period.Demo, invite, 0));
         for (uint256 i; i < 6; i++) {
             vm.startPrank(us[i]);
             token.approve(address(s), type(uint256).max);

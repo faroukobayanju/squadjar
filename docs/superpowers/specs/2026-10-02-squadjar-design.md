@@ -10,7 +10,7 @@ Design record: [docs/designs/ajo-circles.md](../../designs/ajo-circles.md)
 
 Nigerian students run ajo, esusu, and class dues through one person's bank account and a WhatsApp list. When that person disappears, or a member who already collected stops paying, everyone after them loses. Typical group-savings apps digitize the ledger but still leave one admin in control of the cash and the records. Squadjar puts the money in a jar that no member controls: contracts on Monad collect contributions, pay each round's collector on schedule, and cover misses from refundable deposits. The app must feel like an ordinary fintech app, with no crypto words or prompts anywhere.
 
-Who is affected: Nigerian undergraduates (18 to 24) in class, department, or friend squads of 3 to 20, usually started by a class rep. Hackathon judges evaluate the live product.
+Who is affected: anyone in Nigeria who already does ajo/esusu (students, young workers, traders, friend and family groups). Launch wedge for the hackathon: undergraduates (18 to 24) in class, department, or friend squads of 3 to 20, usually started by a class rep. Hackathon judges evaluate the live product.
 
 ## Current State
 
@@ -52,7 +52,8 @@ Money, membership, turn order, deposits, and trust live only onchain. Postgres h
 enum Period { Demo, Weekly, Monthly }
 struct Record { uint32 onTime; uint32 late; uint32 missed; uint32 completed; }
 
-function createSquad(uint256 contribution, uint8 maxMembers, Period period) external returns (address squad);
+function createSquad(uint256 contribution, uint8 maxMembers, Period period, bytes32 inviteHash, uint64 firstDeadline) external returns (address squad);
+// firstDeadline anchors round 1 to a weekday/time (0 = activation + roundLength); later rounds keep that phase.
 // requires contribution >= 100e18, 3 <= maxMembers <= 20. Caller becomes organizer and first member.
 mapping(address => bool) public isSquad;
 mapping(address => Record) public records;
