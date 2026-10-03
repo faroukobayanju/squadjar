@@ -14,7 +14,8 @@ export async function GET(req: Request) {
   if (!autopayConfigured()) return json({ error: "auto-pay not configured" }, 503);
   try {
     return json(await runAutopay(), 200);
-  } catch {
+  } catch (e) {
+    console.error("cron autopay failed", e);
     return json({ error: "server error" }, 500);
   }
 }

@@ -11,17 +11,18 @@ import { StampCard } from "@/components/stamp-card";
 import { Bar } from "@/components/skeleton";
 import { DepositingView } from "@/components/squad/depositing";
 import { JoinView, OpenView } from "@/components/squad/open";
-import { ErrorNote, Notice, PAID_LABEL, PALM_BTN, useRun } from "@/components/squad/ui";
+import { AddMoneyNote, ErrorNote, Notice, PAID_LABEL, PALM_BTN, useRun } from "@/components/squad/ui";
 import { KNOWN } from "@/lib/errors";
 import { dueLabel, naira } from "@/lib/format";
 import { useOrigin } from "@/lib/origin";
 import { refreshAll } from "@/lib/live/squads";
-import { ME, clearJustStamped, collectorOf, myTurn, payoutAmount, useActions, useJustStamped, useSquad, type Squad } from "@/lib/data";
+import { ME, clearJustStamped, collectorOf, myTurn, payoutAmount, useActions, useJustStamped, useMe, useSquad, type Squad } from "@/lib/data";
 
 export default function SquadPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ code?: string }> }) {
   const { slug } = use(params);
   const { code } = use(searchParams);
   const squad = useSquad(slug);
+  const me = useMe();
   const fresh = useJustStamped(slug);
   const now = useNow();
   const { refill } = useActions();
@@ -109,9 +110,13 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
           </p>
           <div className="mt-3">
             <ErrorNote error={topUp.error} />
-            <button type="button" disabled={topUp.busy} onClick={() => topUp.run(() => refill(slug))} className={PALM_BTN}>
-              {topUp.busy ? "Topping up…" : topUp.error ? `Retry ${naira(refillOwed)}` : `Top up ${naira(refillOwed)}`}
-            </button>
+            {me && me.balance < refillOwed ? (
+              <AddMoneyNote short={refillOwed - me.balance} balance={me.balance} next={`/s/${slug}`} />
+            ) : (
+              <button type="button" disabled={topUp.busy} onClick={() => topUp.run(() => refill(slug))} className={PALM_BTN}>
+                {topUp.busy ? "Topping up…" : topUp.error ? `Retry ${naira(refillOwed)}` : `Top up ${naira(refillOwed)}`}
+              </button>
+            )}
           </div>
         </section>
       )}

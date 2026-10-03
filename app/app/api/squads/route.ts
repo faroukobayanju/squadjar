@@ -1,4 +1,4 @@
-import { isAddress, type Address } from "viem";
+import { encodeAbiParameters, isAddress, keccak256, type Address, type Hex } from "viem";
 import { bad, requireUser, route } from "@/lib/auth-server";
 import { sql } from "@/lib/db";
 import { FACTORY, publicClient } from "@/lib/live/chain";
@@ -22,11 +22,13 @@ export const POST = route(async (req: Request) => {
   if (typeof inviteCode !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(inviteCode)) return bad("bad invite code");
 
   const squad = address as Address;
-  const [isSquad, organizer] = await Promise.all([
+  const [isSquad, organizer, inviteHash] = await Promise.all([
     publicClient.readContract({ address: FACTORY, abi: factoryAbi, functionName: "isSquad", args: [squad] }),
     publicClient.readContract({ address: squad, abi: squadAbi, functionName: "organizer" }).catch(() => null),
+    publicClient.readContract({ address: squad, abi: squadAbi, functionName: "inviteHash" }).catch(() => null),
   ]);
   if (!isSquad || organizer?.toLowerCase() !== me.address) return bad("forbidden", 403);
+  if (inviteHash !== keccak256(encodeAbiParameters([{ type: "bytes32" }], [inviteCode as Hex]))) return bad("invite code does not match", 400);
 
   const addr = squad.toLowerCase();
   const existing = await sql`select slug from squads where address = ${addr}`;

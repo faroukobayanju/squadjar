@@ -6,6 +6,7 @@ import { useLoginWithEmail, useLoginWithOAuth } from "@privy-io/react-auth";
 import { GoogleLogo } from "@phosphor-icons/react";
 import { BackLink } from "@/components/shell";
 import { useMyAccount } from "@/lib/live/account";
+import { safeNext } from "@/lib/next";
 import { hasPrivy } from "@/lib/live/chain";
 
 const BAD_CODE = "That code didn't work. Check it and try again.";
@@ -13,7 +14,7 @@ const BAD_EMAIL = "That email doesn't look right. Check for typos.";
 
 export default function Login({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const sp = use(searchParams);
-  const next = sp.next?.startsWith("/") ? sp.next : "/home";
+  const next = safeNext(sp.next);
   return hasPrivy ? <PrivyLogin next={next} /> : <DemoLogin next={next} />;
 }
 

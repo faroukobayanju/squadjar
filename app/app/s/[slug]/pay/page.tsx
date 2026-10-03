@@ -1,11 +1,10 @@
 "use client";
 
 import { use, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BackLink, useRequireLogin } from "@/components/shell";
 import { Countdown, useNow } from "@/components/countdown";
-import { ErrorNote, PAID_LABEL, PALM_BTN } from "@/components/squad/ui";
+import { AddMoneyNote, ErrorNote, PAID_LABEL, PALM_BTN } from "@/components/squad/ui";
 import { friendlyError } from "@/lib/errors";
 import { EmptyBox, Stamp } from "@/components/stamp";
 import { Bar } from "@/components/skeleton";
@@ -114,17 +113,7 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
             </span>
           </p>
         ) : short > 0 ? (
-          <>
-            <p className="mb-3 text-sm">
-              You need {naira(short)} more. Your balance is {naira(balance)}.
-            </p>
-            <Link
-              href={`/add-money?amount=${Math.ceil(short / 100) * 100}&next=/s/${slug}/pay`}
-              className="flex min-h-14 items-center justify-center rounded-lg bg-ink font-semibold text-manila active:scale-[0.98]"
-            >
-              Add {naira(Math.ceil(short / 100) * 100)}
-            </Link>
-          </>
+          <AddMoneyNote short={short} balance={balance} next={`/s/${slug}/pay`} />
         ) : (
           <button type="button" onClick={pay} disabled={busy} className={PALM_BTN}>
             {busy ? "Stamping…" : error ? `Retry ${naira(squad.contribution)}` : `Pay ${naira(squad.contribution)}`}

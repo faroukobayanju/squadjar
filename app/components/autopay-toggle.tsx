@@ -55,7 +55,7 @@ function Toggle({ squad, address }: { squad: Squad; address: string }) {
         <h2 id="autopay" className="font-semibold">
           Auto-pay
         </h2>
-        {state.enabled && (
+        {state.enabled && state.signer && (
           <span className="inline-flex h-7 items-center rounded-full border-[1.5px] border-stamp bg-stamp/10 px-2.5 font-mono text-xs text-stamp">On</span>
         )}
       </div>
@@ -65,8 +65,8 @@ function Toggle({ squad, address }: { squad: Squad; address: string }) {
       </p>
       <div className="mt-4">
         <ErrorNote error={error} />
-        <button type="button" disabled={busy} onClick={() => set(!state.enabled)} className={state.enabled ? GHOST_BTN : INK_BTN}>
-          {busy ? "Saving…" : state.enabled ? "Turn off" : "Turn on"}
+        <button type="button" disabled={busy} onClick={() => set(!(state.enabled && state.signer))} className={state.enabled && state.signer ? GHOST_BTN : INK_BTN}>
+          {busy ? "Saving…" : state.enabled && state.signer ? "Turn off" : "Turn on"}
         </button>
       </div>
     </section>

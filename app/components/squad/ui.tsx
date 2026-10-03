@@ -14,6 +14,21 @@ export const PALM_BTN = `${PRESS} min-h-14 bg-palm font-money text-[1.25rem] fon
 export const GHOST_BTN = `${PRESS} min-h-13 border-[1.5px] border-ink font-semibold`;
 export const PAID_LABEL = "flex min-h-14 items-center justify-center gap-3 rounded-lg border border-rule px-4 text-center font-semibold text-muted";
 
+/** "You need ₦X more" with an Add money link back to `next`; shown instead of a payment button when the balance is short. */
+export function AddMoneyNote({ short, balance, next }: { short: number; balance: number; next: string }) {
+  const up = Math.ceil(short / 100) * 100;
+  return (
+    <>
+      <p className="mb-3 text-sm">
+        You need {naira(short)} more. Your balance is {naira(balance)}.
+      </p>
+      <Link href={`/add-money?amount=${up}&next=${next}`} className={INK_BTN}>
+        Add {naira(up)}
+      </Link>
+    </>
+  );
+}
+
 /** Runs one action at a time; `error` is user-facing copy, and the same button is the Retry. */
 export function useRun(kind: "payment" | "other") {
   const [busy, setBusy] = useState(false);

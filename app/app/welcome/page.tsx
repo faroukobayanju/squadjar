@@ -3,11 +3,12 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
+import { safeNext } from "@/lib/next";
 import { hasPrivy } from "@/lib/live/chain";
 
 export default function Welcome({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const sp = use(searchParams);
-  const next = sp.next?.startsWith("/") && !sp.next.startsWith("//") ? sp.next : "/home";
+  const next = safeNext(sp.next);
   return hasPrivy ? <PrivyWelcome next={next} /> : <Redirect next={next} />;
 }
 

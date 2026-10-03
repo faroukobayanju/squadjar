@@ -37,7 +37,10 @@ async function payFor(squad: Address, member: Address, contribution: bigint): Pr
     return "skip"; // e.g. RoundNotOpen, PastGrace, missing allowance: nothing sent
   }
   const walletId = await signerWallet(member);
-  if (!walletId) return "failed";
+  if (!walletId) {
+    console.error("autopay: signer/policy not found for member", { squad, member });
+    return "failed";
+  }
   const { hash } = await privy()
     .wallets()
     .ethereum()
@@ -67,12 +70,16 @@ export function runAutopay(): Promise<{ paid: number; skippedLowBalance: number;
       try {
         const v = await publicClient.readContract({ address: squad, abi: squadAbi, functionName: "getState" });
         for (const m of dueMembers(v, members, now)) {
-          const o = await payFor(squad, m as Address, v.contribution).catch((): Outcome => "failed"); // one member failing must not stop the rest
+          const o = await payFor(squad, m as Address, v.contribution).catch((e): Outcome => {
+            console.error("autopay: member failed", { squad, member: m }, e);
+            return "failed";
+          }); // one member failing must not stop the rest
           if (o === "paid") out.paid++;
           else if (o === "low") out.skippedLowBalance++;
           else if (o === "failed") out.failed++;
         }
-      } catch {
+      } catch (e) {
+        console.error("autopay: squad failed", { squad }, e);
         out.failed++; // squad read failed
       }
     }

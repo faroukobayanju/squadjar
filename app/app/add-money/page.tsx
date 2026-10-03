@@ -4,6 +4,7 @@ import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BackLink } from "@/components/shell";
 import { naira } from "@/lib/format";
+import { safeNext } from "@/lib/next";
 import { friendlyError } from "@/lib/errors";
 import { Bar } from "@/components/skeleton";
 import { DemoError, isLive, useActions, useMe } from "@/lib/data";
@@ -18,7 +19,7 @@ export default function AddMoney({ searchParams }: { searchParams: Promise<{ amo
   const [amount, setAmount] = useState(sp.amount ?? "5000");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const next = sp.next?.startsWith("/") ? sp.next : "/home";
+  const next = safeNext(sp.next);
   const value = Number(amount.replace(/\D/g, ""));
 
   async function submit(e: React.FormEvent) {

@@ -72,6 +72,8 @@ export const squadAbi = [
   {type:"event",name:"RoundSettled",anonymous:false,inputs:[{indexed:false,name:"round",type:"uint8"},{indexed:true,name:"collector",type:"address"},{indexed:false,name:"amount",type:"uint256"},{indexed:false,name:"missed",type:"address[]"}]},
   {type:"event",name:"StoppedPaying",anonymous:false,inputs:[{indexed:true,name:"member",type:"address"}]},
   {type:"event",name:"Completed",anonymous:false,inputs:[]},
+  {type:"error",name:"ERC20InsufficientBalance",inputs:[{name:"sender",type:"address"},{name:"balance",type:"uint256"},{name:"needed",type:"uint256"}]},
+  {type:"error",name:"ERC20InsufficientAllowance",inputs:[{name:"spender",type:"address"},{name:"allowance",type:"uint256"},{name:"needed",type:"uint256"}]},
   {type:"error",name:"WrongState",inputs:[{name:"current",type:"uint8"}]},
   {type:"error",name:"NotOrganizer",inputs:[]},
   {type:"error",name:"NotMember",inputs:[]},

@@ -5,19 +5,22 @@ import { AppShell } from "@/components/shell";
 import { AutopayToggle } from "@/components/autopay-toggle";
 import { Countdown } from "@/components/countdown";
 import { naira } from "@/lib/format";
-import { ME, myTurn, useActions, type Squad } from "@/lib/data";
-import { ConfirmButton, ErrorNote, GHOST_BTN, PAID_LABEL, PALM_BTN, SquadTitle, useRun } from "./ui";
+import { ME, myTurn, useActions, useMe, type Squad } from "@/lib/data";
+import { AddMoneyNote, ConfirmButton, ErrorNote, GHOST_BTN, PAID_LABEL, PALM_BTN, SquadTitle, useRun } from "./ui";
 
 /** Started: turns are fixed and everyone locks a deposit before round 1. Live only (the demo never enters this state). */
 export function DepositingView({ squad }: { squad: Squad }) {
   const actions = useActions();
+  const me = useMe();
   const lock = useRun("payment");
   const cancel = useRun("other");
   const owe = Math.max(0, squad.myRequired - squad.myDeposit);
   const inCount = squad.members.filter((m) => squad.depositsIn.includes(m.id)).length;
 
   const action =
-    owe > 0 ? (
+    owe > 0 && me && me.balance < owe ? (
+      <AddMoneyNote short={owe - me.balance} balance={me.balance} next={`/s/${squad.slug}`} />
+    ) : owe > 0 ? (
       <button type="button" disabled={lock.busy} onClick={() => lock.run(() => actions.lockDeposit(squad.slug))} className={PALM_BTN}>
         {lock.busy ? "Locking…" : lock.error ? `Retry ${naira(owe)}` : `Lock ${naira(owe)} deposit`}
       </button>

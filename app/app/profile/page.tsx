@@ -1,8 +1,10 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/shell";
 import { StopAutopayEverywhere } from "@/components/autopay-toggle";
 import { Bar } from "@/components/skeleton";
+import { useMyAccount } from "@/lib/live/account";
 import { isLive, resetDemo, useMe, type Tier } from "@/lib/data";
 
 const TIERS: { tier: Tier; points: string; means: string }[] = [
@@ -13,6 +15,8 @@ const TIERS: { tier: Tier; points: string; means: string }[] = [
 
 export default function Profile() {
   const me = useMe();
+  const router = useRouter();
+  const { logout } = useMyAccount();
   return (
     <AppShell>
       {me ? (
@@ -46,6 +50,16 @@ export default function Profile() {
       </ol>
 
       <StopAutopayEverywhere />
+
+      {isLive && (
+        <button
+          type="button"
+          onClick={() => logout().then(() => router.replace("/login"))}
+          className="mt-10 min-h-12 text-sm font-semibold text-muted underline"
+        >
+          Log out
+        </button>
+      )}
 
       {!isLive && (
         <button

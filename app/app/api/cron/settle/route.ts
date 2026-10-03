@@ -23,12 +23,16 @@ export async function GET(req: Request) {
       const r = await publicClient
         .readContract({ address: FACTORY, abi: factoryAbi, functionName: "squads", args: [BigInt(i)] })
         .then(poke)
-        .catch(() => "nothing"); // one squad failing must not stop the rest
+        .catch((e) => {
+          console.error("cron settle: squad failed", { index: i }, e);
+          return "nothing";
+        }); // one squad failing must not stop the rest
       if (r === "settled") settled++;
       else if (r === "finalized") finalized++;
     }
     return json({ settled, finalized }, 200);
-  } catch {
+  } catch (e) {
+    console.error("cron settle failed", e);
     return json({ error: "server error" }, 500);
   }
 }

@@ -90,7 +90,7 @@ export function useLiveActions(): Actions {
       join: async (slug, code) => {
         if (!/^0x[0-9a-fA-F]{64}$/.test(code)) throw named("BadInvite");
         const { address } = await squadAt(slug);
-        await write({ address, abi: squadAbi, functionName: "join", args: [code as Hex] }, { approve: { spender: address, ...MAX } });
+        await write({ address, abi: squadAbi, functionName: "join", args: [code as Hex] });
         await refreshAll();
       },
       leave: (slug) => onSquad(slug, "leave"),
