@@ -225,6 +225,7 @@ export type Squad = {
 **Interfaces:**
 - Consumes: Tasks 1 to 3, `squads.last_poke`.
 - Produces:
+  - Relayer signer: prefer a Privy server wallet with a policy allowing only `settleRound` and `finalizeDeposits` (see `docs/privy-security-notes.md`; check docs.privy.io for whether a policy can match calls to any squad created by `FACTORY`). If policies can't express that, or setup needs dashboard work the user hasn't done, fall back to `RELAYER_PRIVATE_KEY` with a viem wallet client and note it in the report.
   - `poke(squad: Address): Promise<"settled" | "finalized" | "nothing">` in `lib/relayer.ts`: reads `getState()`; if Active and (`now > settleableAfter` or every active member paid) → simulate `settleRound(currentRound)`, send if the simulation succeeds; if Depositing and `now > depositDeadline` → simulate `finalizeDeposits()`, send if OK; else `"nothing"`. Uses `RELAYER_PRIVATE_KEY` with a viem wallet client. Never sends a write whose simulation reverted. Explicit gas limit = simulated estimate × 1.2 (Monad charges the gas limit).
   - `POST /api/settle` `{ squad }` (public): 429 when `last_poke` is under 15 s ago (update `last_poke` before sending), else `poke`.
   - `GET /api/cron/settle` with header `x-cron-secret: $CRON_SECRET` (401 otherwise): every squad from `squadCount()`/`squads(i)`, `poke` sequentially, returns `{ settled, finalized }` counts.
