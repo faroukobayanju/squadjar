@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect } from "react";
+import { use, useEffect, useRef } from "react";
 import Link from "next/link";
 import { WhatsappLogo, LockSimple } from "@phosphor-icons/react";
 import { AppShell } from "@/components/shell";
@@ -14,6 +14,7 @@ import { ErrorNote, Notice, PAID_LABEL, PALM_BTN, useRun } from "@/components/sq
 import { KNOWN } from "@/lib/errors";
 import { dueLabel, naira } from "@/lib/format";
 import { useOrigin } from "@/lib/origin";
+import { refreshAll } from "@/lib/live/squads";
 import { ME, clearJustStamped, collectorOf, myTurn, payoutAmount, useActions, useJustStamped, useSquad, type Squad } from "@/lib/data";
 
 export default function SquadPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ code?: string }> }) {
@@ -31,6 +32,25 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
     const t = setTimeout(clearJustStamped, 1600);
     return () => clearTimeout(t);
   }, [fresh]);
+
+  // Overdue: ask the relayer once per deadline per page view, then refresh. Demo squads have no address.
+  const overdue =
+    squad && squad.address && now !== null
+      ? squad.state === "Active" && now > squad.settleableAfter
+        ? `a${squad.currentRound}`
+        : squad.state === "Depositing" && now > squad.depositDeadline
+          ? "d"
+          : null
+      : null;
+  const poked = useRef<string | null>(null);
+  const addr = squad?.address;
+  useEffect(() => {
+    if (!overdue || !addr || poked.current === `${addr}${overdue}`) return;
+    poked.current = `${addr}${overdue}`;
+    fetch("/api/settle", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ squad: addr }) })
+      .then(() => refreshAll())
+      .catch(() => {});
+  }, [overdue, addr]);
 
   if (squad === undefined) return <SquadSkeleton />;
   if (!squad) return <Notice title="We can't find that squad." body="The link may be old. Ask whoever invited you for a fresh one." />;
