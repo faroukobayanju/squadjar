@@ -41,6 +41,23 @@ contract Handler is Test {
         s.settleRound(s.currentRound());
     }
 
+    /// Everyone still paying contributes this round, so _finish also runs with honest members.
+    function payRound() external {
+        if (s.state() != Squad.State.Active) return;
+        if (block.timestamp > uint256(s.roundDeadline()) + s.grace()) return;
+        uint256 opensAt = uint256(s.roundDeadline()) - s.roundLength();
+        if (block.timestamp < opensAt) vm.warp(opensAt); // rounds open on schedule
+        uint8 r = s.currentRound();
+        uint256 n = s.memberCount();
+        for (uint256 i; i < n; i++) {
+            address m = s.memberAt(i);
+            if (s.stoppedPaying(m) || s.paid(r, m)) continue;
+            if (s.currentRound() != r || s.state() != Squad.State.Active) return; // auto-settled
+            vm.prank(m);
+            s.contribute();
+        }
+    }
+
     /// Lets time pass with nobody paying, so members miss, fail to refill, and get stopped.
     function idle(uint256 secs) external {
         vm.warp(block.timestamp + bound(secs, 1, 15 minutes));
@@ -96,6 +113,9 @@ contract InvariantTest is Test {
     }
 
     function invariant_jarBalanceMatchesAccounting() public view {
+        uint256 sumLocked;
+        for (uint256 i; i < s.memberCount(); i++) sumLocked += s.locked(s.memberAt(i));
+        assertEq(sumLocked, s.totalLocked());
         uint256 bal = token.balanceOf(address(s));
         if (s.state() == Squad.State.Completed) {
             assertEq(bal, 0);
@@ -105,6 +125,10 @@ contract InvariantTest is Test {
     }
 
     function invariant_frontingNeverExceedsDeposits() public view {
-        if (s.state() == Squad.State.Active) assertLe(s.frontedTotal(), s.totalLocked());
+        if (s.state() != Squad.State.Active) return; // owed is stale once _finish zeroes frontedTotal
+        uint256 sumOwed;
+        for (uint256 i; i < s.memberCount(); i++) sumOwed += s.owed(s.memberAt(i));
+        assertEq(sumOwed, s.frontedTotal());
+        assertLe(s.frontedTotal(), s.totalLocked());
     }
 }
