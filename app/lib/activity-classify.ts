@@ -20,7 +20,7 @@ export const LEGACY_DEPLOY_BLOCK = BigInt(68377230);
 const ZERO = "0x0000000000000000000000000000000000000000";
 const DEAD = "0x000000000000000000000000000000000000dead";
 
-export type Kind = "topup" | "deposit" | "contribution" | "payout" | "refund" | "covered" | "withdraw" | "sent" | "received";
+export type Kind = "topup" | "deposit" | "contribution" | "payout" | "refund" | "covered" | "withdraw" | "sent" | "received" | "stopped";
 export type Row = { logIndex: number; member: string; kind: Kind; amount: bigint; squad: string | null; round: number | null };
 type RawLog = { address: string; topics: readonly Hex[] | [Hex, ...Hex[]] | []; data: Hex; logIndex: number | null };
 /** `stoppedBefore(squad, member)`: the member was already marked stopped paying before this tx. */
@@ -83,13 +83,17 @@ export function classify(logs: readonly RawLog[], { token, isSquad, contribution
   }
   // A miss moves no sNGN (the deposit covers it inside the jar), so it gets its own row. Members who stopped paying
   // (now or earlier) get no row: the contract covers them partly or not at all, so a full contribution would be wrong.
-  const stoppedNow = new Set(decode(logs).filter((l) => l.eventName === "StoppedPaying" && isSquad(l.address)).map((l) => `${l.address}:${(l.args as { member: string }).member.toLowerCase()}`));
+  const stops = fromSquad.flatMap((l) => (l.eventName === "StoppedPaying" ? [{ i: l.logIndex, squad: l.address, member: l.args.member.toLowerCase() }] : []));
+  const stoppedNow = new Set(stops.map((s) => `${s.squad}:${s.member}`));
   for (const s of settles)
     for (const raw of s.args.missed) {
       const m = raw.toLowerCase();
       if (stoppedNow.has(`${s.address}:${m}`) || stoppedBefore(s.address, m)) continue;
       add(s.logIndex, m, "covered", contribution(s.address), s.address, s.args.round);
     }
+  // Stopped paying follows the member (the record), whatever the squad's size or period. _stop runs inside _settle,
+  // so the round is that of the RoundSettled after it in the same tx.
+  for (const s of stops) add(s.i, s.member, "stopped", BigInt(0), s.squad, settles.find((x) => x.address === s.squad && x.logIndex > s.i)?.args.round ?? null);
   return rows;
 }
 

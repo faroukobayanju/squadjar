@@ -47,6 +47,8 @@ function label({ kind, round, squadName }: Item) {
       return "Sent money";
     case "received":
       return "Got money";
+    case "stopped":
+      return `Stopped paying · ${sq}`;
   }
 }
 
@@ -81,15 +83,17 @@ export default function History() {
                 return (
                   <li key={`${it.tx}:${it.logIndex}:${it.kind}`} className="flex min-h-14 items-center justify-between gap-4 px-4 py-3">
                     <span className="min-w-0">
-                      <span className="block truncate text-sm font-semibold">{label(it)}</span>
+                      <span className={`block truncate text-sm font-semibold ${it.kind === "stopped" ? "text-muted" : ""}`}>{label(it)}</span>
                       <span className="block font-mono text-xs text-muted tnum">
                         {timeLabel(Date.parse(it.at))}
                       </span>
                     </span>
-                    <span className={`shrink-0 font-money text-lg font-bold tnum ${plus ? "text-stamp" : fromDeposit ? "text-muted" : "text-ink"}`}>
-                      {plus ? "+" : fromDeposit ? "" : "−"}
-                      {naira(it.amount)}
-                    </span>
+                    {it.kind !== "stopped" && (
+                      <span className={`shrink-0 font-money text-lg font-bold tnum ${plus ? "text-stamp" : fromDeposit ? "text-muted" : "text-ink"}`}>
+                        {plus ? "+" : fromDeposit ? "" : "−"}
+                        {naira(it.amount)}
+                      </span>
+                    )}
                   </li>
                 );
               })}
