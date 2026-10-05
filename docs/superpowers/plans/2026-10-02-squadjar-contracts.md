@@ -2063,6 +2063,8 @@ contract Deploy is Script {
 }
 ```
 
+> **Superseded:** this step is out of date. Deploys now sign with a Foundry keystore (`--account <keystore> --sender <address>`) and no raw key goes in `.env`. See `contracts/README.md`.
+
 - [ ] **Step 2: Write `contracts/.env.example`**
 
 ```bash
@@ -2149,7 +2151,7 @@ Rotating savings (ajo) where no member holds the jar. Foundry, Solidity 0.8.24.
 |---|---|
 | Test | `forge test` |
 | Local deploy | `anvil --silent &` then `forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --broadcast` |
-| Testnet deploy | `source .env && forge script script/Deploy.s.sol --rpc-url monad_testnet --broadcast` |
+| Testnet deploy | `source .env && forge script script/Deploy.s.sol --rpc-url monad_testnet --broadcast` (superseded: deploys now sign with a Foundry keystore, `--account <keystore> --sender <address>`; see `contracts/README.md`) |
 | Export ABIs | `script/export-abi.sh` |
 
 Addresses: `deployments/<chainId>.json` (10143 = Monad testnet, 31337 = local anvil).

@@ -28,12 +28,14 @@ contract TrustRegistry is ITrust, Ownable2Step {
     event SquadRegistered(address indexed factory, address indexed squad);
 
     error NotWriter();
+    error ZeroFactory();
     error NotSquad(); // no longer thrown; kept so the app's ABI stays compatible
 
     /// Ownable2Step: the owner key can be rotated (transferOwnership + acceptOwnership).
     constructor(address _owner) Ownable(_owner) {}
 
     function setWriter(address factory, bool allowed) external onlyOwner {
+        if (factory == address(0)) revert ZeroFactory();
         isWriter[factory] = allowed;
         emit WriterSet(factory, allowed);
     }

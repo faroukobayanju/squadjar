@@ -12,6 +12,11 @@ contract TrustRegistryTest is Base {
         registry.setWriter(users[1], true);
     }
 
+    function test_setWriterRejectsZeroAddress() public {
+        vm.expectRevert(TrustRegistry.ZeroFactory.selector);
+        registry.setWriter(address(0), true);
+    }
+
     function test_ownershipTransfersInTwoSteps() public {
         registry.transferOwnership(users[1]);
         assertEq(registry.owner(), address(this));

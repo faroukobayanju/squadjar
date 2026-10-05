@@ -528,6 +528,7 @@ contract SquadRoundsTest is Base {
         _payAllExcept(s, _turn(s, 3)); // r2: turn 3 misses
         _warpPastGrace(s);
         s.settleRound(2); // the deposit covers the miss; the ignored trust write must not revert
+        assertEq(s.missCount(_turn(s, 3)), 1);
         for (uint256 r = 3; r <= 5; r++) _payAllExcept(s, address(0));
 
         assertEq(uint8(s.state()), uint8(Squad.State.Completed));

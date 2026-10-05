@@ -109,7 +109,7 @@ M5 delivers, all under `contracts/`:
 
 After the M5 merge, comment on faroukobayanju/squadjar#1 with the addresses and the README link.
 
-Any contract change after M5: fix, re-run the full suite and invariants, redeploy the factory (and token or registry only if they changed), allowlist the new factory with `registry.setWriter(newFactory, true)`, revoking the old factory is safe; its squads keep running but stop writing trust (see `contracts/README.md`, Replacing a factory); keep the old factory's address so the app can still read its squads, re-export ABIs, and update `deployments/10143.json`. Trust history survives because the registry stays.
+Any contract change after M5: fix, re-run the full suite and invariants, redeploy the factory (and token or registry only if they changed), allowlist the new factory with `registry.setWriter(newFactory, true)`, re-export ABIs, and update `deployments/10143.json`. Keep the old factory's address so the app can still read its squads. Revoking the old factory is safe for money at any time: its squads keep paying, settling and finishing. From then on, though, its squads record no trust at all (on-time payments, misses and stopping all go unrecorded) until it is re-allowed (see `contracts/README.md`, Replacing a factory). Trust history survives because the registry stays.
 
 ## 8. Out of scope for this work
 

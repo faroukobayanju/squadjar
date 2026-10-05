@@ -99,7 +99,7 @@ In a trust-counting squad, only a member still paying with zero misses gets `com
 
 The registry keeps all trust history, so existing records survive a new factory.
 
-Revoking an old factory with `registry.setWriter(old, false)` is safe at any time. Its squads keep paying, settling and finishing; only their trust writes are ignored from then on (the registry skips writes from squads whose factory is not allowed, it never reverts them). Re-allowing the factory makes their writes count again. Demo squads never write trust and are unaffected.
+Revoking an old factory with `registry.setWriter(old, false)` is safe for money at any time. Its squads keep paying, settling and finishing. From then on, though, its squads record no trust at all: on-time payments, misses and stopping are all left unrecorded until the factory is allowed again (the registry skips writes from squads whose factory is not allowed, it never reverts them). A member who stops paying in that window keeps their score and tier. Re-allowing the factory makes their writes count again. Demo squads never write trust and are unaffected.
 
 ## Reading squad state in the app
 
