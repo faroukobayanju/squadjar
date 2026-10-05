@@ -98,7 +98,7 @@ In a trust-counting squad, only a member still paying with zero misses gets `com
 
 The registry keeps all trust history, so existing records survive a new factory.
 
-Revoking an old factory with `registry.setWriter(old, false)` pauses its trust-counting squads (Weekly or Monthly, 5 or more members, contribution of ₦1,000 or more): `contribute` and `settleRound` revert with the registry's `NotSquad()`. Deadlines do not pause: if a round's grace window ends while the factory is revoked, members who had not paid can no longer pay that round, and the settle after re-allowing records them as missed. Re-allow the factory to unpause them. Only revoke an old factory after those squads finish. Demo squads never write trust and are unaffected.
+Revoking an old factory with `registry.setWriter(old, false)` is safe at any time. Its squads keep paying, settling and finishing; only their trust writes are ignored from then on (the registry skips writes from squads whose factory is not allowed, it never reverts them). Re-allowing the factory makes their writes count again. Demo squads never write trust and are unaffected.
 
 ## Reading squad state in the app
 
@@ -136,12 +136,11 @@ Revoking an old factory with `registry.setWriter(old, false)` pauses its trust-c
 | `AlreadySettled()` | Round already settled | Nothing to do (safe for cron retries) |
 | `FaucetCapExceeded()` | Top-up over ₦200,000 in one call | Top up in smaller amounts |
 | `NotWriter()` | `createSquad` on a factory the registry does not allow | Deployment bug: allow the factory with `registry.setWriter` |
-| `NotSquad()` (`TrustRegistry`) | `contribute` or `settleRound` on a trust-counting squad whose factory is no longer allowed | The squad is paused. Tell members it resumes when the factory is re-allowed |
 | `NotSquad()` (`SquadFactory`) | `join`, `leave`, `remove` or `finalizeDeposits` where the factory does not know the squad | Deployment bug |
 | `OwnableUnauthorizedAccount(address)` | Non-owner called a registry admin function | Use the registry owner account |
 | `ERC20InsufficientAllowance(...)` | Member hasn't approved the squad to pull ₦, or the `joinWithPermit` permit was wrong (see Joining with a permit) | App approves the squad, then retries |
 | `ERC20InsufficientBalance(...)` | Member doesn't have enough ₦ | Top up, then retry |
 
-The two `NotSquad()` errors have the same selector, so the app cannot tell them apart from the error alone. Tell them apart by which call reverted: `contribute` and `settleRound` raise the registry's, and `join`, `leave`, `remove` and `finalizeDeposits` raise the factory's. Members see the registry one while a factory is revoked.
+Only `SquadFactory` throws `NotSquad()`. `TrustRegistry` still declares it for ABI compatibility but never throws it: members never see it on `contribute` or `settleRound`, even while a factory is revoked.
 
 Errors from the token and the registry bubble up through `Squad` calls. To decode them, merge the ABIs `Squad` + `AjoNGN` + `TrustRegistry` (add `SquadFactory` for calls made to the factory).

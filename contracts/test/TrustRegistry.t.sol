@@ -26,9 +26,12 @@ contract TrustRegistryTest is Base {
         registry.registerSquad(users[1]);
     }
 
-    function test_recordsOnlyFromRegisteredSquads() public {
-        vm.expectRevert(TrustRegistry.NotSquad.selector);
+    function test_recordsFromNonSquadsAreIgnored() public {
         registry.recordMiss(users[1]);
+        registry.recordContribution(users[1], false);
+        registry.recordCompleted(users[1]);
+        (uint32 on, uint32 late, uint32 missed, uint32 done) = registry.records(users[1]);
+        assertEq(on + late + missed + done, 0);
     }
 
     function test_factoryRegistersItsSquads() public {
@@ -37,13 +40,19 @@ contract TrustRegistryTest is Base {
         assertTrue(registry.isSquad(s));
     }
 
-    function test_revokedFactorySquadsCannotWrite() public {
+    function test_revokedFactorySquadWritesAreIgnored() public {
         vm.prank(users[0]);
         address s = factory.createSquad(C, 5, SquadFactory.Period.Demo, INVITE, 0);
         registry.setWriter(address(factory), false);
         vm.prank(s);
-        vm.expectRevert(TrustRegistry.NotSquad.selector);
         registry.recordMiss(users[1]);
+        (,, uint32 missed,) = registry.records(users[1]);
+        assertEq(missed, 0);
+        registry.setWriter(address(factory), true); // re-allowed: writes count again
+        vm.prank(s);
+        registry.recordMiss(users[1]);
+        (,, missed,) = registry.records(users[1]);
+        assertEq(missed, 1);
     }
 
     function test_historySurvivesNewFactory() public {

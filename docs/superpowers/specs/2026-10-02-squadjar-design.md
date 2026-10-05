@@ -108,7 +108,7 @@ Settlement rules (`settleRound`, for round `r`, collector = member with turn `r`
 4. Payout = (sum of contributions in round r) + (covered misses) - (shortfalls are simply absent). It is transferred to the collector inside `settleRound`.
 5. Set `roundDeadline` for the next round to `roundDeadline + roundLength`. After round `n`, finalize:
    - Refund remaining deposits to members not stopped paying.
-   - Split the stopped-paying members' leftover deposits equally among members with zero misses. Dust goes to the collector of turn `n`.
+   - Split the stopped-paying members' leftover deposits equally among members with zero misses. Dust goes to the last member still paying.
    - Call `factory.recordCompleted` for zero-miss members, only if `n >= 5` and `c >= 1000e18`.
    - Set state Completed.
 6. Idempotent: calling twice for the same round reverts with `AlreadySettled`.

@@ -514,6 +514,33 @@ contract SquadRoundsTest is Base {
         assertGe(uint256(late.roundDeadline()) - block.timestamp, late.roundLength() / 2);
     }
 
+    /// Weekly, 5 members, c = C (counts for trust). The factory is revoked after round 1. Round 2's miss is
+    /// covered by the member's deposit and nothing reverts, so the squad finishes with an empty jar. Only the
+    /// round 1 on-time write is in the registry; every write after the revoke is ignored.
+    function test_trustSquadFinishesAfterFactoryRevoked() public {
+        Squad s = _squadWith(5, C, SquadFactory.Period.Weekly);
+        _start(s);
+        _lockAll(s);
+        assertTrue(s.countsForTrust());
+
+        _payAllExcept(s, address(0)); // r1: counted while the factory is allowed
+        registry.setWriter(address(factory), false);
+        _payAllExcept(s, _turn(s, 3)); // r2: turn 3 misses
+        _warpPastGrace(s);
+        s.settleRound(2); // the deposit covers the miss; the ignored trust write must not revert
+        for (uint256 r = 3; r <= 5; r++) _payAllExcept(s, address(0));
+
+        assertEq(uint8(s.state()), uint8(Squad.State.Completed));
+        assertEq(token.balanceOf(address(s)), 0);
+        for (uint256 i; i < 5; i++) {
+            (uint32 on, uint32 late, uint32 missed, uint32 done) = registry.records(s.memberAt(i));
+            assertEq(on, 1);
+            assertEq(late, 0);
+            assertEq(missed, 0);
+            assertEq(done, 0);
+        }
+    }
+
     function test_getStateReturnsArrays() public {
         Squad s = _active(3, C);
         Squad.SquadView memory v = s.getState();
