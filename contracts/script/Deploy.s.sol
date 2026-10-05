@@ -22,11 +22,13 @@ contract Deploy is Script {
         registry.setWriter(address(factory), true);
         vm.stopBroadcast();
 
+        vm.createDir("deployments", true);
         string memory obj = "deployment";
         vm.serializeUint(obj, "chainId", block.chainid);
         vm.serializeAddress(obj, "token", address(token));
         vm.serializeAddress(obj, "registry", address(registry));
         vm.serializeAddress(obj, "factory", address(factory));
+        // block at simulation time: a safe lower bound for event scans, not the exact deploy block
         string memory json = vm.serializeUint(obj, "deployBlock", block.number);
         string memory path = string.concat("deployments/", vm.toString(block.chainid), ".json");
         vm.writeJson(json, path);
