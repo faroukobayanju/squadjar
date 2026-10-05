@@ -10,12 +10,18 @@ contract Deploy is Script {
     // Anvil's well-known account #0. Only ever used for chain 31337.
     uint256 constant ANVIL_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
 
+    /// Other chains sign with a Foundry keystore, never a raw key:
+    /// forge script script/Deploy.s.sol --rpc-url monad_testnet --account <keystore> --sender <address> --broadcast
     function run() external {
-        uint256 key = block.chainid == 31337 ? ANVIL_KEY : vm.envOr("DEPLOYER_KEY", uint256(0));
-        require(key != 0, "DEPLOYER_KEY missing: copy contracts/.env.example to contracts/.env and fill it");
-        address deployer = vm.addr(key);
-
-        vm.startBroadcast(key);
+        address deployer;
+        if (block.chainid == 31337) {
+            deployer = vm.addr(ANVIL_KEY);
+            vm.startBroadcast(ANVIL_KEY);
+        } else {
+            deployer = msg.sender;
+            require(deployer != DEFAULT_SENDER, "Pass --account <keystore> --sender <address>");
+            vm.startBroadcast();
+        }
         AjoNGN token = new AjoNGN();
         TrustRegistry registry = new TrustRegistry(deployer);
         SquadFactory factory = new SquadFactory(token, registry);
