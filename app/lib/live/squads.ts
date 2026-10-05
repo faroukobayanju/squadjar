@@ -7,7 +7,7 @@ import { factoryAbi, registryAbi, squadAbi } from "./abi";
 import { FACTORY, publicClient, readBalance } from "./chain";
 import { useMyAccount } from "./account";
 import { TIERS, toSquad } from "../chain-map";
-import type { Squad, Tier } from "../types";
+import type { PublicSquad, PublicTerms, Squad, Tier } from "../types";
 
 const POLL_MS = 4000;
 
@@ -19,7 +19,7 @@ export const refreshAll = () => Promise.all([...ticks].map((t) => t())).then(() 
  * Runs `fn` now and every 4s while `key` is set; skips a tick while the last fetch is still running. `key` must cover everything `fn` reads.
  * With `throwAfter`, that many failures in a row before any value throws during render, so the route's error.tsx offers Retry.
  */
-function usePoll<T>(key: string | null, fn: () => Promise<T>, throwAfter = Infinity): T | undefined {
+export function usePoll<T>(key: string | null, fn: () => Promise<T>, throwAfter = Infinity): T | undefined {
   const [got, setGot] = useState<{ key: string; v: T }>();
   const [fails, setFails] = useState<{ key: string; n: number }>();
   useEffect(() => {
@@ -83,7 +83,7 @@ const namesOf = async (who: readonly Address[]) =>
 // Finished rounds never change, so each (squad, round) is read once per page load.
 const historyCache = new Map<string, Address[]>();
 
-async function loadSquad(address: Address, slug: string, name: string, me: Address): Promise<Squad> {
+async function loadSquad(address: Address, slug: string, name: string, me: Address, pub?: PublicTerms | null): Promise<Squad> {
   const view = await publicClient.readContract({ address, abi: squadAbi, functionName: "getState" });
   const last = view.state === 3 ? view.currentRound : view.state === 2 ? view.currentRound - 1 : 0; // Completed : Active
   const todo: number[] = [];
@@ -101,7 +101,7 @@ async function loadSquad(address: Address, slug: string, name: string, me: Addre
   todo.forEach((r, j) => historyCache.set(`${address}:${r}`, view.members.filter((_, i) => paid[j * view.members.length + i])));
   const history: Record<number, Address[]> = {};
   for (let r = 1; r <= last; r++) history[r] = historyCache.get(`${address}:${r}`) ?? [];
-  return toSquad({ address, slug, name, view, history, names, tiers, me });
+  return { ...toSquad({ address, slug, name, view, history, names, tiers, me }), pub: pub ?? undefined };
 }
 
 // ponytail: scans every squad; index by Membership logs or the DB when squads > ~500
@@ -124,12 +124,13 @@ async function loadMySquads(me: Address): Promise<Squad[]> {
 }
 
 // Hits only: a 404 may be a squad whose row is still being written (right after create), so misses are re-asked each poll.
-const slugCache = new Map<string, { address: Address; name: string }>();
+type Hit = { address: Address; name: string; pub?: PublicTerms | null };
+const slugCache = new Map<string, Hit>();
 
-export async function resolveSlug(slug: string): Promise<{ address: Address; name: string } | null> {
+export async function resolveSlug(slug: string): Promise<Hit | null> {
   const cached = slugCache.get(slug);
   if (cached) return cached;
-  let hit: { address: Address; name: string } | null;
+  let hit: Hit | null;
   if (/^0x[0-9a-fA-F]{40}$/.test(slug)) {
     const address = slug as Address;
     const ok = await publicClient.readContract({ address: FACTORY, abi: factoryAbi, functionName: "isSquad", args: [address] });
@@ -139,7 +140,7 @@ export async function resolveSlug(slug: string): Promise<{ address: Address; nam
     const r = await fetch(`/api/squads/${encodeURIComponent(slug)}`);
     if (r.status === 404) hit = null;
     else if (!r.ok) throw new Error("squad lookup unavailable"); // retried on the next poll
-    else hit = (await r.json()) as { address: Address; name: string };
+    else hit = (await r.json()) as Hit;
   }
   if (hit) slugCache.set(slug, hit);
   return hit;
@@ -156,7 +157,7 @@ export function useLiveSquad(slug: string): Squad | null | undefined {
     me ? `squad:${me}:${slug}` : null,
     async () => {
       const hit = await resolveSlug(slug);
-      return hit ? loadSquad(hit.address, slug, hit.name, me!) : null;
+      return hit ? loadSquad(hit.address, slug, hit.name, me!, hit.pub) : null;
     },
     3,
   );
@@ -186,4 +187,19 @@ export function useLiveMe() {
       balance,
     };
   });
+}
+
+/** Open public squads, fetched once per mount (each fetch reads every listed squad onchain, so it doesn't poll). null: couldn't load. */
+export function useLivePublicSquads(): PublicSquad[] | null | undefined {
+  const [list, setList] = useState<PublicSquad[] | null>();
+  useEffect(() => {
+    let alive = true;
+    getJson<PublicSquad[]>("/api/squads/public")
+      .catch(() => null)
+      .then((x) => alive && setList(x));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return list;
 }

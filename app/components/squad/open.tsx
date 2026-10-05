@@ -4,10 +4,11 @@ import { WhatsappLogo } from "@phosphor-icons/react";
 import { AppShell } from "@/components/shell";
 import { AutopayToggle } from "@/components/autopay-toggle";
 import { KNOWN } from "@/lib/errors";
-import { naira } from "@/lib/format";
+import { MIN_TIER_LABEL, naira } from "@/lib/format";
+import { TIERS } from "@/lib/chain-map";
 import { useOrigin } from "@/lib/origin";
-import { ME, isLive, useActions, useInviteCode, type Squad } from "@/lib/data";
-import { ConfirmButton, DEPOSIT_WINDOW, ErrorNote, GHOST_BTN, INK_BTN, SquadTitle, useRun } from "./ui";
+import { ME, isLive, useActions, useInviteCode, useJoinRequests, useMe, type PublicTerms, type Squad } from "@/lib/data";
+import { ConfirmButton, DEPOSIT_WINDOW, ErrorNote, GHOST_BTN, INK_BTN, PAID_LABEL, SquadTitle, useRun } from "./ui";
 
 /** Open, and I'm in it: invite, then the organizer starts (3+ members). */
 export function OpenView({ squad }: { squad: Squad }) {
@@ -85,6 +86,8 @@ export function OpenView({ squad }: { squad: Squad }) {
         </a>
       )}
 
+      {isLive && organizer && squad.pub?.approval && <JoinRequestList slug={squad.slug} />}
+
       <AutopayToggle squad={squad} />
 
       {isLive && (
@@ -144,6 +147,115 @@ export function JoinView({ squad, code }: { squad: Squad; code?: string }) {
         {blocked ? (
           <p role="status" className="rounded-md border border-bad/40 bg-bad/8 px-4 py-3 text-sm">
             {blocked}
+          </p>
+        ) : (
+          <ErrorNote error={error} />
+        )}
+      </div>
+    </AppShell>
+  );
+}
+
+const PILL_BTN = "min-h-11 rounded-full border-[1.5px] border-ink px-4 text-sm font-semibold disabled:opacity-40";
+
+/** Organizer of a public squad that approves each person: accept or decline, polled. */
+function JoinRequestList({ slug }: { slug: string }) {
+  const actions = useActions();
+  const { run, busy, error } = useRun("other");
+  const requests = useJoinRequests(slug, true)?.requests;
+  if (!requests) return null;
+  return (
+    <section aria-labelledby="requests" className="mt-8">
+      <h2 id="requests" className="font-semibold">
+        Join requests
+      </h2>
+      <ErrorNote error={error} />
+      {requests.length ? (
+        <ul className="mt-3 divide-y divide-rule rounded-lg border border-rule bg-paper">
+          {requests.map((r) => (
+            <li key={r.member} className="flex min-h-14 items-center justify-between gap-3 px-4 py-2">
+              <span className="min-w-0">
+                <span className="block truncate font-semibold">{r.name}</span>
+                <span className="font-mono text-xs text-muted">{TIERS[r.tier] ?? "New"}</span>
+              </span>
+              <span className="flex shrink-0 gap-2">
+                <button type="button" disabled={busy} onClick={() => run(() => actions.decideRequest(slug, r.member, "declined"))} className={PILL_BTN}>
+                  Decline
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => run(() => actions.decideRequest(slug, r.member, "accepted"))}
+                  className={`${PILL_BTN} bg-ink text-manila`}
+                >
+                  Accept
+                </button>
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-sm text-muted">No requests waiting.</p>
+      )}
+    </section>
+  );
+}
+
+/** Open public squad, I'm not in it and came without a code: its terms, then join, request, or why not. */
+export function PublicJoinView({ squad, pub }: { squad: Squad; pub: PublicTerms }) {
+  const actions = useActions();
+  const { run, busy, error } = useRun("other");
+  const me = useMe();
+  const status = useJoinRequests(squad.slug, pub.approval)?.status;
+  const seatsLeft = squad.maxMembers - squad.members.length;
+  const tooLow = me ? TIERS.indexOf(me.tier) < pub.minTier : false;
+  const join = (label: string) => (
+    <button type="button" disabled={busy} onClick={() => run(() => actions.joinPublic(squad.slug))} className={INK_BTN}>
+      {busy ? (label === "Join squad" ? "Joining…" : "Sending…") : error ? "Retry" : label}
+    </button>
+  );
+
+  const action =
+    seatsLeft <= 0 || !me || tooLow ? null : !pub.approval || status === "accepted" ? (
+      join("Join squad")
+    ) : status === null ? (
+      join("Request to join")
+    ) : status === "pending" ? (
+      <p className={PAID_LABEL}>Request sent</p>
+    ) : status === "declined" ? (
+      <p className={PAID_LABEL}>Not accepted</p>
+    ) : null;
+
+  const who = pub.minTier === 0 ? "Open to anyone." : pub.minTier === 1 ? "For Building members and up." : "For Reliable members only.";
+
+  return (
+    <AppShell action={action}>
+      <SquadTitle squad={squad} meta="Open" />
+      {pub.description && <p className="mt-4 max-w-[38ch]">{pub.description}</p>}
+      <p className="mt-8 font-display text-2xl leading-tight font-extrabold tracking-[-0.02em]">
+        {seatsLeft > 0 ? `${seatsLeft} ${seatsLeft === 1 ? "seat" : "seats"} left of ${squad.maxMembers}.` : "Every seat is taken."}
+      </p>
+      <p className="mt-2 max-w-[38ch] text-muted">
+        Each round everyone pays {naira(squad.contribution)} into the jar and one person collects {naira(squad.contribution * squad.maxMembers)}.
+        When the squad starts you lock a refundable deposit.
+      </p>
+      <ul className="mt-6 divide-y divide-rule rounded-lg border border-rule bg-paper">
+        <li className="flex min-h-12 items-center justify-between gap-3 px-4">
+          <span className="font-semibold">Minimum tier</span>
+          <span className="font-mono text-xs">{MIN_TIER_LABEL[pub.minTier]}</span>
+        </li>
+        <li className="flex min-h-12 items-center px-4 text-sm text-muted">
+          {who} {pub.approval ? "The organizer approves each person." : "Join straight away."}
+        </li>
+      </ul>
+      <div className="mt-8">
+        {seatsLeft <= 0 ? (
+          <p role="status" className="rounded-md border border-bad/40 bg-bad/8 px-4 py-3 text-sm">
+            {KNOWN.Full}
+          </p>
+        ) : tooLow ? (
+          <p role="status" className="rounded-md border border-rule bg-paper px-4 py-3 text-sm">
+            This squad is for {pub.minTier === 1 ? "Building members and up" : "Reliable members"}. Pay on time in your squads to grow your trust score.
           </p>
         ) : (
           <ErrorNote error={error} />

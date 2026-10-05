@@ -11,6 +11,8 @@ const ME = "me"; // same value as store.ts ME; duplicated so this file stays dep
 const naira = (x: bigint) => Number(formatUnits(x, 18)); // sNGN has 18 decimals
 const ms = (s: bigint | number) => Number(s) * 1000;
 
+export const periodOf = (roundLength: number): Period => (roundLength === 300 ? "Demo" : roundLength === 604800 ? "Weekly" : "Monthly");
+
 export function toSquad(input: {
   address: Address;
   slug: string;
@@ -43,7 +45,7 @@ export function toSquad(input: {
     address: input.address,
     name: input.name,
     contribution: naira(v.contribution),
-    period: (v.roundLength === 300 ? "Demo" : v.roundLength === 604800 ? "Weekly" : "Monthly") as Period,
+    period: periodOf(v.roundLength),
     maxMembers: v.maxMembers,
     members: v.members.map((a, i) => ({ id: id(a), name: names[a.toLowerCase()] ?? `Member ${i + 1}`, tier: tiers[a.toLowerCase()] ?? "New" })),
     organizerId: id(v.organizer),
