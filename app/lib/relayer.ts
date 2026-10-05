@@ -31,7 +31,7 @@ export async function poke(squad: Address): Promise<PokeResult> {
   const account = relayerAccount();
   if (!account || !isAddress(squad)) throw new Error("relayer not configured");
   const v = await publicClient.readContract({ address: squad, abi: squadAbi, functionName: "getState" });
-  const what = plan(v, BigInt(Math.floor(Date.now() / 1000)));
+  const what = plan(v, (await publicClient.getBlock()).timestamp);
   if (!what) return "nothing";
   const call =
     what === "settle"

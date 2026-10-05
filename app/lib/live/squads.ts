@@ -6,6 +6,7 @@ import type { Address } from "viem";
 import { factoryAbi, registryAbi, squadAbi } from "./abi";
 import { FACTORY, publicClient, readBalance } from "./chain";
 import { useMyAccount } from "./account";
+import { startChainClock } from "./clock";
 import { TIERS, toSquad } from "../chain-map";
 import type { PublicSquad, PublicTerms, Squad, Tier } from "../types";
 
@@ -23,6 +24,7 @@ export function usePoll<T>(key: string | null, fn: () => Promise<T>, throwAfter 
   const [got, setGot] = useState<{ key: string; v: T }>();
   const [fails, setFails] = useState<{ key: string; n: number }>();
   useEffect(() => {
+    startChainClock();
     if (!key) return;
     let alive = true;
     let running: Promise<void> | undefined;

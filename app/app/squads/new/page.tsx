@@ -264,12 +264,15 @@ function Field({ id, label, children }: { id: string; label: string; children: R
 
 function HourSelect({ id, value, onChange }: { id: string; value: number; onChange: (h: number) => void }) {
   return (
-    <select id={id} aria-label="Time" value={value} onChange={(e) => onChange(Number(e.target.value))} className={INPUT}>
-      {HOURS.map(({ h, label }) => (
-        <option key={h} value={h}>
-          {label}
-        </option>
-      ))}
-    </select>
+    <div>
+      <select id={id} aria-label="Time" value={value} onChange={(e) => onChange(Number(e.target.value))} className={INPUT}>
+        {HOURS.map(({ h, label }) => (
+          <option key={h} value={h}>
+            {label}
+          </option>
+        ))}
+      </select>
+      <p className="mt-1 text-xs text-muted">Nigeria time (WAT)</p>
+    </div>
   );
 }

@@ -66,7 +66,7 @@ export function runAutopay(): Promise<{ paid: number; skippedLowBalance: number;
   const run = running.then(async () => {
     const out = { paid: 0, skippedLowBalance: 0, failed: 0 };
     const rows = (await sql`select squad, array_agg(member) as members from autopay where enabled group by squad`) as { squad: Address; members: string[] }[];
-    const now = BigInt(Math.floor(Date.now() / 1000));
+    const now = (await publicClient.getBlock()).timestamp;
     // ponytail: sequential walk of opted-in squads; fine at hundreds, batch reads past ~1k.
     for (const { squad, members } of rows) {
       try {
