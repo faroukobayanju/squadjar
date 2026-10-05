@@ -58,4 +58,11 @@ assert.deepStrictEqual(run([transfer(SQ, B, 1), log(C, "RoundSettled", { round: 
 assert.deepStrictEqual(run([transfer(A, B, 300)]).map((r) => [r.member, r.kind]), [[A, "sent"], [B, "received"]]);
 assert.deepStrictEqual(run([transfer(A, DEAD, 300)]).map((r) => r.kind), ["withdraw"]);
 assert.deepStrictEqual(run([log(C, "Transfer", { from: ZERO, to: A, value: n(1) })]), []);
+// a member marked stopped paying in this settle, or before it, gets no "paid from deposit" row
+const settleMissingC = [transfer(SQ, B, 10000), log(SQ, "RoundSettled", { round: 2, collector: B, amount: n(10000), missed: [C] })];
+assert.deepStrictEqual(run([...settleMissingC, log(SQ, "StoppedPaying", { member: C })]).map((r) => r.kind), ["payout"]);
+assert.deepStrictEqual(
+  classify(settleMissingC, { ...ctx, stoppedBefore: (s, m) => s === SQ && m === C }).map((r) => r.kind),
+  ["payout"],
+);
 console.log("activity-classify ok");

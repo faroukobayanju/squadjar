@@ -7,7 +7,9 @@ export const EVENTS = [
   {type:"event",name:"DepositLocked",anonymous:false,inputs:[{indexed:true,name:"member",type:"address"},{indexed:false,name:"amount",type:"uint256"}]},
   {type:"event",name:"Contributed",anonymous:false,inputs:[{indexed:true,name:"member",type:"address"},{indexed:false,name:"round",type:"uint8"},{indexed:false,name:"late",type:"bool"}]},
   {type:"event",name:"RoundSettled",anonymous:false,inputs:[{indexed:false,name:"round",type:"uint8"},{indexed:true,name:"collector",type:"address"},{indexed:false,name:"amount",type:"uint256"},{indexed:false,name:"missed",type:"address[]"}]},
+  {type:"event",name:"StoppedPaying",anonymous:false,inputs:[{indexed:true,name:"member",type:"address"}]},
 ] as const;
+const STOPPED = [{type:"function",name:"stoppedPaying",inputs:[{name:"",type:"address"}],outputs:[{name:"",type:"bool"}],stateMutability:"view"}] as const;
 const ISSQUAD = [{type:"function",name:"isSquad",inputs:[{name:"",type:"address"}],outputs:[{name:"",type:"bool"}],stateMutability:"view"}] as const;
 const CONTRIBUTION = [{type:"function",name:"contribution",inputs:[],outputs:[{name:"",type:"uint256"}],stateMutability:"view"}] as const;
 
@@ -21,7 +23,8 @@ const DEAD = "0x000000000000000000000000000000000000dead";
 export type Kind = "topup" | "deposit" | "contribution" | "payout" | "refund" | "covered" | "withdraw" | "sent" | "received";
 export type Row = { logIndex: number; member: string; kind: Kind; amount: bigint; squad: string | null; round: number | null };
 type RawLog = { address: string; topics: readonly Hex[] | [Hex, ...Hex[]] | []; data: Hex; logIndex: number | null };
-export type Ctx = { token: string; isSquad: (a: string) => boolean; contribution: (squad: string) => bigint };
+/** `stoppedBefore(squad, member)`: the member was already marked stopped paying before this tx. */
+export type Ctx = { token: string; isSquad: (a: string) => boolean; contribution: (squad: string) => bigint; stoppedBefore?: (squad: string, member: string) => boolean };
 
 function decode(logs: readonly RawLog[]) {
   return parseEventLogs({ abi: EVENTS, logs: logs as never, strict: true }).map((l) => ({ ...l, address: l.address.toLowerCase(), logIndex: Number(l.logIndex) }));
@@ -42,7 +45,7 @@ export function lookups(logs: readonly RawLog[], token: string) {
 }
 
 /** Pure. Amounts stay in base units; squad events count only when emitted by a squad. */
-export function classify(logs: readonly RawLog[], { token, isSquad, contribution }: Ctx): Row[] {
+export function classify(logs: readonly RawLog[], { token, isSquad, contribution, stoppedBefore = () => false }: Ctx): Row[] {
   const ev = decode(logs);
   const sq = (a: string) => a !== ZERO && a !== DEAD && isSquad(a);
   const transfers = ev.flatMap((l) => (l.eventName === "Transfer" && l.address === token.toLowerCase() ? [{ i: l.logIndex, from: l.args.from.toLowerCase(), to: l.args.to.toLowerCase(), v: l.args.value }] : []));
@@ -78,8 +81,15 @@ export function classify(logs: readonly RawLog[], { token, isSquad, contribution
       add(i, to, "received", v);
     }
   }
-  // A miss moves no sNGN (the deposit covers it inside the jar), so it gets its own row.
-  for (const s of settles) for (const m of s.args.missed) add(s.logIndex, m.toLowerCase(), "covered", contribution(s.address), s.address, s.args.round);
+  // A miss moves no sNGN (the deposit covers it inside the jar), so it gets its own row. Members who stopped paying
+  // (now or earlier) get no row: the contract covers them partly or not at all, so a full contribution would be wrong.
+  const stoppedNow = new Set(decode(logs).filter((l) => l.eventName === "StoppedPaying" && isSquad(l.address)).map((l) => `${l.address}:${(l.args as { member: string }).member.toLowerCase()}`));
+  for (const s of settles)
+    for (const raw of s.args.missed) {
+      const m = raw.toLowerCase();
+      if (stoppedNow.has(`${s.address}:${m}`) || stoppedBefore(s.address, m)) continue;
+      add(s.logIndex, m, "covered", contribution(s.address), s.address, s.args.round);
+    }
   return rows;
 }
 
@@ -100,7 +110,20 @@ export async function rowsFor(client: PublicClient, receipt: TransactionReceipt,
   const isSquad = (a: string) => cache.get(a) ?? false;
   const contrib = new Map<string, bigint>();
   for (const s of settled.filter(isSquad)) contrib.set(s, await client.readContract({ address: s as Hex, abi: CONTRIBUTION, functionName: "contribution" }));
-  const rows = classify(receipt.logs, { token, isSquad, contribution: (s) => contrib.get(s) ?? BigInt(0) });
+  // Who was already stopped before this tx: read stoppedPaying at the previous block for each missed member.
+  const stopped = new Set<string>();
+  for (const l of decode(receipt.logs)) {
+    if (l.eventName !== "RoundSettled" || !isSquad(l.address)) continue;
+    const missed = (l.args as { missed: readonly Hex[] }).missed;
+    if (!missed.length) continue;
+    const res = await client.multicall({
+      allowFailure: false,
+      blockNumber: receipt.blockNumber - BigInt(1),
+      contracts: missed.map((m) => ({ address: l.address as Hex, abi: STOPPED, functionName: "stoppedPaying", args: [m] }) as const),
+    });
+    missed.forEach((m, j) => res[j] && stopped.add(`${l.address}:${m.toLowerCase()}`));
+  }
+  const rows = classify(receipt.logs, { token, isSquad, contribution: (s) => contrib.get(s) ?? BigInt(0), stoppedBefore: (s, m) => stopped.has(`${s}:${m}`) });
   if (!rows.length) return [];
   const { timestamp } = await client.getBlock({ blockNumber: receipt.blockNumber });
   const at = new Date(Number(timestamp) * 1000).toISOString();
