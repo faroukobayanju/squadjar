@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Instrument_Sans, JetBrains_Mono, Zilla_Slab } from "next/font/google";
 import "./globals.css";
+import { Providers } from "@/components/providers";
 
 const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
@@ -39,7 +40,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${bricolage.variable} ${zilla.variable} ${instrument.variable} ${jetbrains.variable}`}
     >
       <body className="relative antialiased">
-        <div className="relative z-10">{children}</div>
+        <Providers>
+          <div className="relative z-10">{children}</div>
+        </Providers>
       </body>
     </html>
   );

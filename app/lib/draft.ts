@@ -1,6 +1,8 @@
 type Period = "Demo" | "Weekly" | "Monthly";
 
-export type Draft = { name?: string; contribution?: number; size?: number; period?: Period };
+export type Draft = { name?: string; contribution?: number; size?: number; period?: Period; weekday?: number };
+
+const DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
 // ponytail: local pattern parse stands in for the Kimi draft agent (Plan 3) so the form works offline.
 // It covers "8 of us, 5k every Friday", "₦2,000 monthly for 6 people", "10 people 3000 weekly".
@@ -23,6 +25,8 @@ export function parseDraft(text: string): Draft {
   }
   if (/month/.test(t)) d.period = "Monthly";
   else if (/week|monday|tuesday|wednesday|thursday|friday|saturday|sunday/.test(t)) d.period = "Weekly";
+  const day = DAYS.findIndex((x) => t.includes(x));
+  if (day >= 0) d.weekday = day; // 0 = Sunday, like Date.getDay()
   const name = text.match(/(?:called|name it|named)\s+["“]?([^"”,.]+)/i);
   if (name) d.name = name[1].trim();
   return d;

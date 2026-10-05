@@ -1,33 +1,11 @@
 "use client";
 
-// Demo data adapter. The screens only talk to this module, so swapping it for the
-// Monad contracts (Plan 2) replaces this file, not the UI.
+// Demo data adapter. Screens talk to lib/data.ts, which picks this or the live chain read model.
 // ponytail: localStorage-backed single-user demo; real multi-member state comes from Squad.getState().
 
 import { useSyncExternalStore } from "react";
-
-export type Tier = "New" | "Building" | "Reliable";
-export type Period = "Demo" | "Weekly" | "Monthly";
-export type SquadState = "Open" | "Depositing" | "Active" | "Completed";
-
-export type Member = { id: string; name: string; tier: Tier };
-
-export type Squad = {
-  slug: string;
-  name: string;
-  contribution: number;
-  period: Period;
-  maxMembers: number;
-  members: Member[]; // turn order once started: index 0 collects round 1
-  state: SquadState;
-  currentRound: number;
-  roundDeadline: number; // epoch ms
-  paid: Record<number, string[]>; // round -> member ids
-  missed: Record<number, string[]>;
-  myDeposit: number;
-};
-
-export type Payout = { slug: string; squadName: string; round: number; amount: number; covered: number; at: number };
+import type { Member, Payout, Period, Squad } from "./types";
+export type { Member, Payout, Period, Squad, SquadState, Tier } from "./types";
 
 export type State = {
   me: Member & { onTime: number };
@@ -38,11 +16,28 @@ export type State = {
 };
 
 export const ME = "me";
-const KEY = "squadjar-demo-v1";
+const KEY = "squadjar-demo-v2";
 const H = 3_600_000;
 const D = 24 * H;
 
 export const PERIOD_MS: Record<Period, number> = { Demo: 5 * 60_000, Weekly: 7 * D, Monthly: 30 * D };
+const GRACE_MS: Record<Period, number> = { Demo: 60_000, Weekly: 12 * H, Monthly: 2 * D };
+
+// Fields the chain view adds; the demo derives them so screens see one shape.
+function full(q: Omit<Squad, "organizerId" | "amMember" | "roundOpensAt" | "settleableAfter" | "depositDeadline" | "stopped" | "depositsIn" | "myRequired" | "myOwed">): Squad {
+  return {
+    ...q,
+    organizerId: q.members[0]?.id ?? ME,
+    amMember: true,
+    roundOpensAt: q.roundDeadline - PERIOD_MS[q.period],
+    settleableAfter: q.roundDeadline + GRACE_MS[q.period],
+    depositDeadline: 0,
+    stopped: [],
+    depositsIn: q.members.map((m) => m.id),
+    myRequired: q.myDeposit,
+    myOwed: 0,
+  };
+}
 
 function seed(): State {
   const now = Date.now();
@@ -69,7 +64,7 @@ function seed(): State {
     me: { id: ME, name: "Amaka", tier: "Reliable", onTime: 22 },
     balance: 12500,
     squads: [
-      {
+      full({
         slug: "csc-300l",
         name: "CSC 300L Squad",
         contribution: 5000,
@@ -82,8 +77,8 @@ function seed(): State {
         paid: { 1: everyone(csc), 2: everyone(csc), 3: ["tolu", "chidi", "femi", "zainab", "kelechi"] },
         missed: {},
         myDeposit: 10000,
-      },
-      {
+      }),
+      full({
         slug: "moremi-hall",
         name: "Moremi Hall Girls",
         contribution: 2000,
@@ -103,7 +98,7 @@ function seed(): State {
         },
         missed: { 4: ["tomi"] },
         myDeposit: 2000,
-      },
+      }),
     ],
   };
 }
@@ -201,13 +196,14 @@ export function payRound(slug: string): { settled: boolean; payout?: Payout } {
     }
     const done = r === q.members.length;
     if (done && collector.id === ME) balance += q.myDeposit; // deposit refunded at the end
-    next = {
+    const deadline = done ? q.roundDeadline : Math.max(q.roundDeadline + PERIOD_MS[q.period], Date.now() + PERIOD_MS[q.period]);
+    next = full({
       ...next,
       state: done ? "Completed" : "Active",
       currentRound: done ? r : r + 1,
-      roundDeadline: done ? q.roundDeadline : Math.max(q.roundDeadline + PERIOD_MS[q.period], Date.now() + PERIOD_MS[q.period]),
+      roundDeadline: deadline,
       myDeposit: done ? 0 : q.myDeposit,
-    };
+    });
   }
 
   commit({
@@ -236,7 +232,7 @@ export function createSquad(input: { name: string; contribution: number; size: n
   const base = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "squad";
   let slug = base;
   for (let i = 2; s.squads.some((q) => q.slug === slug); i++) slug = `${base}-${i}`;
-  const squad: Squad = {
+  const squad = full({
     slug,
     name,
     contribution: Math.round(input.contribution),
@@ -249,7 +245,7 @@ export function createSquad(input: { name: string; contribution: number; size: n
     paid: {},
     missed: {},
     myDeposit: 0,
-  };
+  });
   commit({ ...s, squads: [squad, ...s.squads] });
   return slug;
 }

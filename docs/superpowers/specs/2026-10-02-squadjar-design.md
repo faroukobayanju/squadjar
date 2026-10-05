@@ -194,6 +194,10 @@ The `/s/[slug]` page also calls `settleRound` through `/api/cron/settle?squad=` 
   - On failure, use the English template "Hi {name}, ₦{c} for {squad} is due {when}. Pay: {link}".
 - **Remind:** writes a group message in the organizer's language, returned as a `https://wa.me/?text=` link.
 
+#### 5. Auto-pay (added 2026-10-03)
+
+A member can turn on auto-pay per squad. Squadjar is added as a Privy signer on their account with a policy that allows only `contribute()` with zero value; the contract fixes the amount. A cron pays for enabled members once the round is open and their balance covers it. Off anytime per squad, or everywhere from Profile.
+
 ## Acceptance Criteria
 
 1. `forge test` passes with at least 25 tests, including the fuzz invariant over 1,000 runs.
@@ -208,6 +212,7 @@ The `/s/[slug]` page also calls `settleRound` through `/api/cron/settle?squad=` 
 10. Nudges are sent at the configured stages and never twice for the same `(member, squad, round, stage, channel)`.
 11. A real squad of 5 or more classmates completes at least 3 Demo rounds, with feedback recorded in `docs/user-test.md`.
 12. The app is live on a public Vercel URL. The README has judge instructions (login, add money, join the demo squad).
+13. With auto-pay on, a member's round is paid by the cron without them opening the app, and turning it off stops the next round's payment.
 
 ## Testing Plan
 

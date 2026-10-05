@@ -4,18 +4,22 @@ import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BackLink } from "@/components/shell";
 import { naira } from "@/lib/format";
-import { DemoError, addMoney, useStore } from "@/lib/store";
+import { safeNext } from "@/lib/next";
+import { friendlyError } from "@/lib/errors";
+import { Bar } from "@/components/skeleton";
+import { DemoError, isLive, useActions, useMe } from "@/lib/data";
 
 const QUICK = [2000, 5000, 10000, 20000];
 
 export default function AddMoney({ searchParams }: { searchParams: Promise<{ amount?: string; next?: string }> }) {
   const sp = use(searchParams);
   const router = useRouter();
-  const balance = useStore((s) => s.balance);
+  const me = useMe();
+  const { addMoney } = useActions();
   const [amount, setAmount] = useState(sp.amount ?? "5000");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const next = sp.next?.startsWith("/") ? sp.next : "/home";
+  const next = safeNext(sp.next);
   const value = Number(amount.replace(/\D/g, ""));
 
   async function submit(e: React.FormEvent) {
@@ -23,11 +27,16 @@ export default function AddMoney({ searchParams }: { searchParams: Promise<{ amo
     setBusy(true);
     setError(null);
     try {
-      await new Promise((ok) => setTimeout(ok, 700));
-      addMoney(value);
+      await addMoney(value);
       router.push(next);
     } catch (err) {
-      setError(err instanceof DemoError ? err.message : "That didn't go through. Nothing was charged. Try again.");
+      setError(
+        err instanceof DemoError
+          ? err.message
+          : isLive
+            ? friendlyError(err, "other")
+            : "That didn't go through. Nothing was charged. Try again.",
+      );
       setBusy(false);
     }
   }
@@ -37,7 +46,7 @@ export default function AddMoney({ searchParams }: { searchParams: Promise<{ amo
       <BackLink href={next} label="Back" />
       <form onSubmit={submit} className="mt-2 flex flex-1 flex-col">
         <h1 className="font-display text-[2.1rem] leading-none font-extrabold tracking-[-0.03em]">Add money</h1>
-        <p className="mt-2 text-sm text-muted">Balance now {naira(balance)}</p>
+        {me ? <p className="mt-2 text-sm text-muted">Balance now {naira(me.balance)}</p> : <Bar className="mt-2 h-5 w-36" />}
 
         <label htmlFor="amount" className="mt-8 block text-sm font-semibold">
           Amount

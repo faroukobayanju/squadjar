@@ -5,11 +5,11 @@ import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import { WhatsappLogo } from "@phosphor-icons/react";
 import { naira } from "@/lib/format";
-import { useStore } from "@/lib/store";
+import { useLastPayout } from "@/lib/data";
 
 export default function PayoutPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
-  const payout = useStore((s) => s.lastPayout);
+  const payout = useLastPayout();
   const reduce = useReducedMotion();
 
   if (!payout || payout.slug !== slug) {

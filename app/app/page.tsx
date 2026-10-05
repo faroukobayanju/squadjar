@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { StampCard } from "@/components/stamp-card";
 import { naira } from "@/lib/format";
-import { useStore } from "@/lib/store";
+import { useSampleSquad } from "@/lib/data";
 
 export default function Landing() {
-  const sample = useStore((s) => s.squads[0]);
+  const sample = useSampleSquad();
   return (
     <div className="mx-auto w-full max-w-[1120px] px-4">
       <header className="flex h-16 items-center justify-between">

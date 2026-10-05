@@ -10,5 +10,6 @@ broadcast/
 
 .impeccable/review/
 .impeccable/surface-round.json
+.superpowers/
 
 contracts/deployments/31337.json

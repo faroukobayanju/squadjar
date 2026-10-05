@@ -1,30 +1,32 @@
 "use client";
 
-import { use, useEffect } from "react";
+import { use, useEffect, useRef } from "react";
 import Link from "next/link";
 import { WhatsappLogo, LockSimple } from "@phosphor-icons/react";
 import { AppShell } from "@/components/shell";
-import { Countdown } from "@/components/countdown";
+import { AutopayToggle } from "@/components/autopay-toggle";
+import { Countdown, useNow } from "@/components/countdown";
 import { EmptyBox, Stamp } from "@/components/stamp";
 import { StampCard } from "@/components/stamp-card";
-import { naira } from "@/lib/format";
+import { Bar } from "@/components/skeleton";
+import { DepositingView } from "@/components/squad/depositing";
+import { JoinView, OpenView } from "@/components/squad/open";
+import { AddMoneyNote, ErrorNote, Notice, PAID_LABEL, PALM_BTN, useRun } from "@/components/squad/ui";
+import { KNOWN } from "@/lib/errors";
+import { dueLabel, naira } from "@/lib/format";
 import { useOrigin } from "@/lib/origin";
-import {
-  ME,
-  clearJustStamped,
-  collectorOf,
-  myTurn,
-  payoutAmount,
-  squadBySlug,
-  useStore,
-  type Squad,
-} from "@/lib/store";
+import { refreshAll } from "@/lib/live/squads";
+import { ME, clearJustStamped, collectorOf, myTurn, payoutAmount, useActions, useJustStamped, useMe, useSquad, type Squad } from "@/lib/data";
 
-export default function SquadPage({ params }: { params: Promise<{ slug: string }> }) {
+export default function SquadPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ code?: string }> }) {
   const { slug } = use(params);
-  const state = useStore((s) => s);
-  const squad = squadBySlug(state, slug);
-  const fresh = state.justStamped?.slug === slug ? state.justStamped : undefined;
+  const { code } = use(searchParams);
+  const squad = useSquad(slug);
+  const me = useMe();
+  const fresh = useJustStamped(slug);
+  const now = useNow();
+  const { refill } = useActions();
+  const topUp = useRun("payment");
 
   useEffect(() => {
     if (!fresh) return;
@@ -33,24 +35,59 @@ export default function SquadPage({ params }: { params: Promise<{ slug: string }
     return () => clearTimeout(t);
   }, [fresh]);
 
-  if (!squad) return <NotFound />;
-  if (squad.state === "Open") return <OpenSquad squad={squad} />;
+  // Overdue: ask the relayer once per deadline per page view, then refresh. Demo squads have no address.
+  const overdue =
+    squad && squad.address && now !== null
+      ? squad.state === "Active" && now > squad.settleableAfter
+        ? `a${squad.currentRound}`
+        : squad.state === "Depositing" && now > squad.depositDeadline
+          ? "d"
+          : null
+      : null;
+  const poked = useRef<string | null>(null);
+  const addr = squad?.address;
+  useEffect(() => {
+    if (!overdue || !addr || poked.current === `${addr}${overdue}`) return;
+    poked.current = `${addr}${overdue}`;
+    fetch("/api/settle", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ squad: addr }) })
+      .then(() => refreshAll())
+      .catch(() => {});
+  }, [overdue, addr]);
+
+  if (squad === undefined) return <SquadSkeleton />;
+  if (!squad) return <Notice title="We can't find that squad." body="The link may be old. Ask whoever invited you for a fresh one." />;
+  if (squad.state === "Cancelled") return <Notice title="This squad was cancelled." body="Deposits were returned." />;
+  if (!squad.amMember) {
+    return squad.state === "Open" ? (
+      <JoinView squad={squad} code={code} />
+    ) : (
+      <Notice title="This squad has already started." body="Ask the organizer about the next one, or start your own." />
+    );
+  }
+  if (squad.state === "Open") return <OpenView squad={squad} />;
+  if (squad.state === "Depositing") return <DepositingView squad={squad} />;
 
   const r = squad.currentRound;
   const paidIds = squad.paid[r] ?? [];
   const iPaid = paidIds.includes(ME);
   const collector = collectorOf(squad);
   const done = squad.state === "Completed";
+  const notOpenYet = now !== null && now < squad.roundOpensAt;
+  const iStopped = squad.stopped.includes(ME);
+  const refillOwed = Math.max(0, squad.myRequired - squad.myDeposit);
 
-  const action = done ? null : iPaid ? (
-    <p className="flex min-h-14 items-center justify-center rounded-lg border border-rule font-semibold text-muted">
-      Paid round {r}. Your stamp is on the card.
+  const action = done ? null : iStopped ? (
+    <p className={PAID_LABEL}>{KNOWN.MemberStoppedPaying}</p>
+  ) : iPaid ? (
+    <p className={PAID_LABEL}>Paid round {r}. Your stamp is on the card.</p>
+  ) : notOpenYet ? (
+    <p className={PAID_LABEL}>
+      <span>
+        Round {r} opens in <Countdown to={squad.roundOpensAt} />
+      </span>
     </p>
   ) : (
-    <Link
-      href={`/s/${slug}/pay`}
-      className="flex min-h-14 items-center justify-center rounded-lg bg-palm font-money text-[1.25rem] font-bold text-on-palm transition-transform duration-75 active:scale-[0.98] active:bg-palm-press"
-    >
+    <Link href={`/s/${slug}/pay`} className={PALM_BTN}>
       Pay {naira(squad.contribution)}
     </Link>
   );
@@ -64,6 +101,25 @@ export default function SquadPage({ params }: { params: Promise<{ slug: string }
           <span className="font-money text-[13px] font-bold text-ink">{naira(squad.contribution)}</span> each · {squad.period}
         </p>
       </header>
+
+      {!done && !iStopped && refillOwed > 0 && (
+        <section aria-label="Top up your deposit" className="mt-8 rounded-md border border-warn/40 bg-warn/8 p-4">
+          <p className="text-sm">
+            Top up your deposit by <span className="font-money font-bold">{naira(refillOwed)}</span> before {dueLabel(squad.settleableAfter)} to stay in good
+            standing.
+          </p>
+          <div className="mt-3">
+            <ErrorNote error={topUp.error} />
+            {me && me.balance < refillOwed ? (
+              <AddMoneyNote short={refillOwed - me.balance} balance={me.balance} next={`/s/${slug}`} />
+            ) : (
+              <button type="button" disabled={topUp.busy} onClick={() => topUp.run(() => refill(slug))} className={PALM_BTN}>
+                {topUp.busy ? "Topping up…" : topUp.error ? `Retry ${naira(refillOwed)}` : `Top up ${naira(refillOwed)}`}
+              </button>
+            )}
+          </div>
+        </section>
+      )}
 
       {done ? (
         <section className="mt-10">
@@ -109,6 +165,7 @@ export default function SquadPage({ params }: { params: Promise<{ slug: string }
                   <span className={`max-w-full truncate text-xs ${m.id === ME ? "font-bold" : ""}`}>
                     {m.id === ME ? "You" : m.name}
                   </span>
+                  {squad.stopped.includes(m.id) && <span className="font-mono text-[10px] text-bad">Stopped paying</span>}
                 </li>
               );
             })}
@@ -116,6 +173,8 @@ export default function SquadPage({ params }: { params: Promise<{ slug: string }
           {paidIds.length < squad.members.length && <RemindSquad squad={squad} />}
         </section>
       )}
+
+      {!done && !iStopped && <AutopayToggle squad={squad} />}
 
       <section aria-labelledby="card" className="mt-12">
         <h2 id="card" className="mb-3 font-semibold">
@@ -152,59 +211,30 @@ function RemindSquad({ squad }: { squad: Squad }) {
   );
 }
 
-function OpenSquad({ squad }: { squad: Squad }) {
-  const link = `${useOrigin()}/s/${squad.slug}`;
-  const text = `Join "${squad.name}" on Squadjar: ${naira(squad.contribution)} each ${squad.period.toLowerCase()}, ${squad.maxMembers} of us. Nobody holds the jar. ${link}`;
-  const short = Math.max(0, 3 - squad.members.length);
+function SquadSkeleton() {
   return (
-    <AppShell
-      action={
-        <a
-          href={`https://wa.me/?text=${encodeURIComponent(text)}`}
-          target="_blank"
-          rel="noreferrer"
-          className="flex min-h-14 items-center justify-center gap-2 rounded-lg bg-ink font-semibold text-manila active:scale-[0.98]"
-        >
-          <WhatsappLogo size={22} weight="fill" aria-hidden />
-          Invite on WhatsApp
-        </a>
-      }
-    >
-      <h1 className="font-display text-[2.1rem] leading-none font-extrabold tracking-[-0.03em] text-balance">{squad.name}</h1>
-      <p className="mt-2 font-mono text-xs text-muted">
-        Open · {naira(squad.contribution)} each · {squad.period} · {squad.members.length} of {squad.maxMembers} joined
-      </p>
-      <p className="mt-8 font-display text-2xl leading-tight font-extrabold tracking-[-0.02em]">
-        {short > 0 ? `Invite ${short} more to start.` : "Ready when you are."}
-      </p>
-      <p className="mt-2 max-w-[38ch] text-muted">
-        Turns are set when you start: people with the best payment record go first. Everyone then locks a refundable deposit.
-      </p>
-      <ul className="mt-6 divide-y divide-rule rounded-lg border border-rule bg-paper">
-        {squad.members.map((m) => (
-          <li key={m.id} className="flex min-h-12 items-center justify-between px-4">
-            <span className="font-semibold">{m.id === ME ? "You (organizer)" : m.name}</span>
-            <span className="font-mono text-xs text-stamp">{m.tier}</span>
-          </li>
-        ))}
-        {Array.from({ length: squad.maxMembers - squad.members.length }, (_, i) => (
-          <li key={`empty-${i}`} className="flex min-h-12 items-center px-4 text-muted">
-            Open seat
-          </li>
-        ))}
-      </ul>
-    </AppShell>
-  );
-}
-
-function NotFound() {
-  return (
-    <AppShell>
-      <h1 className="font-display text-3xl font-extrabold tracking-[-0.03em]">We can&apos;t find that squad.</h1>
-      <p className="mt-2 text-muted">The link may be old. Ask whoever invited you for a fresh one.</p>
-      <Link href="/home" className="mt-6 inline-flex min-h-12 items-center font-semibold underline">
-        Go to your squads
-      </Link>
+    <AppShell action={<Bar className="h-14 w-full rounded-lg" />}>
+      <div aria-busy="true" aria-label="Loading squad">
+        <Bar className="h-[2.1rem] w-56" />
+        <Bar className="mt-2 h-4 w-48" />
+        <Bar className="mt-10 h-8 w-64" />
+        <Bar className="mt-2 h-[clamp(4rem,23vw,7rem)] w-full max-w-72" />
+        <Bar className="mt-2 h-4 w-60" />
+        <div className="mt-8 flex items-baseline justify-between">
+          <h2 className="font-semibold">This round</h2>
+          <Bar className="h-4 w-16" />
+        </div>
+        <ul className="mt-4 grid grid-cols-4 gap-y-5">
+          {Array.from({ length: 4 }, (_, i) => (
+            <li key={i} className="flex flex-col items-center gap-1.5">
+              <Bar className="size-16 rounded-full" />
+              <Bar className="h-3 w-10" />
+            </li>
+          ))}
+        </ul>
+        <h2 className="mt-12 mb-3 font-semibold">The card</h2>
+        <Bar className="h-40 w-full rounded-lg" />
+      </div>
     </AppShell>
   );
 }

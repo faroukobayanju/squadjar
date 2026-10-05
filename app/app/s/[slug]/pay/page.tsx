@@ -1,20 +1,40 @@
 "use client";
 
 import { use, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BackLink } from "@/components/shell";
+import { BackLink, useRequireLogin } from "@/components/shell";
+import { Countdown, useNow } from "@/components/countdown";
+import { AddMoneyNote, ErrorNote, PAID_LABEL, PALM_BTN } from "@/components/squad/ui";
+import { friendlyError } from "@/lib/errors";
 import { EmptyBox, Stamp } from "@/components/stamp";
+import { Bar } from "@/components/skeleton";
 import { naira } from "@/lib/format";
-import { DemoError, ME, collectorOf, payRound, squadBySlug, useStore } from "@/lib/store";
+import { DemoError, ME, collectorOf, useActions, useMe, useSquad } from "@/lib/data";
 
 export default function PayPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const router = useRouter();
-  const state = useStore((s) => s);
-  const squad = squadBySlug(state, slug);
+  const squad = useSquad(slug);
+  const me = useMe();
+  const { pay: payRound } = useActions();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const now = useNow();
+  const gated = useRequireLogin();
+  if (gated) return null;
+
+  if (squad === undefined || (squad && !me)) {
+    return (
+      <Frame slug={slug}>
+        <div aria-busy="true" aria-label="Loading">
+          <Bar className="mt-4 h-8 w-56" />
+          <Bar className="mt-1 h-[clamp(3.6rem,19vw,5rem)] w-48" />
+          <Bar className="mt-8 h-36 w-full" />
+        </div>
+        <Bar className="mt-auto h-14 w-full rounded-lg" />
+      </Frame>
+    );
+  }
 
   if (!squad || squad.state !== "Active") {
     return (
@@ -25,21 +45,22 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
     );
   }
 
+  const balance = me!.balance;
   const r = squad.currentRound;
   const alreadyPaid = (squad.paid[r] ?? []).includes(ME);
-  const short = squad.contribution - state.balance;
+  const short = squad.contribution - balance;
   const collector = collectorOf(squad);
   const paidCount = (squad.paid[r] ?? []).length;
+  const notOpenYet = now !== null && now < squad.roundOpensAt;
 
   async function pay() {
     setBusy(true);
     setError(null);
     try {
-      await new Promise((ok) => setTimeout(ok, 650)); // network-shaped pause so the press reads as a real action
-      const res = payRound(slug);
+      const res = await payRound(slug);
       router.push(res.settled ? `/s/${slug}/payout` : `/s/${slug}`);
     } catch (e) {
-      setError(e instanceof DemoError ? e.message : "Payment didn't go through. Your money is safe. Try again.");
+      setError(e instanceof DemoError ? e.message : friendlyError(e, "payment"));
       setBusy(false);
     }
   }
@@ -54,7 +75,7 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
       <dl className="mt-8 divide-y divide-rule border-y border-rule text-sm">
         <Row k="Goes into" v={`${squad.name} jar`} />
         <Row k="This round's collector" v={collector.id === ME ? "You" : collector.name} />
-        <Row k="Your balance after" v={naira(Math.max(0, state.balance - squad.contribution))} />
+        <Row k="Your balance after" v={naira(Math.max(0, balance - squad.contribution))} />
       </dl>
 
       <div className="mt-8">
@@ -82,33 +103,20 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
       )}
 
       <div className="mt-auto pt-10">
-        {error && (
-          <p role="alert" className="mb-4 rounded-md border border-bad/40 bg-bad/8 px-4 py-3 text-sm">
-            {error}
-          </p>
-        )}
+        <ErrorNote error={error} />
         {alreadyPaid ? (
           <p className="text-center font-semibold text-muted">You&apos;ve paid round {r}.</p>
+        ) : notOpenYet ? (
+          <p className={PAID_LABEL}>
+            <span>
+              Round {r} opens in <Countdown to={squad.roundOpensAt} />
+            </span>
+          </p>
         ) : short > 0 ? (
-          <>
-            <p className="mb-3 text-sm">
-              You need {naira(short)} more. Your balance is {naira(state.balance)}.
-            </p>
-            <Link
-              href={`/add-money?amount=${Math.ceil(short / 100) * 100}&next=/s/${slug}/pay`}
-              className="flex min-h-14 items-center justify-center rounded-lg bg-ink font-semibold text-manila active:scale-[0.98]"
-            >
-              Add {naira(Math.ceil(short / 100) * 100)}
-            </Link>
-          </>
+          <AddMoneyNote short={short} balance={balance} next={`/s/${slug}/pay`} />
         ) : (
-          <button
-            type="button"
-            onClick={pay}
-            disabled={busy}
-            className="flex min-h-14 w-full items-center justify-center rounded-lg bg-palm font-money text-[1.25rem] font-bold text-on-palm transition-transform duration-75 active:scale-[0.98] active:bg-palm-press disabled:opacity-70"
-          >
-            {busy ? "Stamping…" : `Pay ${naira(squad.contribution)}`}
+          <button type="button" onClick={pay} disabled={busy} className={PALM_BTN}>
+            {busy ? "Stamping…" : error ? `Retry ${naira(squad.contribution)}` : `Pay ${naira(squad.contribution)}`}
           </button>
         )}
       </div>

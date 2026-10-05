@@ -1,7 +1,7 @@
 "use client";
 
 import { EmptyBox, PaidOutMark, Stamp } from "@/components/stamp";
-import { ME, type Squad } from "@/lib/store";
+import { ME, type Squad } from "@/lib/data";
 
 /**
  * The squad's contribution card: members down the side in turn order, rounds across.
