@@ -29,6 +29,13 @@
 - Glossary terms from `CONTEXT.md` in names and comments.
 - Full suite must stay green: today 67 tests + 2 invariants (1,000 runs each), no compiler warnings.
 
+## Quality and Security Gates
+
+- Every task: spec + quality review of its diff before the next task starts (subagent-driven development).
+- After Task 1: security audit of the `TrustRegistry` change and its effect on `Squad` (gstack `/cso`, done by hand for Solidity as in the M3 audit): no path where a write is skipped that should count, no new revert path in `contribute`, `settleRound` or `_finish`, no way to fake being a squad.
+- After Task 3, before Task 4: secrets and key check (vibe-security): no private key, mnemonic or `.env` in the branch diff (Anvil's public key in `Deploy.s.sol` is the only allowed 64-hex string), deploy still fails closed without `--account` / `--sender`, `TOKEN` misuse fails closed.
+- Before the PR: whole-branch review (`/review`) on the most capable model.
+
 ## Review Focus
 
 1. An EOA or random contract calls `recordMiss` / `recordContribution` / `recordCompleted`: no revert and no record changes. (Task 1, `test_recordsFromNonSquadsAreIgnored`.)
