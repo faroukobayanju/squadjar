@@ -196,6 +196,10 @@ contract SquadSetupTest is Base {
         assertEq(s.memberCount(), 3);
         // Requirements never rise after a drop, so the squad activates immediately.
         assertEq(uint8(s.state()), uint8(Squad.State.Active));
+        // The remaining 3 members play every round to the end and the jar empties.
+        for (uint256 r; r < 3; r++) _payAllExcept(s, address(0));
+        assertEq(uint8(s.state()), uint8(Squad.State.Completed));
+        assertEq(token.balanceOf(address(s)), 0);
     }
 
     function _anchored(uint64 firstDeadline) internal returns (Squad s) {
@@ -217,6 +221,23 @@ contract SquadSetupTest is Base {
         Squad s = _anchored(anchor);
         _lockAll(s);
         assertEq(s.roundDeadline(), anchor);
+    }
+
+    function test_roundOneNotOpenBeforeAnchor() public {
+        uint64 anchor = uint64(block.timestamp + 1000);
+        Squad s = _anchored(anchor);
+        _lockAll(s);
+        assertEq(s.roundDeadline(), anchor);
+
+        address m = s.memberAt(0);
+        vm.prank(m);
+        vm.expectRevert(abi.encodeWithSelector(Squad.RoundNotOpen.selector, anchor - 300));
+        s.contribute();
+
+        vm.warp(anchor - 300);
+        vm.prank(m);
+        s.contribute();
+        assertTrue(s.paid(1, m));
     }
 
     function test_firstDeadlineRollsForwardWholeRounds() public {

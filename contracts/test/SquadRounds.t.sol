@@ -541,6 +541,26 @@ contract SquadRoundsTest is Base {
         }
     }
 
+    /// Weekly, 5 members: 999e18 is just under the 1000e18 floor and does not count for trust; exactly 1000e18 does.
+    function test_trustGateNeedsContributionOf1000() public {
+        Squad below = _squadWith(5, 999e18, SquadFactory.Period.Weekly);
+        _start(below);
+        _lockAll(below);
+        assertFalse(below.countsForTrust());
+
+        Squad exact = _squadWith(5, 1000e18, SquadFactory.Period.Weekly);
+        _start(exact);
+        _lockAll(exact);
+        assertTrue(exact.countsForTrust());
+    }
+
+    function test_trustGateNeedsFiveMembers() public {
+        Squad s = _squadWith(4, C, SquadFactory.Period.Weekly);
+        _start(s);
+        _lockAll(s);
+        assertFalse(s.countsForTrust());
+    }
+
     function test_getStateReturnsArrays() public {
         Squad s = _active(3, C);
         Squad.SquadView memory v = s.getState();
