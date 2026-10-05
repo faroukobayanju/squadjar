@@ -40,7 +40,7 @@ function label({ kind, round, squadName }: Item) {
     case "refund":
       return `Deposit back · ${sq}`;
     case "covered":
-      return `Covered by deposit · ${sq}`;
+      return `Missed round ${round} · paid from your deposit · ${sq}`;
     case "withdraw":
       return "Cashed out";
     case "sent":
@@ -84,6 +84,7 @@ export default function History() {
             <ul className="divide-y divide-rule rounded-lg border border-rule bg-paper">
               {items.map((it) => {
                 const plus = IN.has(it.kind);
+                const fromDeposit = it.kind === "covered"; // came out of the locked deposit, not the balance
                 return (
                   <li key={`${it.tx}:${it.logIndex}:${it.kind}`} className="flex min-h-14 items-center justify-between gap-4 px-4 py-3">
                     <span className="min-w-0">
@@ -92,8 +93,8 @@ export default function History() {
                         {new Date(it.at).toLocaleTimeString("en-NG", { hour: "numeric", minute: "2-digit" })}
                       </span>
                     </span>
-                    <span className={`shrink-0 font-money text-lg font-bold tnum ${plus ? "text-stamp" : "text-ink"}`}>
-                      {plus ? "+" : "−"}
+                    <span className={`shrink-0 font-money text-lg font-bold tnum ${plus ? "text-stamp" : fromDeposit ? "text-muted" : "text-ink"}`}>
+                      {plus ? "+" : fromDeposit ? "" : "−"}
                       {naira(it.amount)}
                     </span>
                   </li>
