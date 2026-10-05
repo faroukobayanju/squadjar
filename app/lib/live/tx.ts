@@ -56,6 +56,8 @@ function usePrivyWrite() {
         const { hash } = await withRetry(() => sendTransaction({ to: c.address, data, chainId: monadTestnet.id }, { address: account, sponsor: true }));
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
         if (receipt.status === "reverted") throw new Error("Transaction reverted");
+        // Money history: the server re-reads this receipt itself. Never blocks or throws.
+        fetch("/api/activity", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ tx: receipt.transactionHash }) }).catch(() => {});
         return receipt;
       }
 

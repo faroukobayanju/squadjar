@@ -1,0 +1,108 @@
+"use client";
+
+import { usePrivy } from "@privy-io/react-auth";
+import { AppShell, BackLink } from "@/components/shell";
+import { Bar } from "@/components/skeleton";
+import { naira } from "@/lib/format";
+import { isLive } from "@/lib/data";
+import { useMyAccount } from "@/lib/live/account";
+import { usePoll } from "@/lib/live/squads";
+import type { Kind } from "@/lib/activity-classify";
+
+type Item = { tx: string; logIndex: number; kind: Kind; amount: number; round: number | null; at: string; squadName: string | null; slug: string | null };
+
+function useLiveHistory(): Item[] | undefined {
+  const { getAccessToken } = usePrivy();
+  const { address: me } = useMyAccount();
+  return usePoll(me ? `history:${me}` : null, async () => {
+    const token = await getAccessToken();
+    const r = await fetch("/api/activity", { headers: { authorization: `Bearer ${token}` } });
+    if (!r.ok) throw new Error(`history ${r.status}`);
+    return (await r.json()) as Item[];
+  });
+}
+// isLive is a build-time constant; the demo has no history.
+const useHistory: () => Item[] | undefined = isLive ? useLiveHistory : () => [];
+
+const IN = new Set<Kind>(["topup", "payout", "refund", "received"]);
+
+function label({ kind, round, squadName }: Item) {
+  const sq = squadName ?? "a squad";
+  switch (kind) {
+    case "topup":
+      return "Added money";
+    case "deposit":
+      return `Deposit locked · ${sq}`;
+    case "contribution":
+      return round ? `Paid round ${round} · ${sq}` : `Paid · ${sq}`;
+    case "payout":
+      return `Payout · round ${round} · ${sq}`;
+    case "refund":
+      return `Deposit back · ${sq}`;
+    case "covered":
+      return `Covered by deposit · ${sq}`;
+    case "withdraw":
+      return "Cashed out";
+    case "sent":
+      return "Sent money";
+    case "received":
+      return "Got money";
+  }
+}
+
+function dayLabel(d: Date) {
+  const days = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 86_400_000);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  return d.toLocaleDateString("en-NG", { weekday: "short", day: "numeric", month: "short" });
+}
+
+export default function History() {
+  const items = useHistory();
+  const days: { day: string; items: Item[] }[] = [];
+  for (const it of items ?? []) {
+    const day = dayLabel(new Date(it.at));
+    if (days.at(-1)?.day !== day) days.push({ day, items: [] });
+    days.at(-1)!.items.push(it);
+  }
+  return (
+    <AppShell>
+      <BackLink href="/home" label="Home" />
+      <h1 className="mt-2 font-display text-[2.1rem] leading-none font-extrabold tracking-[-0.03em]">History</h1>
+      {!items ? (
+        <div className="mt-8 grid gap-3" aria-busy="true" aria-label="Loading history">
+          <Bar className="h-4 w-20" />
+          <Bar className="h-14 w-full rounded-lg" />
+          <Bar className="h-14 w-full rounded-lg" />
+        </div>
+      ) : !items.length ? (
+        <p className="mt-8 max-w-[38ch] text-muted">Nothing yet. Add money or join a squad to see it here.</p>
+      ) : (
+        days.map(({ day, items }) => (
+          <section key={day} className="mt-8">
+            <h2 className="mb-2 font-mono text-xs text-muted">{day}</h2>
+            <ul className="divide-y divide-rule rounded-lg border border-rule bg-paper">
+              {items.map((it) => {
+                const plus = IN.has(it.kind);
+                return (
+                  <li key={`${it.tx}:${it.logIndex}:${it.kind}`} className="flex min-h-14 items-center justify-between gap-4 px-4 py-3">
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold">{label(it)}</span>
+                      <span className="block font-mono text-xs text-muted tnum">
+                        {new Date(it.at).toLocaleTimeString("en-NG", { hour: "numeric", minute: "2-digit" })}
+                      </span>
+                    </span>
+                    <span className={`shrink-0 font-money text-lg font-bold tnum ${plus ? "text-stamp" : "text-ink"}`}>
+                      {plus ? "+" : "−"}
+                      {naira(it.amount)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ))
+      )}
+    </AppShell>
+  );
+}

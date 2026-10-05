@@ -3,6 +3,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { RPC, monadTestnet, publicClient } from "./live/chain";
 import { squadAbi } from "./live/abi";
 import { plan } from "./poke-plan";
+import { indexTx } from "./activity";
 
 /**
  * The one place the relayer's signing key lives. Swap for a policy-scoped Privy server wallet here
@@ -48,7 +49,9 @@ export async function poke(squad: Address): Promise<PokeResult> {
   const ok = await serialized(async () => {
     const wallet = createWalletClient({ account, chain: monadTestnet, transport: http(RPC) });
     const hash = await wallet.writeContract({ ...request, gas } as never);
-    return (await publicClient.waitForTransactionReceipt({ hash, timeout: 30_000 })).status === "success";
+    const ok = (await publicClient.waitForTransactionReceipt({ hash, timeout: 30_000 })).status === "success";
+    if (ok) await indexTx(hash).catch(() => {});
+    return ok;
   });
   if (!ok) throw new Error("transaction reverted");
   return what === "settle" ? "settled" : "finalized";

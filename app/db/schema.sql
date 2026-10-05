@@ -35,3 +35,16 @@ create table if not exists join_requests (
   created_at timestamptz not null default now(),
   primary key (squad, member)
 );
+create table if not exists activity (
+  tx text not null,
+  log_index int not null,
+  member text not null,
+  kind text not null check (kind in ('topup','deposit','contribution','payout','refund','covered','withdraw','sent','received')),
+  amount numeric not null,
+  squad text,
+  round int,
+  block bigint not null,
+  at timestamptz not null,
+  primary key (tx, log_index, member)
+);
+create index if not exists activity_member_at on activity (member, at desc);

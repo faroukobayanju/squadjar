@@ -53,6 +53,9 @@ export default function Profile() {
       <Link href="/intro?next=/profile" className="mt-8 inline-flex min-h-12 items-center text-sm font-semibold underline">
         How Squadjar works
       </Link>
+      <Link href="/history" className="flex min-h-12 items-center text-sm font-semibold underline">
+        Money history
+      </Link>
 
       <StopAutopayEverywhere />
 
