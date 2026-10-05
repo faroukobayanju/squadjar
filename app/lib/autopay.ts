@@ -4,6 +4,7 @@ import { sql } from "./db";
 import { monadTestnet, publicClient, TOKEN } from "./live/chain";
 import { squadAbi, tokenAbi } from "./live/abi";
 import { dueMembers } from "./autopay-plan";
+import { indexTx } from "./activity";
 
 // Squadjar is a signer on the member's account, limited by the auto-pay policy (only contribute(), value 0, chain 10143).
 // See docs/privy-notes.md, "Auto-pay setup".
@@ -52,6 +53,7 @@ async function payFor(squad: Address, member: Address, contribution: bigint): Pr
     });
   if (!hash) return "failed";
   const r = await publicClient.waitForTransactionReceipt({ hash: hash as Hex, timeout: 30_000 });
+  if (r.status === "success") await indexTx(hash as Hex).catch(() => {});
   return r.status === "success" ? "paid" : "failed";
 }
 

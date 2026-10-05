@@ -6,6 +6,7 @@ export const tokenAbi = [
   {type:"function",name:"allowance",inputs:[{name:"owner",type:"address"},{name:"spender",type:"address"}],outputs:[{name:"",type:"uint256"}],stateMutability:"view"},
   {type:"function",name:"balanceOf",inputs:[{name:"account",type:"address"}],outputs:[{name:"",type:"uint256"}],stateMutability:"view"},
   {type:"function",name:"FAUCET_MAX",inputs:[],outputs:[{name:"",type:"uint256"}],stateMutability:"view"},
+  {type:"event",name:"Transfer",anonymous:false,inputs:[{indexed:true,name:"from",type:"address"},{indexed:true,name:"to",type:"address"},{indexed:false,name:"value",type:"uint256"}]},
   {type:"error",name:"FaucetCapExceeded",inputs:[]},
   {type:"error",name:"ERC20InsufficientBalance",inputs:[{name:"sender",type:"address"},{name:"balance",type:"uint256"},{name:"needed",type:"uint256"}]},
   {type:"error",name:"ERC20InsufficientAllowance",inputs:[{name:"spender",type:"address"},{name:"allowance",type:"uint256"},{name:"needed",type:"uint256"}]},
@@ -45,6 +46,7 @@ export const factoryAbi = [
 
 export const squadAbi = [
   {type:"function",name:"getState",inputs:[],outputs:[{name:"v",type:"tuple",components:[{name:"state",type:"uint8"},{name:"contribution",type:"uint256"},{name:"maxMembers",type:"uint8"},{name:"roundLength",type:"uint32"},{name:"grace",type:"uint32"},{name:"depositDeadline",type:"uint64"},{name:"roundDeadline",type:"uint64"},{name:"currentRound",type:"uint8"},{name:"organizer",type:"address"},{name:"members",type:"address[]"},{name:"locked",type:"uint256[]"},{name:"required",type:"uint256[]"},{name:"paidThisRound",type:"bool[]"},{name:"stopped",type:"bool[]"},{name:"misses",type:"uint8[]"},{name:"refillBy",type:"uint8[]"},{name:"owed",type:"uint256[]"},{name:"countsForTrust",type:"bool"},{name:"activeCount",type:"uint8"},{name:"totalLocked",type:"uint256"},{name:"settleableAfter",type:"uint64"}]}],stateMutability:"view"},
+  {type:"function",name:"contribution",inputs:[],outputs:[{name:"",type:"uint256"}],stateMutability:"view"},
   {type:"function",name:"paid",inputs:[{name:"round",type:"uint256"},{name:"member",type:"address"}],outputs:[{name:"",type:"bool"}],stateMutability:"view"},
   {type:"function",name:"isMember",inputs:[{name:"",type:"address"}],outputs:[{name:"",type:"bool"}],stateMutability:"view"},
   {type:"function",name:"firstDeadline",inputs:[],outputs:[{name:"",type:"uint64"}],stateMutability:"view"},

@@ -21,6 +21,9 @@ export default function Home() {
         <Link href="/add-money" className="font-semibold text-palm underline decoration-2 underline-offset-4">
           Add money
         </Link>
+        <Link href="/history" className="font-semibold underline decoration-rule decoration-2 underline-offset-4">
+          History
+        </Link>
       </p>
       <Link
         href="/profile"
