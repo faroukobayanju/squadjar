@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/shell";
 import { StopAutopayEverywhere } from "@/components/autopay-toggle";
@@ -48,6 +49,10 @@ export default function Profile() {
           </li>
         ))}
       </ol>
+
+      <Link href="/intro?next=/profile" className="mt-8 inline-flex min-h-12 items-center text-sm font-semibold underline">
+        How Squadjar works
+      </Link>
 
       <StopAutopayEverywhere />
 

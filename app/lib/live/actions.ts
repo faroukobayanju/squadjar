@@ -8,14 +8,15 @@ import { factoryAbi, squadAbi, tokenAbi } from "./abi";
 import { FACTORY, TOKEN, fromUnits, publicClient, toUnits } from "./chain";
 import { useMyAccount } from "./account";
 import { useWrite } from "./tx";
-import { refreshAll, resolveSlug } from "./squads";
+import { refreshAll, resolveSlug, usePoll } from "./squads";
 import { DemoError } from "../store";
-import type { Actions, Payout, Period } from "../types";
+import type { Actions, JoinRequests, Payout, Period, PublicTerms, RequestStatus } from "../types";
 
 const PERIOD_INDEX: Record<Period, number> = { Demo: 0, Weekly: 1, Monthly: 2 };
 const PAYOUT_KEY = "squadjar-payout";
 const MAX = { amount: maxUint256 };
 const pendingKey = (address: string) => `squadjar-pending-${address.toLowerCase()}`;
+const publicFields = (pub?: PublicTerms) => (pub ? { visibility: "public", ...pub } : {});
 
 /** An error friendlyError() maps by contract error name, without a round trip. */
 const named = (errorName: string) => Object.assign(new Error(errorName), { errorName });
@@ -44,13 +45,20 @@ export function useLiveActions(): Actions {
       await refreshAll();
     };
 
+    const join = async (slug: string, code: string) => {
+      if (!/^0x[0-9a-fA-F]{64}$/.test(code)) throw named("BadInvite");
+      const { address } = await squadAt(slug);
+      await write({ address, abi: squadAbi, functionName: "join", args: [code as Hex] });
+      await refreshAll();
+    };
+
     return {
       addMoney: async (amount) => {
         await write({ address: TOKEN, abi: tokenAbi, functionName: "faucet", args: [toUnits(amount)] });
         await refreshAll();
       },
 
-      createSquad: async ({ name, contribution, size, period, due }) => {
+      createSquad: async ({ name, contribution, size, period, due, pub }) => {
         name = name.trim();
         if (!name) throw new DemoError("Give your squad a name.");
         const code = toHex(crypto.getRandomValues(new Uint8Array(32)));
@@ -68,12 +76,12 @@ export function useLiveActions(): Actions {
         // A failed approve is recovered by the approve-if-needed on lockDeposit / contribute / refill.
         await write({ address: TOKEN, abi: tokenAbi, functionName: "approve", args: [squad, maxUint256] }).catch(() => {});
         try {
-          localStorage.setItem(pendingKey(squad), JSON.stringify({ address: squad, name, code }));
+          localStorage.setItem(pendingKey(squad), JSON.stringify({ address: squad, name, code, pub }));
         } catch {
           // storage blocked: the invite code then only lives in memory
         }
         const register = async () => {
-          const r = await authed("/api/squads", { method: "POST", body: JSON.stringify({ address: squad, name, inviteCode: code }) });
+          const r = await authed("/api/squads", { method: "POST", body: JSON.stringify({ address: squad, name, inviteCode: code, ...publicFields(pub) }) });
           if (!r.ok) throw new Error(`register ${r.status}`);
           const { slug } = (await r.json()) as { slug: string };
           try {
@@ -87,10 +95,21 @@ export function useLiveActions(): Actions {
           .catch(() => squad.toLowerCase());
       },
 
-      join: async (slug, code) => {
-        if (!/^0x[0-9a-fA-F]{64}$/.test(code)) throw named("BadInvite");
-        const { address } = await squadAt(slug);
-        await write({ address, abi: squadAbi, functionName: "join", args: [code as Hex] });
+      join,
+      joinPublic: async (slug) => {
+        const r = await authed(`/api/squads/${encodeURIComponent(slug)}/requests`, { method: "POST" });
+        if (r.status === 409) {
+          await refreshAll(); // the squad is no longer Open: the page switches to its "already started" notice
+          throw new DemoError("This squad has already started.");
+        }
+        if (!r.ok) throw new Error(`request ${r.status}`);
+        const { status, code } = (await r.json()) as { status: RequestStatus; code?: string };
+        await (code ? join(slug, code) : refreshAll()); // the code comes back once accepted; join with it like an invite link
+        return status;
+      },
+      decideRequest: async (slug, member, decision) => {
+        const r = await authed(`/api/squads/${encodeURIComponent(slug)}/requests`, { method: "PATCH", body: JSON.stringify({ member, decision }) });
+        if (!r.ok) throw new Error(`decide ${r.status}`);
         await refreshAll();
       },
       leave: (slug) => onSquad(slug, "leave"),
@@ -174,13 +193,13 @@ export function useLiveInviteCode(slug: string, enabled: boolean): string | null
       const r = await fetch(`/api/squads/${encodeURIComponent(slug)}/invite`, { headers });
       if (r.ok) return set(((await r.json()) as { code: string }).code);
       // Registration failed at creation: use the local code now and retry the registration.
-      let pending: { address: string; name: string; code: string } | null = null;
+      let pending: { address: string; name: string; code: string; pub?: PublicTerms } | null = null;
       try {
         pending = JSON.parse(localStorage.getItem(pendingKey(slug)) ?? "null");
       } catch {}
       if (!pending) return set(null);
       set(pending.code);
-      const reg = await fetch("/api/squads", { method: "POST", headers, body: JSON.stringify({ address: pending.address, name: pending.name, inviteCode: pending.code }) });
+      const reg = await fetch("/api/squads", { method: "POST", headers, body: JSON.stringify({ address: pending.address, name: pending.name, inviteCode: pending.code, ...publicFields(pending.pub) }) });
       if (reg.ok) {
         try {
           localStorage.removeItem(pendingKey(slug));
@@ -192,4 +211,16 @@ export function useLiveInviteCode(slug: string, enabled: boolean): string | null
     };
   }, [slug, enabled, getAccessToken]);
   return got?.slug === slug ? got.code : undefined;
+}
+
+/** A public squad's join requests, polled: the organizer's pending list, or my own request's status. */
+export function useLiveJoinRequests(slug: string, enabled: boolean): JoinRequests | undefined {
+  const { getAccessToken } = usePrivy();
+  const { address: me } = useMyAccount();
+  return usePoll(enabled && me ? `requests:${me}:${slug}` : null, async () => {
+    const token = await getAccessToken();
+    const r = await fetch(`/api/squads/${encodeURIComponent(slug)}/requests`, { headers: { authorization: `Bearer ${token}` } });
+    if (!r.ok) throw new Error(`requests ${r.status}`);
+    return (await r.json()) as JoinRequests;
+  });
 }

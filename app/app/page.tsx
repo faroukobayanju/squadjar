@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { HowItWorks } from "@/components/how-it-works";
 import { StampCard } from "@/components/stamp-card";
 import { naira } from "@/lib/format";
 import { useSampleSquad } from "@/lib/data";
@@ -42,6 +43,11 @@ export default function Landing() {
             </figcaption>
           </figure>
         )}
+      </section>
+
+      <section className="border-t border-rule py-16">
+        <h2 className="mb-8 font-display text-[clamp(1.9rem,5vw,2.8rem)] leading-[1] font-extrabold tracking-[-0.03em] text-balance">How it works</h2>
+        <HowItWorks />
       </section>
 
       <section className="grid gap-10 border-t border-rule py-16 md:grid-cols-2">

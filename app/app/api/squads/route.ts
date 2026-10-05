@@ -20,6 +20,13 @@ export const POST = route(async (req: Request) => {
   if (typeof address !== "string" || !isAddress(address)) return bad("bad address");
   if (name.length < 1 || name.length > 40) return bad("name must be 1 to 40 characters");
   if (typeof inviteCode !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(inviteCode)) return bad("bad invite code");
+  // Public fields are optional: an older client (or the pending-registration retry) registers a private squad.
+  const visibility = body.visibility === "public" ? "public" : "private";
+  const description = typeof body.description === "string" && body.description.trim() ? body.description.trim() : null;
+  const minTier = body.minTier ?? 0;
+  const approval = body.approval === true;
+  if (description && description.length > 80) return bad("description must be 80 characters or fewer");
+  if (![0, 1, 2].includes(minTier)) return bad("bad minTier");
 
   const squad = address as Address;
   const [isSquad, organizer, inviteHash] = await Promise.all([
@@ -33,7 +40,9 @@ export const POST = route(async (req: Request) => {
   const addr = squad.toLowerCase();
   const existing = await sql`select slug from squads where address = ${addr}`;
   if (existing[0]) return Response.json({ slug: existing[0].slug });
-  const slug = await slugify(name, async (s) => (await sql`select 1 from squads where slug = ${s}`).length > 0);
-  await sql`insert into squads (address, slug, name, invite_code, organizer) values (${addr}, ${slug}, ${name}, ${inviteCode}, ${me.address})`;
+  // "public" is taken by /api/squads/public.
+  const slug = await slugify(name, async (s) => s === "public" || (await sql`select 1 from squads where slug = ${s}`).length > 0);
+  await sql`insert into squads (address, slug, name, invite_code, organizer, visibility, description, min_tier, approval)
+    values (${addr}, ${slug}, ${name}, ${inviteCode}, ${me.address}, ${visibility}, ${description}, ${minTier}, ${approval})`;
   return Response.json({ slug });
 });

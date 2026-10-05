@@ -4,11 +4,11 @@
 import { useMemo } from "react";
 import * as store from "./store";
 import { isLive } from "./live/chain";
-import { useLiveMe, useLiveSquad, useLiveSquads } from "./live/squads";
-import { useLiveActions, useLiveInviteCode, useLivePayout } from "./live/actions";
-import type { Actions, Squad, Tier } from "./types";
+import { useLiveMe, useLivePublicSquads, useLiveSquad, useLiveSquads } from "./live/squads";
+import { useLiveActions, useLiveInviteCode, useLiveJoinRequests, useLivePayout } from "./live/actions";
+import type { Actions, JoinRequests, PublicSquad, Squad, Tier } from "./types";
 
-export type { Member, Payout, Period, Squad, SquadState, Tier } from "./types";
+export type { JoinRequest, Member, Payout, Period, PublicSquad, PublicTerms, RequestStatus, Squad, SquadState, Tier } from "./types";
 export { isLive };
 export { ME, DemoError, collectorOf, payoutAmount, myTurn, squadBySlug } from "./store";
 
@@ -37,6 +37,9 @@ const useDemoPayout = () => store.useStore((s) => s.lastPayout);
 export const useLastPayout = isLive ? useLivePayout : useDemoPayout;
 /** Members' invite code (live only; the demo has no joining). */
 export const useInviteCode: (slug: string, enabled: boolean) => string | null | undefined = isLive ? useLiveInviteCode : () => undefined;
+/** Public squads and join requests are live only; demo screens hide them. */
+export const usePublicSquads: () => PublicSquad[] | null | undefined = isLive ? useLivePublicSquads : () => undefined;
+export const useJoinRequests: (slug: string, enabled: boolean) => JoinRequests | undefined = isLive ? useLiveJoinRequests : () => undefined;
 export const clearJustStamped = store.clearJustStamped;
 export const resetDemo = store.resetDemo;
 
@@ -49,6 +52,8 @@ const demoActions: Actions = {
   createSquad: async (input) => store.createSquad(input),
   pay: async (slug) => (await pause(650), store.payRound(slug)),
   join: notInDemo,
+  joinPublic: notInDemo,
+  decideRequest: notInDemo,
   leave: notInDemo,
   start: notInDemo,
   lockDeposit: notInDemo,

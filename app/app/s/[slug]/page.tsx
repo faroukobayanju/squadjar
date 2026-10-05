@@ -10,7 +10,7 @@ import { EmptyBox, Stamp } from "@/components/stamp";
 import { StampCard } from "@/components/stamp-card";
 import { Bar } from "@/components/skeleton";
 import { DepositingView } from "@/components/squad/depositing";
-import { JoinView, OpenView } from "@/components/squad/open";
+import { JoinView, OpenView, PublicJoinView } from "@/components/squad/open";
 import { AddMoneyNote, ErrorNote, Notice, PAID_LABEL, PALM_BTN, useRun } from "@/components/squad/ui";
 import { KNOWN } from "@/lib/errors";
 import { dueLabel, naira } from "@/lib/format";
@@ -61,7 +61,11 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
   if (squad.state === "Cancelled") return <Notice title="This squad was cancelled." body="Deposits were returned." />;
   if (!squad.amMember) {
     return squad.state === "Open" ? (
-      <JoinView squad={squad} code={code} />
+      squad.pub && !code ? (
+        <PublicJoinView squad={squad} pub={squad.pub} />
+      ) : (
+        <JoinView squad={squad} code={code} />
+      )
     ) : (
       <Notice title="This squad has already started." body="Ask the organizer about the next one, or start your own." />
     );
