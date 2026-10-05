@@ -337,6 +337,8 @@ contract Squad {
         // Keep the chosen weekday/time: if activation ran past the anchor, roll forward whole rounds.
         if (d == 0) d = uint64(block.timestamp + roundLength);
         else if (d <= block.timestamp) d += uint64(((block.timestamp - d) / roundLength + 1) * roundLength);
+        // Round 1 gets at least half a round, so the last member to lock can't make it seconds long.
+        if (d < block.timestamp + roundLength / 2) d += roundLength;
         roundDeadline = d;
         emit Activated(roundDeadline);
     }

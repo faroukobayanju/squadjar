@@ -224,6 +224,14 @@ contract SquadSetupTest is Base {
         Squad s = _anchored(anchor);
         vm.warp(anchor + 250); // activation lands after the anchor
         _lockAll(s);
-        assertEq(s.roundDeadline(), anchor + 300); // same phase, next whole round
+        // Next phase point is anchor + 300, but that is only 50s away (< half a round), so round 1 skips to anchor + 600.
+        assertEq(s.roundDeadline(), anchor + 600);
+    }
+
+    function test_firstRoundAtLeastHalfARound() public {
+        uint64 anchor = uint64(block.timestamp + 10);
+        Squad s = _anchored(anchor);
+        _lockAll(s);
+        assertEq(s.roundDeadline(), anchor + 300); // 10s away is under half a round, so one whole round later
     }
 }
