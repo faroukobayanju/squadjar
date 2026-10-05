@@ -25,7 +25,7 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
   const me = useMe();
   const fresh = useJustStamped(slug);
   const now = useNow();
-  const { refill } = useActions();
+  const { refill, settle } = useActions();
   const topUp = useRun("payment");
 
   useEffect(() => {
@@ -50,9 +50,11 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
     if (!overdue || !addr || poked.current === `${addr}${overdue}`) return;
     poked.current = `${addr}${overdue}`;
     fetch("/api/settle", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ squad: addr }) })
-      .then(() => refreshAll())
-      .catch(() => {});
-  }, [overdue, addr]);
+      // No relayer (503) or it failed: settle from this member's account instead. 429 = someone just asked.
+      .then((r) => (r.ok || r.status === 429 ? refreshAll() : settle(slug)))
+      .catch(() => settle(slug))
+      .catch((e) => console.error("[settle]", e));
+  }, [overdue, addr, slug, settle]);
 
   if (squad === undefined) return <SquadSkeleton />;
   if (!squad) return <Notice title="We can't find that squad." body="The link may be old. Ask whoever invited you for a fresh one." />;

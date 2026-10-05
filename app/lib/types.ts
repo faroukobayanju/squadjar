@@ -42,4 +42,6 @@ export type Actions = {
   pay(slug: string): Promise<{ settled: boolean; payout?: Payout }>;
   refill(slug: string): Promise<void>;
   cancel(slug: string): Promise<void>;
+  /** Settle an overdue round (or finalize overdue deposits) from this member's own account. */
+  settle(slug: string): Promise<void>;
 };

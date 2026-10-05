@@ -1,6 +1,6 @@
 export const KNOWN: Record<string, string> = {
   AlreadyPaid: "You've already paid this round.",
-  PastGrace: "This round has closed. The jar covered it from your deposit.",
+  PastGrace: "This round has closed. Your deposit covers it when the round settles.",
   RoundNotOpen: "This round isn't open yet.",
   DeadlineTooFar: "Pick a first due day within the next 60 days.",
   BadInvite: "This invite link doesn't work. Ask for a fresh one.",

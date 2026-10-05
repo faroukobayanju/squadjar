@@ -52,6 +52,7 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
   const collector = collectorOf(squad);
   const paidCount = (squad.paid[r] ?? []).length;
   const notOpenYet = now !== null && now < squad.roundOpensAt;
+  const closed = now !== null && now > squad.settleableAfter; // past grace: paying reverts; the deposit covers it at settle
 
   async function pay() {
     setBusy(true);
@@ -106,6 +107,10 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
         <ErrorNote error={error} />
         {alreadyPaid ? (
           <p className="text-center font-semibold text-muted">You&apos;ve paid round {r}.</p>
+        ) : closed ? (
+          <p className="text-center text-sm text-muted">
+            Round {r} has closed. Your deposit covers this payment when the round settles, usually within a minute. Top up your deposit to stay in good standing.
+          </p>
         ) : notOpenYet ? (
           <p className={PAID_LABEL}>
             <span>

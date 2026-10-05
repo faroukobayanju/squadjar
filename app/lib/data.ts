@@ -54,6 +54,7 @@ const demoActions: Actions = {
   lockDeposit: notInDemo,
   refill: notInDemo,
   cancel: notInDemo,
+  settle: async () => {},
 };
 
 export const useActions: () => Actions = isLive ? useLiveActions : () => demoActions;
