@@ -43,11 +43,13 @@ function FindSquad({ mine }: { mine?: Squad[] }) {
                   <span className="shrink-0 font-money text-lg font-bold tnum">{naira(p.contribution)}</span>
                 </div>
                 {p.description && <p className="mt-1 text-sm text-muted">{p.description}</p>}
-                <p className="mt-2 flex justify-between gap-3 font-mono text-xs">
+                <p className="mt-2 flex items-center justify-between gap-3 font-mono text-xs">
                   <span className="text-muted">
                     {p.period} · {p.maxMembers - p.members} of {p.maxMembers} seats left
                   </span>
-                  <span className="shrink-0 font-medium text-ink">{MIN_TIER_LABEL[p.minTier]}</span>
+                  <span className="inline-flex h-7 shrink-0 items-center rounded-full border-[1.5px] border-rule px-2.5 font-mono text-xs text-muted">
+                    {MIN_TIER_LABEL[p.minTier]}
+                  </span>
                 </p>
               </Link>
             </li>

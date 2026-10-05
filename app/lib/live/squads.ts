@@ -140,7 +140,11 @@ export async function resolveSlug(slug: string): Promise<Hit | null> {
     const r = await fetch(`/api/squads/${encodeURIComponent(slug)}`);
     if (r.status === 404) hit = null;
     else if (!r.ok) throw new Error("squad lookup unavailable"); // retried on the next poll
-    else hit = (await r.json()) as Hit;
+    else {
+      // "public" is /api/squads/public (a list), never a squad.
+      const body = slug === "public" ? null : ((await r.json()) as Hit);
+      hit = body?.address ? body : null;
+    }
   }
   if (hit) slugCache.set(slug, hit);
   return hit;

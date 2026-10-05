@@ -24,12 +24,15 @@ export const POST = route(async (req: Request, ctx: Ctx) => {
   if (row.visibility !== "public") return bad("forbidden", 403);
   const [tier] = await readTiers([me.address]);
   if (!canRequest({ tier, minTier: row.min_tier })) return bad("tier", 403);
-  // With approval, a repeat request keeps whatever is there (never downgrades accepted, never revives declined).
+  const view = await publicClient.readContract({ address: row.address as Address, abi: squadAbi, functionName: "getState" });
+  if (view.state !== 0) return bad("started", 409); // 0 = Open; joining a started squad would fail anyway
+
+  // A repeat request never downgrades accepted and never revives declined (with or without approval).
   const [{ status }] = row.approval
     ? await sql`insert into join_requests (squad, member, status) values (${row.address}, ${me.address}, 'pending')
         on conflict (squad, member) do update set status = join_requests.status returning status`
     : await sql`insert into join_requests (squad, member, status) values (${row.address}, ${me.address}, 'accepted')
-        on conflict (squad, member) do update set status = 'accepted' returning status`;
+        on conflict (squad, member) do update set status = case when join_requests.status = 'declined' then 'declined' else 'accepted' end returning status`;
   const code = codeReleasable({ isMember: false, isPublic: true, tier, minTier: row.min_tier, requestStatus: status }) ? row.invite_code : undefined;
   return Response.json({ status, code });
 });

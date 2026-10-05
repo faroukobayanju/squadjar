@@ -15,7 +15,7 @@ export const GET = route(async () => {
   return Response.json(
     rows.flatMap((r, i) => {
       const v = views[i];
-      if (!v || v.state !== 0) return []; // 0 = Open
+      if (!v || v.state !== 0 || v.members.length >= v.maxMembers) return []; // 0 = Open; full squads can't be joined
       return [
         {
           slug: r.slug,

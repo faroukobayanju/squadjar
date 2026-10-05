@@ -98,6 +98,10 @@ export function useLiveActions(): Actions {
       join,
       joinPublic: async (slug) => {
         const r = await authed(`/api/squads/${encodeURIComponent(slug)}/requests`, { method: "POST" });
+        if (r.status === 409) {
+          await refreshAll(); // the squad is no longer Open: the page switches to its "already started" notice
+          throw new DemoError("This squad has already started.");
+        }
         if (!r.ok) throw new Error(`request ${r.status}`);
         const { status, code } = (await r.json()) as { status: RequestStatus; code?: string };
         await (code ? join(slug, code) : refreshAll()); // the code comes back once accepted; join with it like an invite link
