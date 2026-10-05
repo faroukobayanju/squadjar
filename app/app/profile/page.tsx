@@ -16,7 +16,7 @@ const TIERS: { tier: Tier; points: string; means: string }[] = [
 export default function Profile() {
   const me = useMe();
   const router = useRouter();
-  const { logout } = useMyAccount();
+  const { logout, email } = useMyAccount();
   return (
     <AppShell>
       {me ? (
@@ -51,11 +51,16 @@ export default function Profile() {
 
       <StopAutopayEverywhere />
 
+      {isLive && email && (
+        <p className="mt-10 text-sm text-muted">
+          Signed in as <span className="font-semibold text-ink">{email}</span>. Each email is a separate account with its own balance.
+        </p>
+      )}
       {isLive && (
         <button
           type="button"
           onClick={() => logout().then(() => router.replace("/login"))}
-          className="mt-10 min-h-12 text-sm font-semibold text-muted underline"
+          className={`${email ? "mt-2" : "mt-10"} min-h-12 text-sm font-semibold text-muted underline`}
         >
           Log out
         </button>
@@ -67,7 +72,7 @@ export default function Profile() {
           onClick={() => {
             if (confirm("Reset the demo squads and balance?")) resetDemo();
           }}
-          className="mt-10 min-h-12 text-sm font-semibold text-muted underline"
+          className={`${email ? "mt-2" : "mt-10"} min-h-12 text-sm font-semibold text-muted underline`}
         >
           Reset demo data
         </button>
