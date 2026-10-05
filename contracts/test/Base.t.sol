@@ -68,6 +68,20 @@ abstract contract Base is Test {
         return s.memberAt(t - 1);
     }
 
+    function _payAllExcept(Squad s, address skip) internal {
+        uint256 opensAt = uint256(s.roundDeadline()) - s.roundLength();
+        if (block.timestamp < opensAt) vm.warp(opensAt); // rounds open on schedule
+        uint8 r = s.currentRound();
+        uint256 n = s.memberCount();
+        for (uint256 i; i < n; i++) {
+            address m = s.memberAt(i);
+            if (m == skip || s.stoppedPaying(m) || s.paid(r, m)) continue;
+            if (s.currentRound() != r || s.state() != Squad.State.Active) return; // auto-settled
+            vm.prank(m);
+            s.contribute();
+        }
+    }
+
     function _warpPastGrace(Squad s) internal {
         vm.warp(uint256(s.roundDeadline()) + s.grace() + 1);
     }

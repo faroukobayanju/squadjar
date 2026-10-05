@@ -72,6 +72,42 @@ contract Squad {
     error NothingOwed();
     error DepositWindowOpen();
 
+    struct SquadView {
+        State state;
+        uint256 contribution;
+        uint8 maxMembers;
+        uint32 roundLength;
+        uint32 grace;
+        uint64 depositDeadline;
+        uint64 roundDeadline;
+        uint8 currentRound;
+        address organizer;
+        address[] members;
+        uint256[] locked;
+        uint256[] required;
+        bool[] paidThisRound;
+        bool[] stopped;
+        uint8[] misses;
+        uint8[] refillBy;
+        uint256[] owed;
+        bool countsForTrust;
+        uint8 activeCount;
+        uint256 totalLocked;
+        uint64 settleableAfter;
+    }
+
+    event Contributed(address indexed member, uint8 round, bool late);
+    event RoundSettled(uint8 round, address indexed collector, uint256 amount, address[] missed);
+    event StoppedPaying(address indexed member);
+    event Completed();
+
+    error AlreadyPaid();
+    error PastGrace();
+    error MemberStoppedPaying();
+    error TooEarly(uint64 settleableAfter);
+    error RoundNotOpen(uint64 opensAt);
+    error AlreadySettled();
+
     modifier inState(State s) {
         if (state != s) revert WrongState(state);
         _;
@@ -309,5 +345,220 @@ contract Squad {
         token.safeTransferFrom(m, address(this), amt);
         locked[m] += amt;
         totalLocked += amt;
+    }
+
+    function contribute() external inState(State.Active) onlyMember {
+        if (stoppedPaying[msg.sender]) revert MemberStoppedPaying();
+        uint8 r = currentRound;
+        if (paid[r][msg.sender]) revert AlreadyPaid();
+        if (block.timestamp > settleableAfter()) revert PastGrace();
+        // A round opens on schedule even when the previous one auto-settled early:
+        // no paying ahead, so trust can't be farmed by racing through rounds in one block.
+        if (block.timestamp < roundDeadline - roundLength) revert RoundNotOpen(roundDeadline - roundLength);
+        token.safeTransferFrom(msg.sender, address(this), contribution);
+        paid[r][msg.sender] = true;
+        paidCount++;
+        roundContributions += contribution;
+        bool late = block.timestamp > roundDeadline;
+        if (countsForTrust) trust.recordContribution(msg.sender, late);
+        emit Contributed(msg.sender, r, late);
+        if (paidCount == activeCount) _settle();
+    }
+
+    function refillDeposit() external inState(State.Active) onlyMember {
+        if (stoppedPaying[msg.sender]) revert MemberStoppedPaying();
+        if (locked[msg.sender] >= required[msg.sender]) revert NothingOwed();
+        uint256 amt = required[msg.sender] - locked[msg.sender];
+        _pullDeposit(msg.sender, amt);
+        refillBy[msg.sender] = 0;
+        emit DepositLocked(msg.sender, amt);
+    }
+
+    /// Timestamp after which settleRound works even if not everyone has paid.
+    function settleableAfter() public view returns (uint64) {
+        return roundDeadline + grace;
+    }
+
+    /// Anyone may call. `round` makes repeated cron calls safe.
+    function settleRound(uint8 round) external {
+        if (state == State.Completed || (state == State.Active && round < currentRound)) revert AlreadySettled();
+        if (state != State.Active) revert WrongState(state);
+        if (round > currentRound) revert TooEarly(settleableAfter());
+        if (paidCount < activeCount && block.timestamp <= settleableAfter()) revert TooEarly(settleableAfter());
+        _settle();
+    }
+
+    function _settle() internal {
+        uint8 r = currentRound;
+        uint256 n = members.length;
+        uint256 c = contribution;
+        uint256 payout = roundContributions;
+        address[] memory missed = new address[](n);
+        uint256 mc;
+
+        for (uint256 i; i < n; i++) {
+            address m = members[i];
+            if (paid[r][m]) continue;
+            // Stopped paying = still owes a refill from an earlier miss AND missed again.
+            if (!stoppedPaying[m] && refillBy[m] != 0 && refillBy[m] <= r && locked[m] < required[m]) {
+                _stop(m, r, n);
+            }
+            missed[mc++] = m;
+            if (!stoppedPaying[m]) {
+                if (countsForTrust) trust.recordMiss(m);
+                missCount[m]++;
+                refillBy[m] = r + 1;
+                payout += _cover(m, c, turnOf[m] >= r);
+            } else if (turnOf[m] >= r) {
+                payout += _cover(m, c, true);
+            } else {
+                uint256 cap = r == n ? c : (coverPerRound[m] < c ? coverPerRound[m] : c);
+                payout += _cover(m, cap, false);
+            }
+        }
+
+        address collector = members[r - 1];
+        uint256 gross = payout;
+        uint256 repay = owed[collector] < gross ? owed[collector] : gross;
+        if (repay > 0) {
+            owed[collector] -= repay;
+            frontedTotal -= repay;
+            gross -= repay;
+        }
+        if (stoppedPaying[collector]) {
+            uint256 w = c * (n - r);
+            if (w > gross) w = gross;
+            locked[collector] += w;
+            totalLocked += w;
+            gross -= w;
+            coverPerRound[collector] = c;
+        }
+
+        roundContributions = 0;
+        paidCount = 0;
+        if (gross > 0) token.safeTransfer(collector, gross);
+
+        address[] memory missedList = new address[](mc);
+        for (uint256 i; i < mc; i++) missedList[i] = missed[i];
+        emit RoundSettled(r, collector, gross, missedList);
+
+        if (r == n) {
+            _finish();
+        } else {
+            currentRound = r + 1;
+            uint64 next = roundDeadline + roundLength;
+            if (next <= block.timestamp) next += uint64(((block.timestamp - next) / roundLength + 1) * roundLength);
+            roundDeadline = next;
+        }
+    }
+
+    /// Free jar money that is not already fronted out. Covers and fronts both spend it,
+    /// so a settle can never promise more than the jar actually holds.
+    function _headroom() internal view returns (uint256) {
+        return totalLocked > frontedTotal ? totalLocked - frontedTotal : 0;
+    }
+
+    /// Takes up to `amount` from m's deposit; optionally fronts the rest from jar liquidity.
+    function _cover(address m, uint256 amount, bool canFront) internal returns (uint256 added) {
+        uint256 cov = locked[m] < amount ? locked[m] : amount;
+        uint256 h = _headroom();
+        if (cov > h) cov = h;
+        locked[m] -= cov;
+        totalLocked -= cov;
+        added = cov;
+        if (canFront && cov < amount) {
+            h = _headroom();
+            uint256 f = amount - cov < h ? amount - cov : h;
+            frontedTotal += f;
+            owed[m] += f;
+            added += f;
+        }
+    }
+
+    function _stop(address m, uint8 r, uint256 n) internal {
+        if (countsForTrust) trust.recordMiss(m); // the stopping round is a miss too
+        stoppedPaying[m] = true;
+        activeCount--;
+        if (turnOf[m] < r) coverPerRound[m] = locked[m] / (n - r + 1);
+        emit StoppedPaying(m);
+    }
+
+    /// Ends the squad. Pays only from what the jar actually holds, so it can never revert:
+    /// if unrepaid fronting left the jar short, refunds are scaled down pro rata.
+    function _finish() internal {
+        uint256 n = members.length;
+        uint256 sumKept; // deposits owed back to members still paying
+        uint256 honest;
+        address lastPayer;
+        for (uint256 i; i < n; i++) {
+            address m = members[i];
+            if (stoppedPaying[m]) {
+                totalLocked -= locked[m]; // forfeited; stays in the jar for the honest pool
+                locked[m] = 0;
+            } else {
+                sumKept += locked[m];
+                lastPayer = m;
+                if (missCount[m] == 0) honest++;
+            }
+        }
+        state = State.Completed;
+        frontedTotal = 0;
+
+        uint256 avail = token.balanceOf(address(this));
+        uint256 pool = avail > sumKept ? avail - sumKept : 0; // forfeits net of unrepaid fronting
+        uint256 share = honest > 0 ? pool / honest : 0;
+
+        for (uint256 i; i < n; i++) {
+            address m = members[i];
+            if (stoppedPaying[m]) continue;
+            uint256 amt = locked[m];
+            locked[m] = 0;
+            totalLocked -= amt;
+            if (avail < sumKept) amt = (amt * avail) / sumKept;
+            if (missCount[m] == 0) {
+                amt += share;
+                if (countsForTrust) trust.recordCompleted(m);
+            }
+            if (amt > 0) token.safeTransfer(m, amt);
+        }
+        uint256 dust = token.balanceOf(address(this));
+        if (dust > 0) token.safeTransfer(lastPayer != address(0) ? lastPayer : members[n - 1], dust);
+        emit Completed();
+    }
+
+    function getState() external view returns (SquadView memory v) {
+        uint256 n = members.length;
+        v.state = state;
+        v.contribution = contribution;
+        v.maxMembers = maxMembers;
+        v.roundLength = roundLength;
+        v.grace = grace;
+        v.depositDeadline = depositDeadline;
+        v.roundDeadline = roundDeadline;
+        v.currentRound = currentRound;
+        v.organizer = organizer;
+        v.members = new address[](n);
+        v.locked = new uint256[](n);
+        v.required = new uint256[](n);
+        v.paidThisRound = new bool[](n);
+        v.stopped = new bool[](n);
+        v.misses = new uint8[](n);
+        v.refillBy = new uint8[](n);
+        v.owed = new uint256[](n);
+        v.countsForTrust = countsForTrust;
+        v.activeCount = activeCount;
+        v.totalLocked = totalLocked;
+        v.settleableAfter = settleableAfter();
+        for (uint256 i; i < n; i++) {
+            address m = members[i];
+            v.members[i] = m;
+            v.locked[i] = locked[m];
+            v.required[i] = required[m];
+            v.paidThisRound[i] = paid[currentRound][m];
+            v.stopped[i] = stoppedPaying[m];
+            v.misses[i] = missCount[m];
+            v.refillBy[i] = refillBy[m];
+            v.owed[i] = owed[m];
+        }
     }
 }
