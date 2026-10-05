@@ -39,6 +39,7 @@ export const factoryAbi = [
   {type:"error",name:"SizeOutOfRange",inputs:[{name:"min",type:"uint8"},{name:"max",type:"uint8"}]},
   {type:"error",name:"EmptyInvite",inputs:[]},
   {type:"error",name:"DeadlineInPast",inputs:[]},
+  {type:"error",name:"DeadlineTooFar",inputs:[]},
   {type:"error",name:"NotSquad",inputs:[]},
 ] as const;
 
@@ -46,6 +47,7 @@ export const squadAbi = [
   {type:"function",name:"getState",inputs:[],outputs:[{name:"v",type:"tuple",components:[{name:"state",type:"uint8"},{name:"contribution",type:"uint256"},{name:"maxMembers",type:"uint8"},{name:"roundLength",type:"uint32"},{name:"grace",type:"uint32"},{name:"depositDeadline",type:"uint64"},{name:"roundDeadline",type:"uint64"},{name:"currentRound",type:"uint8"},{name:"organizer",type:"address"},{name:"members",type:"address[]"},{name:"locked",type:"uint256[]"},{name:"required",type:"uint256[]"},{name:"paidThisRound",type:"bool[]"},{name:"stopped",type:"bool[]"},{name:"misses",type:"uint8[]"},{name:"refillBy",type:"uint8[]"},{name:"owed",type:"uint256[]"},{name:"countsForTrust",type:"bool"},{name:"activeCount",type:"uint8"},{name:"totalLocked",type:"uint256"},{name:"settleableAfter",type:"uint64"}]}],stateMutability:"view"},
   {type:"function",name:"paid",inputs:[{name:"round",type:"uint256"},{name:"member",type:"address"}],outputs:[{name:"",type:"bool"}],stateMutability:"view"},
   {type:"function",name:"isMember",inputs:[{name:"",type:"address"}],outputs:[{name:"",type:"bool"}],stateMutability:"view"},
+  {type:"function",name:"firstDeadline",inputs:[],outputs:[{name:"",type:"uint64"}],stateMutability:"view"},
   {type:"function",name:"memberCount",inputs:[],outputs:[{name:"",type:"uint256"}],stateMutability:"view"},
   {type:"function",name:"memberAt",inputs:[{name:"i",type:"uint256"}],outputs:[{name:"",type:"address"}],stateMutability:"view"},
   {type:"function",name:"inviteHash",inputs:[],outputs:[{name:"",type:"bytes32"}],stateMutability:"view"},

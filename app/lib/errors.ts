@@ -2,6 +2,7 @@ export const KNOWN: Record<string, string> = {
   AlreadyPaid: "You've already paid this round.",
   PastGrace: "This round has closed. The jar covered it from your deposit.",
   RoundNotOpen: "This round isn't open yet.",
+  DeadlineTooFar: "Pick a first due day within the next 60 days.",
   BadInvite: "This invite link doesn't work. Ask for a fresh one.",
   Full: "This squad is full.",
   AlreadyMember: "You're already in this squad.",
