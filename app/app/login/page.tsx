@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useLoginWithEmail, useLoginWithOAuth } from "@privy-io/react-auth";
+import { useLoginWithEmail, useLoginWithOAuth, usePrivy, useWallets } from "@privy-io/react-auth";
 import { GoogleLogo } from "@phosphor-icons/react";
 import { BackLink } from "@/components/shell";
 import { useMyAccount } from "@/lib/live/account";
@@ -22,8 +22,15 @@ export default function Login({ searchParams }: { searchParams: Promise<{ next?:
 function PrivyLogin({ next }: { next: string }) {
   const router = useRouter();
   const { ready, authenticated, address } = useMyAccount();
-  const { sendCode, loginWithCode } = useLoginWithEmail();
-  const { initOAuth } = useLoginWithOAuth();
+  const dbgUser = usePrivy().user; // ponytail: debug, remove after first live run
+  const dbgWallets = useWallets();
+  // ponytail: debug log kept in sessionStorage so it survives the Google redirect; remove after the first live run
+  const onError = (e: unknown) => {
+    console.error("[login event]", e);
+    try { sessionStorage.setItem("sqj-login-debug", `${new Date().toISOString()} ${String(e)} ${JSON.stringify(e)}`); } catch {}
+  };
+  const { sendCode, loginWithCode } = useLoginWithEmail({ onError });
+  const { initOAuth, state: oauthState } = useLoginWithOAuth({ onError });
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(false);
@@ -31,13 +38,14 @@ function PrivyLogin({ next }: { next: string }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.info("[login state]", JSON.stringify({ ready, authenticated, address, oauth: oauthState.status, linked: dbgUser?.linkedAccounts.map((a) => a.type + (("walletClientType" in a) ? ":" + a.walletClientType : "") + (("chainType" in a) ? ":" + a.chainType : "")), wallets: dbgWallets.wallets.length, walletsReady: dbgWallets.ready })); // ponytail: debug, remove after first live run
     if (!ready || !authenticated || !address) return;
     // New users pick a display name first. A 503 (no database) or any failure skips it.
     fetch(`/api/names?a=${address.toLowerCase()}`)
       .then((r) => (r.ok ? r.json() : { [address.toLowerCase()]: true }))
       .catch(() => ({ [address.toLowerCase()]: true }))
       .then((names) => router.replace(names[address.toLowerCase()] ? next : `/welcome?next=${encodeURIComponent(next)}`));
-  }, [ready, authenticated, address, next, router]);
+  }, [ready, authenticated, address, next, router, oauthState.status]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -51,7 +59,8 @@ function PrivyLogin({ next }: { next: string }) {
         await sendCode({ email });
         setSent(true);
       }
-    } catch {
+    } catch (err) {
+      console.error("[login]", err);
       setError(sent ? BAD_CODE : "We couldn't send a code. Check your email and try again.");
     }
     setBusy(false);
@@ -88,7 +97,7 @@ function PrivyLogin({ next }: { next: string }) {
       error={error}
       busy={busy}
       onSubmit={submit}
-      onGoogle={() => initOAuth({ provider: "google" }).catch(() => setError("Google sign-in didn't work. Try again."))}
+      onGoogle={() => initOAuth({ provider: "google" }).catch((err) => (console.error("[login google]", err), setError("Google sign-in didn't work. Try again.")))}
     />
   );
 }
