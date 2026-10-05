@@ -3,7 +3,7 @@
 import { usePrivy } from "@privy-io/react-auth";
 import { AppShell, BackLink } from "@/components/shell";
 import { Bar } from "@/components/skeleton";
-import { naira } from "@/lib/format";
+import { dayLabel, naira, timeLabel } from "@/lib/format";
 import { isLive } from "@/lib/data";
 import { useMyAccount } from "@/lib/live/account";
 import { usePoll } from "@/lib/live/squads";
@@ -50,18 +50,11 @@ function label({ kind, round, squadName }: Item) {
   }
 }
 
-function dayLabel(d: Date) {
-  const days = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 86_400_000);
-  if (days === 0) return "Today";
-  if (days === 1) return "Yesterday";
-  return d.toLocaleDateString("en-NG", { weekday: "short", day: "numeric", month: "short" });
-}
-
 export default function History() {
   const items = useHistory();
   const days: { day: string; items: Item[] }[] = [];
   for (const it of items ?? []) {
-    const day = dayLabel(new Date(it.at));
+    const day = dayLabel(Date.parse(it.at));
     if (days.at(-1)?.day !== day) days.push({ day, items: [] });
     days.at(-1)!.items.push(it);
   }
@@ -90,7 +83,7 @@ export default function History() {
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-semibold">{label(it)}</span>
                       <span className="block font-mono text-xs text-muted tnum">
-                        {new Date(it.at).toLocaleTimeString("en-NG", { hour: "numeric", minute: "2-digit" })}
+                        {timeLabel(Date.parse(it.at))}
                       </span>
                     </span>
                     <span className={`shrink-0 font-money text-lg font-bold tnum ${plus ? "text-stamp" : fromDeposit ? "text-muted" : "text-ink"}`}>

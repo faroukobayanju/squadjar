@@ -4,7 +4,7 @@ import { use } from "react";
 import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import { WhatsappLogo } from "@phosphor-icons/react";
-import { naira } from "@/lib/format";
+import { dueLabel, naira } from "@/lib/format";
 import { useLastPayout } from "@/lib/data";
 
 export default function PayoutPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -50,7 +50,7 @@ export default function PayoutPage({ params }: { params: Promise<{ slug: string 
           <Row k="From the squad" v={naira(payout.amount - payout.covered)} />
           <Row k="Covered by deposits" v={naira(payout.covered)} />
           <Row k="Sent to" v="Your balance" />
-          <Row k="Time" v={new Date(payout.at).toLocaleString("en-NG", { weekday: "short", hour: "numeric", minute: "2-digit" })} />
+          <Row k="Time" v={dueLabel(payout.at)} />
         </dl>
       </div>
 

@@ -1,14 +1,18 @@
 import { nextDue } from "./due.ts";
 import assert from "node:assert";
 
-// Local-time constructors keep this deterministic in any timezone.
-const s = (y: number, m: number, d: number, h: number) => new Date(y, m - 1, d, h).getTime() / 1000;
+// Inputs are WAT wall-clock times written as UTC+1 instants; expected values are literal epoch seconds.
+const at = (iso: string) => new Date(iso + "+01:00");
 const FRI = 5;
 
-assert.equal(nextDue("Weekly", { weekday: FRI, hour: 18 }, new Date(2026, 9, 7, 10)), s(2026, 10, 9, 18));
-assert.equal(nextDue("Weekly", { weekday: FRI, hour: 18 }, new Date(2026, 9, 8, 20)), s(2026, 10, 16, 18)); // under 24h away rolls a week
-assert.equal(nextDue("Monthly", { monthDay: 25, hour: 9 }, new Date(2026, 9, 3, 12)), s(2026, 10, 25, 9));
-assert.equal(nextDue("Monthly", { monthDay: 25, hour: 9 }, new Date(2026, 9, 25, 8)), s(2026, 11, 25, 9)); // same day, too soon
-assert.equal(nextDue("Monthly", { monthDay: 2, hour: 9 }, new Date(2026, 11, 20, 9)), s(2027, 1, 2, 9)); // rolls the year
-assert.equal(nextDue("Demo", { hour: 18 }, new Date(2026, 9, 3)), 0);
-console.log("due ok");
+// Fri 2026-10-09 18:00 WAT = 17:00 UTC
+assert.equal(nextDue("Weekly", { weekday: FRI, hour: 18 }, at("2026-10-07T10:00:00")), 1791565200);
+assert.equal(nextDue("Weekly", { weekday: FRI, hour: 18 }, at("2026-10-08T20:00:00")), 1792170000); // under 24h away rolls a week
+// Sun 2026-10-25 09:00 WAT = 08:00 UTC
+assert.equal(nextDue("Monthly", { monthDay: 25, hour: 9 }, at("2026-10-03T12:00:00")), 1792915200);
+assert.equal(nextDue("Monthly", { monthDay: 25, hour: 9 }, at("2026-10-25T08:00:00")), 1795593600); // same day, too soon
+assert.equal(nextDue("Monthly", { monthDay: 2, hour: 9 }, at("2026-12-20T09:00:00")), 1798876800); // rolls the year
+// Late evening in New York/Tokyo is a different calendar day there; WAT decides.
+assert.equal(nextDue("Weekly", { weekday: FRI, hour: 0 }, at("2026-10-02T23:30:00")), 1791500400);
+assert.equal(nextDue("Demo", { hour: 18 }, new Date(0)), 0);
+console.log("due ok", process.env.TZ ?? "");

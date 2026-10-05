@@ -22,8 +22,21 @@ export function countdown(ms: number) {
   return `${s}s`;
 }
 
-export function dueLabel(at: number) {
-  return new Date(at).toLocaleString("en-NG", { weekday: "short", hour: "numeric", minute: "2-digit" });
+// Every user-facing date and time is Nigeria time (WAT, UTC+1), whatever zone the viewer's device is in.
+const wat = (o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("en-NG", { ...o, timeZone: "Africa/Lagos" });
+const dueFmt = wat({ weekday: "short", hour: "numeric", minute: "2-digit" });
+const timeFmt = wat({ hour: "numeric", minute: "2-digit" });
+const dateFmt = wat({ weekday: "short", day: "numeric", month: "short" });
+
+/** "Fri, 6:00 pm" */
+export const dueLabel = (at: number) => dueFmt.format(at);
+/** "6:00 pm" */
+export const timeLabel = (at: number) => timeFmt.format(at);
+/** "Today", "Yesterday", else "Fri, 9 Oct"; days counted on the WAT calendar. */
+export function dayLabel(at: number, now = Date.now()) {
+  const WAT_MS = 3_600_000;
+  const days = Math.floor((now + WAT_MS) / 86_400_000) - Math.floor((at + WAT_MS) / 86_400_000);
+  return days === 0 ? "Today" : days === 1 ? "Yesterday" : dateFmt.format(at);
 }
 
 /** Which of the four ink masks a stamp uses, stable per member and round. */
