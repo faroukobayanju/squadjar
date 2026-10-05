@@ -42,7 +42,11 @@ function PrivyWelcome({ next }: { next: string }) {
         return;
       }
       if (!r.ok) throw new Error();
-      router.replace(next);
+      let seen = false;
+      try {
+        seen = !!localStorage.getItem("squadjar-intro-seen");
+      } catch {}
+      router.replace(seen ? next : `/intro?next=${encodeURIComponent(next)}`);
     } catch {
       setError("That didn't go through. Try again.");
       setBusy(false);
