@@ -22,3 +22,5 @@ create table if not exists autopay (
   updated_at timestamptz not null default now(),
   primary key (member, squad)
 );
+alter table users add column if not exists username text;
+create unique index if not exists users_username_key on users (lower(username));
