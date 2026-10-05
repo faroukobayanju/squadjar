@@ -207,6 +207,87 @@ contract SquadRoundsTest is Base {
         assertLe(s.frontedTotal(), s.totalLocked());
     }
 
+    /// 4 members, c = C. Required deposits by turn: 3c, 2c, c, c (total 7c). Only t1 ever pays (round 1);
+    /// t2, t3, t4 never do. Fronting demand outruns the jar's free money, so both the fronting cap
+    /// (`f < amount - cov`) and the deposit-cover cap (`cov > h`) bind. Every settle must still succeed.
+    /// Amounts in the comments are multiples of c. "headroom" = totalLocked - frontedTotal.
+    function test_frontingCapBindsWhenDemandExceedsLiquidity() public {
+        Squad s = _squad(4, C);
+        _start(s);
+        address[] memory t = new address[](4);
+        uint256[4] memory b0;
+        for (uint256 i; i < 4; i++) {
+            t[i] = _turn(s, i + 1);
+            b0[i] = token.balanceOf(t[i]);
+        }
+        _lockAll(s);
+        assertEq(s.totalLocked(), 7 * C);
+
+        // r1: t1 pays 1c. t2, t3, t4 miss for the first time: covered 1c each from their deposits
+        // (2c -> 1c, 1c -> 0, 1c -> 0). payout = 1c + 3c = 4c, all to t1. totalLocked 7c - 3c = 4c.
+        vm.prank(t[0]);
+        s.contribute();
+        _warpPastGrace(s);
+        s.settleRound(1);
+        assertEq(s.totalLocked(), 4 * C);
+        assertEq(s.frontedTotal(), 0);
+
+        // r2: nobody pays. t1 misses for the first time (already collected): deposit 3c -> 2c.
+        // t2, t3, t4 miss again with a refill owed: all three stop (activeCount 4 -> 1).
+        // t2: deposit 1c -> 0. t3: no deposit, fronts 1c (headroom 2c, then fronted 1c). t4: fronts 1c (headroom 1c).
+        // payout = 4c. Collector t2 is stopped: withheld w = c * (n - r) = 2c goes back into t2's deposit,
+        // so t2 receives 4c - 2c = 2c. totalLocked 4c - 2c + 2c = 4c, fronted 2c (t3 owes 1c, t4 owes 1c).
+        _warpPastGrace(s);
+        s.settleRound(2);
+        assertTrue(s.stoppedPaying(t[1]));
+        assertTrue(s.stoppedPaying(t[2]));
+        assertTrue(s.stoppedPaying(t[3]));
+        assertFalse(s.stoppedPaying(t[0]));
+        assertEq(s.locked(t[1]), 2 * C);
+        assertEq(s.owed(t[2]), C);
+        assertEq(s.owed(t[3]), C);
+        assertEq(s.frontedTotal(), 2 * C);
+        assertEq(s.totalLocked(), 4 * C);
+
+        // r3: nobody pays. t1 misses again with refill owed: stops; cpr = locked 2c / (n - r + 1 = 2) = c.
+        // Demand: t1 cover 1c, t2 cover 1c (cap min(cpr = c, c)), t3 front 1c, t4 front 1c; headroom is 2c.
+        // t1 cover takes 1c (headroom 2c -> 1c), t2 cover takes 1c (headroom 1c -> 0).
+        // t3 front: headroom 0, so f = min(1c, 0) = 0 (capped, 1c short). t4 front: capped to 0 as well.
+        // Without the cap t3 would owe 2c and t4 2c (fronted 4c > totalLocked 2c).
+        // payout = 2c. Collector t3 owes 1c (from r2), repays it: gross 1c. t3 is stopped: w = c * (4 - 3) = 1c,
+        // so t3 receives 0 and locked(t3) = 1c. fronted 2c - 1c = 1c (only t4's), totalLocked 2c + 1c = 3c.
+        _warpPastGrace(s);
+        vm.expectEmit(true, false, false, true);
+        emit Squad.RoundSettled(3, t[2], 0, t); // the collector is paid nothing: the jar had nothing free
+        s.settleRound(3);
+        assertTrue(s.stoppedPaying(t[0]));
+        assertEq(s.owed(t[2]), 0);
+        assertEq(s.owed(t[3]), C);
+        assertEq(s.locked(t[2]), C);
+        assertEq(s.frontedTotal(), C);
+        assertEq(s.totalLocked(), 3 * C);
+        assertLe(s.frontedTotal(), s.totalLocked());
+
+        // r4 (last): nobody pays; settle finishes the squad. t1 cover 1c (locked 1c -> 0, totalLocked 3c -> 2c),
+        // t2 cover 1c (1c -> 0, 2c -> 1c). t3 (stopped past collector, last round cap c) holds 1c but headroom is
+        // 1c - 1c fronted = 0: cover capped to 0. t4 front: headroom 0, capped to 0.
+        // payout = 2c. Collector t4 repays its 1c owed: gets 2c - 1c = 1c.
+        // Finish: all four stopped, nobody to refund, honest = 0. Jar = 7c deposits + 1c contribution
+        // - payouts (4c + 2c + 0 + 1c) = 1c. That 1c is paid out as dust to members[n - 1] = t4.
+        // Net per member: t1 -3c - 1c + 4c = 0; t2 -2c + 2c = 0; t3 -1c; t4 -1c + 1c + 1c = +1c.
+        _warpPastGrace(s);
+        vm.expectEmit(true, false, false, true);
+        emit Squad.RoundSettled(4, t[3], C, t); // payout 2c less the 1c repaid; uncapped it would be 3c - 1c = 2c
+        s.settleRound(4);
+        assertEq(uint8(s.state()), uint8(Squad.State.Completed));
+        assertEq(s.frontedTotal(), 0);
+        assertEq(token.balanceOf(address(s)), 0);
+        assertEq(token.balanceOf(t[0]), b0[0]);
+        assertEq(token.balanceOf(t[1]), b0[1]);
+        assertEq(token.balanceOf(t[2]), b0[2] - C);
+        assertEq(token.balanceOf(t[3]), b0[3] + C);
+    }
+
     function test_lateSettleSchedulesFutureDeadline() public {
         Squad s = _active(3, C);
         uint256 d0 = s.roundDeadline();
@@ -257,6 +338,52 @@ contract SquadRoundsTest is Base {
         deal(address(token), address(s), token.balanceOf(address(s)) - C);
         _payAllExcept(s, address(0)); // r3 settles and finishes
         assertEq(uint8(s.state()), uint8(Squad.State.Completed));
+        assertEq(token.balanceOf(address(s)), 0);
+    }
+
+    /// 5 members, c = C + 2 (so the pool does not divide evenly). Required deposits by turn: 4c, 3c, 2c, c, c.
+    /// t1 collects in round 1, pays round 2, then misses rounds 3 and 4 (no refill): it stops in round 4 with
+    /// leftover deposit that is forfeited at the end. t2..t5 never miss.
+    function test_finishSplitsForfeitedDepositAmongZeroMissMembers() public {
+        uint256 c = C + 2;
+        Squad s = _squad(5, c);
+        _start(s);
+        address[5] memory t;
+        uint256[5] memory b0;
+        for (uint256 i; i < 5; i++) {
+            t[i] = _turn(s, i + 1);
+            b0[i] = token.balanceOf(t[i]);
+        }
+        _lockAll(s);
+        assertEq(s.totalLocked(), 11 * c); // 4c + 3c + 2c + c + c
+
+        _payAllExcept(s, address(0)); // r1: t1 collects 5c
+        _payAllExcept(s, address(0)); // r2
+        _payAllExcept(s, t[0]); // r3: t1 misses, covered 1c: locked 4c -> 3c
+        _warpPastGrace(s);
+        s.settleRound(3);
+        _payAllExcept(s, t[0]); // r4: t1 misses again with refill owed -> stopped; cover 1c: 3c -> 2c
+        _warpPastGrace(s);
+        s.settleRound(4);
+        assertTrue(s.stoppedPaying(t[0]));
+        assertEq(s.locked(t[0]), 2 * c);
+        _payAllExcept(s, address(0)); // r5: the 4 active members pay; t1 cover 1c (2c -> 1c); auto-settle, finish
+        assertEq(uint8(s.state()), uint8(Squad.State.Completed));
+
+        // Every round paid out exactly 5c (contributions plus covers), so at finish the jar holds
+        // deposits 11c + contributions (5 + 5 + 4 + 4 + 4 = 22c) - payouts 5 * 5c = 8c.
+        // sumKept = t2..t5 deposits = 3c + 2c + c + c = 7c. t1's remaining 1c is forfeited.
+        // pool = 8c - 7c = c = 1000e18 + 2. honest = 4 (t2..t5 have no misses), so
+        // share = floor(c / 4) = 250e18 (the 2 wei remainder is not divisible by 4).
+        // Dust = pool - 4 * share = 2 wei, paid to the last still-paying member in turn order: t5.
+        // Each of t2..t5 paid 5c of contributions and collected 5c in its own turn, and got its deposit back,
+        // so its net change is its share. t1: paid 2c, collected 5c, locked 4c, got nothing back: net -1c.
+        assertEq(token.balanceOf(t[1]), b0[1] + 250e18);
+        assertEq(token.balanceOf(t[2]), b0[2] + 250e18);
+        assertEq(token.balanceOf(t[3]), b0[3] + 250e18);
+        assertEq(token.balanceOf(t[4]), b0[4] + 250e18 + 2);
+        assertEq(token.balanceOf(t[0]), b0[0] - c);
+        assertEq(s.locked(t[0]), 0);
         assertEq(token.balanceOf(address(s)), 0);
     }
 
