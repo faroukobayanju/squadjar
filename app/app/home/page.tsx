@@ -5,7 +5,9 @@ import { AppShell } from "@/components/shell";
 import { SquadList } from "@/components/squad-list";
 import { naira } from "@/lib/format";
 import { Bar, SquadListSkeleton } from "@/components/skeleton";
-import { useMe, useSquads } from "@/lib/data";
+import { isLive, useMe, useSquads } from "@/lib/data";
+
+const SECONDARY = "font-semibold underline decoration-rule decoration-2 underline-offset-4";
 
 export default function Home() {
   const me = useMe();
@@ -21,7 +23,17 @@ export default function Home() {
         <Link href="/add-money" className="font-semibold text-palm underline decoration-2 underline-offset-4">
           Add money
         </Link>
-        <Link href="/history" className="font-semibold underline decoration-rule decoration-2 underline-offset-4">
+        {isLive && (
+          <>
+            <Link href="/send" className={SECONDARY}>
+              Send
+            </Link>
+            <Link href="/withdraw" className={SECONDARY}>
+              Withdraw
+            </Link>
+          </>
+        )}
+        <Link href="/history" className={SECONDARY}>
           History
         </Link>
       </p>

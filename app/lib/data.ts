@@ -9,7 +9,7 @@ import { useLiveActions, useLiveInviteCode, useLiveJoinRequests, useLivePayout }
 import type { Actions, JoinRequests, PublicSquad, Squad, Tier } from "./types";
 import type { PayRecord } from "./record-line";
 
-export type { JoinRequest, Member, Payout, Period, PublicSquad, PublicTerms, RequestStatus, Squad, SquadState, Tier } from "./types";
+export type { JoinRequest, Member, Payout, Period, Person, PublicSquad, PublicTerms, RequestStatus, Squad, SquadState, Tier } from "./types";
 export { isLive };
 export { ME, DemoError, collectorOf, payoutAmount, myTurn, squadBySlug } from "./store";
 
@@ -53,6 +53,9 @@ const notInDemo = async () => {
 const demoActions: Actions = {
   addMoney: async (amount) => (await pause(700), store.addMoney(amount)),
   createSquad: async (input) => store.createSquad(input),
+  findPerson: notInDemo,
+  send: notInDemo,
+  withdraw: notInDemo,
   pay: async (slug) => (await pause(650), store.payRound(slug)),
   join: notInDemo,
   joinPublic: notInDemo,

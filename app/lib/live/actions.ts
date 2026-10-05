@@ -11,7 +11,8 @@ import { useWrite } from "./tx";
 import { refreshAll, resolveSlug, usePoll } from "./squads";
 import { DemoError } from "../store";
 import { RECORD_BLOCKED } from "../record-line";
-import type { Actions, JoinRequests, Payout, Period, PublicTerms, RequestStatus } from "../types";
+import { BURN } from "../money-out";
+import type { Actions, JoinRequests, Payout, Period, Person, PublicTerms, RequestStatus } from "../types";
 
 const PERIOD_INDEX: Record<Period, number> = { Demo: 0, Weekly: 1, Monthly: 2 };
 const PAYOUT_KEY = "squadjar-payout";
@@ -56,6 +57,22 @@ export function useLiveActions(): Actions {
     return {
       addMoney: async (amount) => {
         await write({ address: TOKEN, abi: tokenAbi, functionName: "faucet", args: [toUnits(amount)] });
+        await refreshAll();
+      },
+
+      findPerson: async (username) => {
+        const r = await authed(`/api/users/lookup?u=${encodeURIComponent(username)}`);
+        if (r.status === 404 || r.status === 400) return null;
+        if (!r.ok) throw new Error(`lookup ${r.status}`);
+        return (await r.json()) as Person;
+      },
+      send: async (to, amount) => {
+        if (me && to.toLowerCase() === me.toLowerCase()) throw new DemoError("You can't send money to yourself.");
+        await write({ address: TOKEN, abi: tokenAbi, functionName: "transfer", args: [to, toUnits(amount)] });
+        await refreshAll();
+      },
+      withdraw: async (amount) => {
+        await write({ address: TOKEN, abi: tokenAbi, functionName: "transfer", args: [BURN, toUnits(amount)] });
         await refreshAll();
       },
 
