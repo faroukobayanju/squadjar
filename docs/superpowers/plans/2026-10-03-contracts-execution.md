@@ -83,8 +83,8 @@ Fix: a repo-wide `.gitattributes` with `* text=auto eol=lf`. The index already s
 ### Deploy security checklist (M5)
 
 - [ ] `.gitignore` covers `.env*` (with `!.env.example`), `broadcast/`, `cache/`, `out/`. Already true at the repo root; add `contracts/deployments/31337.json` as Task 6 Step 3 says.
-- [ ] Deployer key is new, made with `cast wallet new`, and used for Monad testnet only. Never reuse a key that has held real funds.
-- [ ] The key lives only in `contracts/.env`. It is never pasted into chat, a PR, an issue, or a commit, and never passed on the command line (load it with `source .env`).
+- [ ] Deployer is a new Foundry keystore (`cast wallet new ~/.foundry/keystores <name>`), used for Monad testnet only. Never reuse a key that has held real funds.
+- [ ] The key lives only in the encrypted keystore; the deploy signs with `--account <name> --sender <address>` and prompts for the password. No raw private key in `.env`, chat, a PR, an issue, a commit, or on the command line.
 - [ ] Before each push: `git diff main...HEAD` contains no 64-hex-character private key. The only allowed one is Anvil's public account #0 key in `Deploy.s.sol`, used solely when `chainid == 31337`.
 - [ ] The registry owner is the deployer key (a single account). Accepted for testnet; a multisig owner is a TODOS item before any mainnet deploy.
 
@@ -109,7 +109,7 @@ M5 delivers, all under `contracts/`:
 
 After the M5 merge, comment on faroukobayanju/squadjar#1 with the addresses and the README link.
 
-Any contract change after M5: fix, re-run the full suite and invariants, redeploy the factory (and token or registry only if they changed), allowlist the new factory with `registry.setWriter(newFactory, true)`, revoke the old one, re-export ABIs, and update `deployments/10143.json`. Trust history survives because the registry stays.
+Any contract change after M5: fix, re-run the full suite and invariants, redeploy the factory (and token or registry only if they changed), allowlist the new factory with `registry.setWriter(newFactory, true)`, keep the old factory allowlisted and revoke it only after its trust-counting squads (Weekly or Monthly, 5 or more members, ₦1,000 or more) have finished, because revoking pauses them (see `contracts/README.md`, Replacing a factory), keep the old factory's address so the app can still read its squads, re-export ABIs, and update `deployments/10143.json`. Trust history survives because the registry stays.
 
 ## 8. Out of scope for this work
 
