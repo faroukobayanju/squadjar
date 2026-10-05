@@ -20,10 +20,12 @@ Addresses: `deployments/<chainId>.json` (10143 = Monad testnet, 31337 = local an
 | Contract | Address |
 |---|---|
 | AjoNGN (sNGN) | `0xb7A57BeF0DD01A96C7626fDD6F143C9127d110C9` |
-| TrustRegistry | `0x43fC7e538D865A9eaf3c634888E61c8d3D16f7f7` |
-| SquadFactory | `0x2bf6b051e25E3Aa65AE55D8367500BBcBA50fdf5` |
+| TrustRegistry | `0xe80e9A23B647CD653F3A5ef16222aD6794C23eCB` |
+| SquadFactory | `0x7B2aC330515073De9aCB8883ee0AAA8cE11B5d4B` |
 
-All three are verified on Sourcify (exact match). Registry owner and deployer: `0xfAc4f942A7c8232c7a7D8b654F8580e00a368dF6`. Deployed in blocks 68377315 to 68377316; `deployBlock` in the JSON is the earlier simulation block, a safe lower bound for event scans. Smoke test: `timing(0)` returns `300 60 300`, `isWriter(factory)` is true, and consecutive blocks have different `mixHash` values, so `block.prevrandao` varies on Monad testnet.
+The token is from the first deployment (blocks 68377315 to 68377316). The registry and factory were redeployed on 2026-10-05 in blocks 68461404 to 68461405 with `TOKEN` set, after the fix that stops a factory revocation from freezing squads; `deployBlock` in the JSON (68461309) is the simulation block, a safe lower bound for event scans. All three are verified on Sourcify (exact match). Registry owner and deployer: `0xfAc4f942A7c8232c7a7D8b654F8580e00a368dF6`. Smoke test: `timing(0)` returns `300 60 300`, the factory's `token()` and `registry()` point at the addresses above, `isWriter(factory)` is true, and consecutive blocks have different `mixHash` values, so `block.prevrandao` varies on Monad testnet.
+
+Superseded first deployment, still on chain: TrustRegistry `0x43fC7e538D865A9eaf3c634888E61c8d3D16f7f7`, SquadFactory `0x2bf6b051e25E3Aa65AE55D8367500BBcBA50fdf5`. Squads created by the old factory keep working on chain, but the app reads only the factory in `NEXT_PUBLIC_FACTORY`.
 
 ## Squad lifecycle
 
