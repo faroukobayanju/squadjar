@@ -25,5 +25,6 @@ function errorName(e: unknown): string | undefined {
 export function friendlyError(e: unknown, kind: "payment" | "other"): string {
   const n = errorName(e);
   if (n && KNOWN[n]) return KNOWN[n];
+  console.error("[write failed]", e); // unknown failures: keep the real cause visible in the console
   return kind === "payment" ? "Payment didn't go through. Your money is safe." : "That didn't go through. Try again.";
 }
