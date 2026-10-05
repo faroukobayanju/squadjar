@@ -9,9 +9,20 @@ Rotating savings (ajo) where no member holds the jar. Foundry, Solidity 0.8.24.
 | Test | `forge test` |
 | Local deploy | `anvil --silent &` then `forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --broadcast` |
 | Testnet deploy | `forge script script/Deploy.s.sol --rpc-url monad_testnet --account <keystore> --sender <address> --broadcast` (Foundry keystore; prompts for its password) |
+| Verify a contract | `forge verify-contract <address> src/<File>.sol:<Contract> --chain 10143 --verifier sourcify --verifier-url https://sourcify-api-monad.blockvision.org/` (add `--constructor-args` for TrustRegistry and SquadFactory; keep the trailing `/`, Forge appends `v2/verify` to it) |
 | Export ABIs | `script/export-abi.sh` |
 
 Addresses: `deployments/<chainId>.json` (10143 = Monad testnet, 31337 = local anvil).
+
+### Monad testnet deployment (2026-10-05)
+
+| Contract | Address |
+|---|---|
+| AjoNGN (sNGN) | `0xb7A57BeF0DD01A96C7626fDD6F143C9127d110C9` |
+| TrustRegistry | `0x43fC7e538D865A9eaf3c634888E61c8d3D16f7f7` |
+| SquadFactory | `0x2bf6b051e25E3Aa65AE55D8367500BBcBA50fdf5` |
+
+All three are verified on Sourcify (exact match). Registry owner and deployer: `0xfAc4f942A7c8232c7a7D8b654F8580e00a368dF6`. Deployed in blocks 68377315 to 68377316; `deployBlock` in the JSON is the earlier simulation block, a safe lower bound for event scans. Smoke test: `timing(0)` returns `300 60 300`, `isWriter(factory)` is true, and consecutive blocks have different `mixHash` values, so `block.prevrandao` varies on Monad testnet.
 
 ## Squad lifecycle
 
@@ -30,7 +41,7 @@ Open | Depositing --cancel (organizer, still a member) or <3 left after finalize
 | `lockDeposit()` | member | Depositing |
 | `finalizeDeposits()` | anyone, after `depositDeadline` | Depositing |
 | `contribute()` / `refillDeposit()` | member | Active |
-| `settleRound(round)` | anyone; after `settleableAfter()` | Active |
+| `settleRound(round)` | anyone; after `settleableAfter()`, or at once when every still-paying member has paid (the last `contribute` does this itself) or when no member is still paying | Active |
 | `getState()` | view | any |
 
 `settleRound` is the cron path for rounds where someone has not paid. When every active member has paid, the last `contribute()` settles the round automatically in the same transaction, so a manual `settleRound` for that round then reverts `AlreadySettled`.
@@ -87,7 +98,7 @@ In a trust-counting squad, only a member still paying with zero misses gets `com
 
 The registry keeps all trust history, so existing records survive a new factory.
 
-Revoking an old factory with `registry.setWriter(old, false)` pauses its trust-counting squads (Weekly or Monthly, 5 or more members, contribution of ₦1,000 or more): `contribute` and `settleRound` revert with the registry's `NotSquad()`, and deadlines keep moving. After the factory is re-allowed, every member who could not pay is recorded as a miss. Re-allow the factory to unpause them. Only revoke an old factory after those squads finish. Demo squads never write trust and are unaffected.
+Revoking an old factory with `registry.setWriter(old, false)` pauses its trust-counting squads (Weekly or Monthly, 5 or more members, contribution of ₦1,000 or more): `contribute` and `settleRound` revert with the registry's `NotSquad()`. Deadlines do not pause: if a round's grace window ends while the factory is revoked, members who had not paid can no longer pay that round, and the settle after re-allowing records them as missed. Re-allow the factory to unpause them. Only revoke an old factory after those squads finish. Demo squads never write trust and are unaffected.
 
 ## Reading squad state in the app
 
