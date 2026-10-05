@@ -99,6 +99,15 @@ export function useLiveActions(): Actions {
       lockDeposit: (slug) => onSquad(slug, "lockDeposit"),
       refill: (slug) => onSquad(slug, "refillDeposit"),
 
+      // ponytail: fallback for when the relayer isn't running; any member can settle, the fee is sponsored.
+      settle: async (slug) => {
+        const { address } = await squadAt(slug);
+        const v = await publicClient.readContract({ address, abi: squadAbi, functionName: "getState" });
+        if (v.state === 2) await write({ address, abi: squadAbi, functionName: "settleRound", args: [v.currentRound] });
+        else if (v.state === 1) await write({ address, abi: squadAbi, functionName: "finalizeDeposits" });
+        await refreshAll();
+      },
+
       pay: async (slug) => {
         const { address, name } = await squadAt(slug);
         const receipt = await write({ address, abi: squadAbi, functionName: "contribute" }, { approve: { spender: address, ...MAX } });
