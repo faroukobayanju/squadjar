@@ -10,6 +10,7 @@ import { useMyAccount } from "./account";
 import { useWrite } from "./tx";
 import { refreshAll, resolveSlug, usePoll } from "./squads";
 import { DemoError } from "../store";
+import { RECORD_BLOCKED } from "../record-line";
 import type { Actions, JoinRequests, Payout, Period, PublicTerms, RequestStatus } from "../types";
 
 const PERIOD_INDEX: Record<Period, number> = { Demo: 0, Weekly: 1, Monthly: 2 };
@@ -102,6 +103,7 @@ export function useLiveActions(): Actions {
           await refreshAll(); // the squad is no longer Open: the page switches to its "already started" notice
           throw new DemoError("This squad has already started.");
         }
+        if (r.status === 403 && (await r.json().catch(() => null))?.error === "record") throw new DemoError(RECORD_BLOCKED);
         if (!r.ok) throw new Error(`request ${r.status}`);
         const { status, code } = (await r.json()) as { status: RequestStatus; code?: string };
         await (code ? join(slug, code) : refreshAll()); // the code comes back once accepted; join with it like an invite link

@@ -1,9 +1,11 @@
 import { type Address } from "viem";
 import { bad, requireUser, route } from "@/lib/auth-server";
 import { sql } from "@/lib/db";
-import { publicClient, readTiers } from "@/lib/live/chain";
+import { publicClient } from "@/lib/live/chain";
 import { squadAbi } from "@/lib/live/abi";
 import { codeReleasable } from "@/lib/public-squads";
+import { recordOf } from "@/lib/record";
+import { blockedByRecord } from "@/lib/record-line";
 import type { RequestStatus } from "@/lib/types";
 
 export const GET = route(async (req: Request, ctx: { params: Promise<{ slug: string }> }) => {
@@ -22,7 +24,11 @@ export const GET = route(async (req: Request, ctx: { params: Promise<{ slug: str
   if (!isMember && isPublic) {
     const [req] = await sql`select status from join_requests where squad = ${row.address} and member = ${me.address}`;
     requestStatus = req?.status ?? null;
-    if (requestStatus === "accepted") [tier] = await readTiers([me.address]);
+    if (requestStatus === "accepted") {
+      const record = await recordOf(me.address); // re-checked here too: stopping elsewhere after acceptance still closes it
+      if (blockedByRecord(record)) return bad("record", 403);
+      tier = record.tier;
+    }
   }
   return codeReleasable({ isMember, isPublic, tier, minTier: row.min_tier, requestStatus })
     ? Response.json({ code: row.invite_code })

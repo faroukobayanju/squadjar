@@ -6,7 +6,8 @@ import { AppShell } from "@/components/shell";
 import { StopAutopayEverywhere } from "@/components/autopay-toggle";
 import { Bar } from "@/components/skeleton";
 import { useMyAccount } from "@/lib/live/account";
-import { isLive, resetDemo, useMe, type Tier } from "@/lib/data";
+import { isLive, resetDemo, useMe, useRecords, type Tier } from "@/lib/data";
+import { stoppedLine, type PayRecord } from "@/lib/record-line";
 
 const TIERS: { tier: Tier; points: string; means: string }[] = [
   { tier: "New", points: "under 5", means: "You start in later turns while you build a record." },
@@ -29,6 +30,8 @@ export default function Profile() {
       <p className="mt-1 text-muted">
         Trust score{me && `, ${me.tier} tier · ${me.onTime} paid on time across all your squads`}
       </p>
+
+      {isLive && <YourRecord />}
 
       <h2 className="mt-10 font-semibold">How turns are earned</h2>
       <p className="mt-1 max-w-[42ch] text-sm text-muted">
@@ -86,5 +89,35 @@ export default function Profile() {
         </button>
       )}
     </AppShell>
+  );
+}
+
+const ROWS: { key: keyof PayRecord; label: string }[] = [
+  { key: "onTime", label: "Paid on time" },
+  { key: "late", label: "Paid late" },
+  { key: "missed", label: "Missed" },
+  { key: "completed", label: "Squads completed" },
+];
+
+function YourRecord() {
+  const { address } = useMyAccount();
+  const record = useRecords(address ? [address] : [])?.[address?.toLowerCase() ?? ""];
+  const stopped = stoppedLine(record);
+  return (
+    <section aria-labelledby="record" className="mt-10">
+      <h2 id="record" className="font-semibold">
+        Your record
+      </h2>
+      <ul className="mt-3 divide-y divide-rule rounded-lg border border-rule bg-paper">
+        {ROWS.map(({ key, label }) => (
+          <li key={key} className="flex min-h-12 items-center justify-between gap-3 px-4">
+            <span className="text-sm">{label}</span>
+            {record ? <span className="font-mono text-sm tnum">{record[key]}</span> : <Bar className="h-4 w-6" />}
+          </li>
+        ))}
+        {stopped && <li className="flex min-h-12 items-center px-4 text-sm font-semibold text-bad">{stopped}</li>}
+      </ul>
+      <p className="mt-2 max-w-[42ch] text-sm text-muted">Quick demo squads don&apos;t count toward on-time and missed; stopping payment always shows.</p>
+    </section>
   );
 }
