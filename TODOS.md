@@ -10,6 +10,7 @@
 - **Seed script** for a demo squad, owned by Plan 2. P2.
 - **Trust farming with free money.** One person can run many weekly squads with their own accounts and reach Reliable in about a week, then take turn 1 with a 3c deposit and stop paying. Fix before any real-money launch: count trust only across distinct counterparties and cap trust earned per week. P1 (mainnet).
 - **Monthly drift.** Monthly is a fixed 30 days, so it drifts against payday. Calendar-month deadlines need a date library onchain or an offchain schedule. P3.
+- **Factory revocation pauses squads.** Revoking a factory in TrustRegistry makes its trust-counting squads revert on trust writes until re-allowed. Revoke only after they finish, or move trust writes behind a guard that can't be skipped by gas-limiting the caller. P2.
 
 ## App (Plan 2)
 
