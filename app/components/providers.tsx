@@ -23,17 +23,23 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Creates the user's embedded account if Privy didn't at login (e.g. dashboard "create on login" off). */
+/**
+ * Creates the user's embedded account if Privy didn't at login (accounts made while
+ * dashboard "create on login" was off). Waits first so Privy's own creation can land:
+ * createWallet shows Privy's loading screen, so it should only run when really needed.
+ */
 function EnsureAccount() {
   const { ready, authenticated, user } = usePrivy();
   const { createWallet } = useCreateWallet();
   const tried = useRef(false);
-  const hasAccount = !!user?.linkedAccounts.some((a) => a.type === "wallet" && "walletClientType" in a && a.walletClientType === "privy");
+  const hasAccount = !!user?.linkedAccounts.some((a) => a.type === "wallet" && "walletClientType" in a && a.walletClientType === "privy"); // copy-ok: Privy account type, never shown
   useEffect(() => {
     if (!ready || !authenticated || !user || hasAccount || tried.current) return;
-    tried.current = true;
-    console.info("[account create] start");
-    createWallet().then((w) => console.info("[account create] done", w.address)).catch((e) => console.error("[account create]", e));
+    const t = setTimeout(() => {
+      tried.current = true;
+      createWallet().catch((e) => console.error("[account create]", e));
+    }, 3000);
+    return () => clearTimeout(t);
   }, [ready, authenticated, user, hasAccount, createWallet]);
   return null;
 }

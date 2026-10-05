@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useLoginWithEmail, useLoginWithOAuth, usePrivy, useWallets } from "@privy-io/react-auth";
+import { useLoginWithEmail, useLoginWithOAuth } from "@privy-io/react-auth";
 import { GoogleLogo } from "@phosphor-icons/react";
 import { BackLink } from "@/components/shell";
 import { useMyAccount } from "@/lib/live/account";
@@ -22,15 +22,11 @@ export default function Login({ searchParams }: { searchParams: Promise<{ next?:
 function PrivyLogin({ next }: { next: string }) {
   const router = useRouter();
   const { ready, authenticated, address } = useMyAccount();
-  const dbgUser = usePrivy().user; // ponytail: debug, remove after first live run
-  const dbgWallets = useWallets();
-  // ponytail: debug log kept in sessionStorage so it survives the Google redirect; remove after the first live run
-  const onError = (e: unknown) => {
-    console.error("[login event]", e);
-    try { sessionStorage.setItem("sqj-login-debug", `${new Date().toISOString()} ${String(e)} ${JSON.stringify(e)}`); } catch {}
-  };
+  const onError = (e: unknown) => console.error("[login]", e);
   const { sendCode, loginWithCode } = useLoginWithEmail({ onError });
   const { initOAuth, state: oauthState } = useLoginWithOAuth({ onError });
+  // Signed in (or returning from Google) but the account isn't ready yet: say so instead of showing a dead form.
+  const settingUp = (ready && authenticated) || oauthState.status === "loading";
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(false);
@@ -38,14 +34,13 @@ function PrivyLogin({ next }: { next: string }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    console.info("[login state]", JSON.stringify({ ready, authenticated, address, oauth: oauthState.status, linked: dbgUser?.linkedAccounts.map((a) => a.type + (("walletClientType" in a) ? ":" + a.walletClientType : "") + (("chainType" in a) ? ":" + a.chainType : "")), wallets: dbgWallets.wallets.length, walletsReady: dbgWallets.ready })); // ponytail: debug, remove after first live run
     if (!ready || !authenticated || !address) return;
     // New users pick a display name first. A 503 (no database) or any failure skips it.
     fetch(`/api/names?a=${address.toLowerCase()}`)
       .then((r) => (r.ok ? r.json() : { [address.toLowerCase()]: true }))
       .catch(() => ({ [address.toLowerCase()]: true }))
       .then((names) => router.replace(names[address.toLowerCase()] ? next : `/welcome?next=${encodeURIComponent(next)}`));
-  }, [ready, authenticated, address, next, router, oauthState.status]);
+  }, [ready, authenticated, address, next, router]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -75,6 +70,15 @@ function PrivyLogin({ next }: { next: string }) {
       setError("We couldn't send a code. Check your email and try again.");
     }
   }
+
+  if (settingUp)
+    return (
+      <div className="mx-auto flex min-h-[100dvh] w-full max-w-[420px] flex-col px-4 pt-2 pb-8" aria-live="polite">
+        <BackLink href="/" label="Squadjar" />
+        <h1 className="mt-8 font-display text-[2.4rem] leading-[0.95] font-extrabold tracking-[-0.04em]">You&apos;re in</h1>
+        <p className="mt-3 text-muted">Setting up your account. This takes a few seconds the first time.</p>
+      </div>
+    );
 
   return (
     <LoginView
