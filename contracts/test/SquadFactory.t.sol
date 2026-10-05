@@ -50,6 +50,12 @@ contract SquadFactoryTest is Base {
         factory.createSquad(C, 5, SquadFactory.Period.Demo, INVITE, 1000);
     }
 
+    function test_createSquadRejectsFarDeadline() public {
+        factory.createSquad(C, 5, SquadFactory.Period.Demo, INVITE, uint64(block.timestamp + 60 days));
+        vm.expectRevert(SquadFactory.DeadlineTooFar.selector);
+        factory.createSquad(C, 5, SquadFactory.Period.Demo, INVITE, uint64(block.timestamp + 60 days + 1));
+    }
+
     function test_timingPresets() public view {
         (uint32 rl, uint32 g, uint32 dw) = factory.timing(SquadFactory.Period.Demo);
         assertEq(rl, 300); assertEq(g, 60); assertEq(dw, 300);

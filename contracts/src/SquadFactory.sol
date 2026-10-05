@@ -9,6 +9,8 @@ import {Squad} from "./Squad.sol";
 contract SquadFactory is IMembership {
     enum Period { Demo, Weekly, Monthly }
 
+    uint64 public constant MAX_FIRST_DEADLINE_DELAY = 60 days;
+
     IERC20 public immutable token;
     TrustRegistry public immutable registry;
     mapping(address => bool) public isSquad;
@@ -24,6 +26,7 @@ contract SquadFactory is IMembership {
     error SizeOutOfRange(uint8 min, uint8 max);
     error EmptyInvite();
     error DeadlineInPast();
+    error DeadlineTooFar();
     error NotSquad();
 
     constructor(IERC20 _token, TrustRegistry _registry) {
@@ -48,6 +51,7 @@ contract SquadFactory is IMembership {
         if (maxMembers < 3 || maxMembers > 20) revert SizeOutOfRange(3, 20);
         if (inviteHash == bytes32(0)) revert EmptyInvite();
         if (firstDeadline != 0 && firstDeadline <= block.timestamp) revert DeadlineInPast();
+        if (firstDeadline != 0 && firstDeadline > block.timestamp + MAX_FIRST_DEADLINE_DELAY) revert DeadlineTooFar();
         (uint32 rl, uint32 g, uint32 dw) = timing(period);
         Squad s = new Squad(
             token, ITrust(address(registry)), IMembership(address(this)), msg.sender, contribution, maxMembers, rl, g, dw, inviteHash, firstDeadline
