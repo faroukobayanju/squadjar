@@ -272,7 +272,7 @@ function HourSelect({ id, value, onChange }: { id: string; value: number; onChan
           </option>
         ))}
       </select>
-      <p className="mt-1 text-xs text-muted">Nigeria time (WAT)</p>
+      <p className="mt-1 font-mono text-xs text-muted">Nigeria time (WAT)</p>
     </div>
   );
 }
