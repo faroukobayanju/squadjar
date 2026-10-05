@@ -9,6 +9,7 @@ Rotating savings (ajo) where no member holds the jar. Foundry, Solidity 0.8.24.
 | Test | `forge test` |
 | Local deploy | `anvil --silent &` then `forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --broadcast` |
 | Testnet deploy | `forge script script/Deploy.s.sol --rpc-url monad_testnet --account <keystore> --sender <address> --broadcast` (Foundry keystore; prompts for its password) |
+| Redeploy keeping the token | `TOKEN=<token address> forge script script/Deploy.s.sol --rpc-url monad_testnet --account <keystore> --sender <address> --broadcast` |
 | Verify a contract | `forge verify-contract <address> src/<File>.sol:<Contract> --chain 10143 --verifier sourcify --verifier-url https://sourcify-api-monad.blockvision.org/` (add `--constructor-args` for TrustRegistry and SquadFactory; keep the trailing `/`, Forge appends `v2/verify` to it) |
 | Export ABIs | `script/export-abi.sh` |
 
