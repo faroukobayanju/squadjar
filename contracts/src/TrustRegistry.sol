@@ -5,7 +5,9 @@ import {Ownable, Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step
 import {ITrust} from "./ITrust.sol";
 
 /// Portable trust history. Survives factory redeploys: the owner allowlists factories,
-/// factories register the squads they create, and only registered squads write.
+/// factories register the squads they create, and only live squads write. A write from any
+/// other address (including a squad of a revoked factory) is ignored, never reverted, so
+/// revoking a factory cannot freeze a squad's money.
 contract TrustRegistry is ITrust, Ownable2Step {
     uint8 public constant NEW = 0;
     uint8 public constant BUILDING = 1;
@@ -26,12 +28,14 @@ contract TrustRegistry is ITrust, Ownable2Step {
     event SquadRegistered(address indexed factory, address indexed squad);
 
     error NotWriter();
-    error NotSquad();
+    error ZeroFactory();
+    error NotSquad(); // no longer thrown; kept so the app's ABI stays compatible
 
     /// Ownable2Step: the owner key can be rotated (transferOwnership + acceptOwnership).
     constructor(address _owner) Ownable(_owner) {}
 
     function setWriter(address factory, bool allowed) external onlyOwner {
+        if (factory == address(0)) revert ZeroFactory();
         isWriter[factory] = allowed;
         emit WriterSet(factory, allowed);
     }
@@ -42,14 +46,11 @@ contract TrustRegistry is ITrust, Ownable2Step {
         emit SquadRegistered(msg.sender, squad);
     }
 
-    /// A squad may write only while its factory is still allowlisted.
+    /// A squad is live only while its factory is still allowlisted. Writes from addresses that
+    /// are not live squads are ignored, so revoking a factory stops its squads' trust writes
+    /// without freezing their money.
     function isSquad(address squad) public view returns (bool) {
         return isWriter[factoryOf[squad]];
-    }
-
-    modifier onlySquad() {
-        if (!isSquad(msg.sender)) revert NotSquad();
-        _;
     }
 
     function trustScore(address user) public view returns (int256) {
@@ -65,16 +66,19 @@ contract TrustRegistry is ITrust, Ownable2Step {
         return NEW;
     }
 
-    function recordContribution(address member, bool late) external onlySquad {
+    function recordContribution(address member, bool late) external {
+        if (!isSquad(msg.sender)) return;
         if (late) records[member].late++;
         else records[member].onTime++;
     }
 
-    function recordMiss(address member) external onlySquad {
+    function recordMiss(address member) external {
+        if (!isSquad(msg.sender)) return;
         records[member].missed++;
     }
 
-    function recordCompleted(address member) external onlySquad {
+    function recordCompleted(address member) external {
+        if (!isSquad(msg.sender)) return;
         records[member].completed++;
     }
 }

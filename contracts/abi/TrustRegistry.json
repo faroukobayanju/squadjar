@@ -413,5 +413,10 @@
         "internalType": "address"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "ZeroFactory",
+    "inputs": []
   }
 ]

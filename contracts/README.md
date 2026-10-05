@@ -9,6 +9,7 @@ Rotating savings (ajo) where no member holds the jar. Foundry, Solidity 0.8.24.
 | Test | `forge test` |
 | Local deploy | `anvil --silent &` then `forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --broadcast` |
 | Testnet deploy | `forge script script/Deploy.s.sol --rpc-url monad_testnet --account <keystore> --sender <address> --broadcast` (Foundry keystore; prompts for its password) |
+| Redeploy keeping the token | `TOKEN=<token address> forge script script/Deploy.s.sol --rpc-url monad_testnet --account <keystore> --sender <address> --broadcast` |
 | Verify a contract | `forge verify-contract <address> src/<File>.sol:<Contract> --chain 10143 --verifier sourcify --verifier-url https://sourcify-api-monad.blockvision.org/` (add `--constructor-args` for TrustRegistry and SquadFactory; keep the trailing `/`, Forge appends `v2/verify` to it) |
 | Export ABIs | `script/export-abi.sh` |
 
@@ -19,10 +20,12 @@ Addresses: `deployments/<chainId>.json` (10143 = Monad testnet, 31337 = local an
 | Contract | Address |
 |---|---|
 | AjoNGN (sNGN) | `0xb7A57BeF0DD01A96C7626fDD6F143C9127d110C9` |
-| TrustRegistry | `0x43fC7e538D865A9eaf3c634888E61c8d3D16f7f7` |
-| SquadFactory | `0x2bf6b051e25E3Aa65AE55D8367500BBcBA50fdf5` |
+| TrustRegistry | `0xe80e9A23B647CD653F3A5ef16222aD6794C23eCB` |
+| SquadFactory | `0x7B2aC330515073De9aCB8883ee0AAA8cE11B5d4B` |
 
-All three are verified on Sourcify (exact match). Registry owner and deployer: `0xfAc4f942A7c8232c7a7D8b654F8580e00a368dF6`. Deployed in blocks 68377315 to 68377316; `deployBlock` in the JSON is the earlier simulation block, a safe lower bound for event scans. Smoke test: `timing(0)` returns `300 60 300`, `isWriter(factory)` is true, and consecutive blocks have different `mixHash` values, so `block.prevrandao` varies on Monad testnet.
+The token is from the first deployment (blocks 68377315 to 68377316). The registry and factory were redeployed on 2026-10-05 in blocks 68461404 to 68461405 with `TOKEN` set, after the fix that stops a factory revocation from freezing squads; `deployBlock` in the JSON (68461309) is the simulation block, a safe lower bound for event scans. All three are verified on Sourcify (exact match). Registry owner and deployer: `0xfAc4f942A7c8232c7a7D8b654F8580e00a368dF6`. Smoke test: `timing(0)` returns `300 60 300`, the factory's `token()` and `registry()` point at the addresses above, `isWriter(factory)` is true, and consecutive blocks have different `mixHash` values, so `block.prevrandao` varies on Monad testnet.
+
+Superseded first deployment, still on chain: TrustRegistry `0x43fC7e538D865A9eaf3c634888E61c8d3D16f7f7`, SquadFactory `0x2bf6b051e25E3Aa65AE55D8367500BBcBA50fdf5`. Squads created by the old factory keep working on chain, but the app reads only the factory in `NEXT_PUBLIC_FACTORY`.
 
 ## Squad lifecycle
 
@@ -98,7 +101,7 @@ In a trust-counting squad, only a member still paying with zero misses gets `com
 
 The registry keeps all trust history, so existing records survive a new factory.
 
-Revoking an old factory with `registry.setWriter(old, false)` pauses its trust-counting squads (Weekly or Monthly, 5 or more members, contribution of ₦1,000 or more): `contribute` and `settleRound` revert with the registry's `NotSquad()`. Deadlines do not pause: if a round's grace window ends while the factory is revoked, members who had not paid can no longer pay that round, and the settle after re-allowing records them as missed. Re-allow the factory to unpause them. Only revoke an old factory after those squads finish. Demo squads never write trust and are unaffected.
+Revoking an old factory with `registry.setWriter(old, false)` is safe for money at any time. Its squads keep paying, settling and finishing. From then on, though, its squads record no trust at all: on-time payments, misses and stopping are all left unrecorded until the factory is allowed again (the registry skips writes from squads whose factory is not allowed, it never reverts them). A member who stops paying in that window keeps their score and tier. Re-allowing the factory makes their writes count again. Demo squads never write trust and are unaffected.
 
 ## Reading squad state in the app
 
@@ -136,12 +139,11 @@ Revoking an old factory with `registry.setWriter(old, false)` pauses its trust-c
 | `AlreadySettled()` | Round already settled | Nothing to do (safe for cron retries) |
 | `FaucetCapExceeded()` | Top-up over ₦200,000 in one call | Top up in smaller amounts |
 | `NotWriter()` | `createSquad` on a factory the registry does not allow | Deployment bug: allow the factory with `registry.setWriter` |
-| `NotSquad()` (`TrustRegistry`) | `contribute` or `settleRound` on a trust-counting squad whose factory is no longer allowed | The squad is paused. Tell members it resumes when the factory is re-allowed |
 | `NotSquad()` (`SquadFactory`) | `join`, `leave`, `remove` or `finalizeDeposits` where the factory does not know the squad | Deployment bug |
 | `OwnableUnauthorizedAccount(address)` | Non-owner called a registry admin function | Use the registry owner account |
 | `ERC20InsufficientAllowance(...)` | Member hasn't approved the squad to pull ₦, or the `joinWithPermit` permit was wrong (see Joining with a permit) | App approves the squad, then retries |
 | `ERC20InsufficientBalance(...)` | Member doesn't have enough ₦ | Top up, then retry |
 
-The two `NotSquad()` errors have the same selector, so the app cannot tell them apart from the error alone. Tell them apart by which call reverted: `contribute` and `settleRound` raise the registry's, and `join`, `leave`, `remove` and `finalizeDeposits` raise the factory's. Members see the registry one while a factory is revoked.
+Only `SquadFactory` throws `NotSquad()`. `TrustRegistry` still declares it for ABI compatibility but never throws it: members never see it on `contribute` or `settleRound`, even while a factory is revoked.
 
 Errors from the token and the registry bubble up through `Squad` calls. To decode them, merge the ABIs `Squad` + `AjoNGN` + `TrustRegistry` (add `SquadFactory` for calls made to the factory).

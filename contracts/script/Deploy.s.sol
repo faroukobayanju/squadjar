@@ -12,7 +12,15 @@ contract Deploy is Script {
 
     /// Other chains sign with a Foundry keystore, never a raw key:
     /// forge script script/Deploy.s.sol --rpc-url monad_testnet --account <keystore> --sender <address> --broadcast
+    ///
+    /// Set TOKEN=<address> to keep an already-deployed sNGN token and replace only
+    /// the trust registry and squad factory.
     function run() external {
+        address existing = vm.envOr("TOKEN", address(0));
+        if (existing != address(0)) {
+            require(existing.code.length > 0, "TOKEN has no code on this chain");
+        }
+
         address deployer;
         if (block.chainid == 31337) {
             deployer = vm.addr(ANVIL_KEY);
@@ -22,7 +30,7 @@ contract Deploy is Script {
             require(deployer != DEFAULT_SENDER, "Pass --account <keystore> --sender <address>");
             vm.startBroadcast();
         }
-        AjoNGN token = new AjoNGN();
+        AjoNGN token = existing == address(0) ? new AjoNGN() : AjoNGN(existing);
         TrustRegistry registry = new TrustRegistry(deployer);
         SquadFactory factory = new SquadFactory(token, registry);
         registry.setWriter(address(factory), true);
@@ -39,7 +47,7 @@ contract Deploy is Script {
         string memory path = string.concat("deployments/", vm.toString(block.chainid), ".json");
         vm.writeJson(json, path);
 
-        console2.log("token", address(token));
+        console2.log(existing == address(0) ? "token" : "reused token", address(token));
         console2.log("registry", address(registry));
         console2.log("factory", address(factory));
         console2.log("wrote", path);
