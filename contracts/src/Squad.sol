@@ -56,6 +56,10 @@ contract Squad {
     event Joined(address indexed member);
     event Left(address indexed member);
     event Cancelled();
+    event Started(address[] order);
+    event DepositLocked(address indexed member, uint256 amount);
+    event Dropped(address indexed member);
+    event Activated(uint64 roundDeadline);
 
     error WrongState(State current);
     error NotOrganizer();
@@ -64,6 +68,9 @@ contract Squad {
     error Full();
     error OrganizerCannotLeave();
     error BadInvite();
+    error TooFewMembers();
+    error NothingOwed();
+    error DepositWindowOpen();
 
     modifier inState(State s) {
         if (state != s) revert WrongState(state);
@@ -176,5 +183,131 @@ contract Squad {
         locked[m] = 0;
         totalLocked -= x;
         token.safeTransfer(m, x);
+    }
+
+    function start() external inState(State.Open) {
+        if (msg.sender != organizer) revert NotOrganizer();
+        if (members.length < 3) revert TooFewMembers();
+        _sortByTrust();
+        for (uint256 i; i < members.length; i++) cappedAtStart[members[i]] = trust.tier(members[i]) == RELIABLE;
+        _assignTurnsAndDeposits();
+        state = State.Depositing;
+        depositDeadline = uint64(block.timestamp + depositWindow);
+        emit Started(members);
+    }
+
+    function _requiredDepositFor(address m, uint256 n, uint256 p) internal view returns (uint256) {
+        uint256 c = contribution;
+        uint256 full = c * (n - p);
+        if (cappedAtStart[m] && full > 3 * c) full = 3 * c;
+        return full < c ? c : full;
+    }
+
+    function lockDeposit() external inState(State.Depositing) onlyMember {
+        if (locked[msg.sender] >= required[msg.sender]) revert NothingOwed();
+        uint256 amt = required[msg.sender] - locked[msg.sender];
+        _pullDeposit(msg.sender, amt);
+        emit DepositLocked(msg.sender, amt);
+        if (_allLocked()) _activate();
+    }
+
+    function finalizeDeposits() external inState(State.Depositing) {
+        if (block.timestamp <= depositDeadline) revert DepositWindowOpen();
+        uint256 n = members.length;
+        address[] memory kept = new address[](n);
+        uint256 k;
+        for (uint256 i; i < n; i++) {
+            address m = members[i];
+            if (locked[m] >= required[m]) {
+                kept[k++] = m;
+            } else {
+                _refund(m);
+                isMember[m] = false;
+                factory.noteMembership(m, false);
+                emit Dropped(m);
+            }
+        }
+        delete members;
+        for (uint256 i; i < k; i++) members.push(kept[i]);
+        if (k < 3) {
+            _cancelAndRefund();
+            return;
+        }
+        _assignTurnsAndDeposits();
+        for (uint256 i; i < k; i++) {
+            address m = members[i];
+            if (locked[m] > required[m]) {
+                uint256 x = locked[m] - required[m];
+                locked[m] = required[m];
+                totalLocked -= x;
+                token.safeTransfer(m, x);
+            }
+        }
+        // Dropping members only moves turns up in a smaller squad, so c*(n-p) never rises
+        // and the cap was fixed at start: every kept member is fully locked.
+        _activate();
+    }
+
+    function _sortByTrust() internal {
+        uint256 n = members.length;
+        int256[] memory score = new int256[](n);
+        bytes32[] memory key = new bytes32[](n);
+        for (uint256 i; i < n; i++) {
+            score[i] = trust.trustScore(members[i]);
+            key[i] = keccak256(abi.encode(block.prevrandao, address(this), members[i]));
+        }
+        for (uint256 i = 1; i < n; i++) {
+            address m = members[i];
+            int256 sc = score[i];
+            bytes32 ky = key[i];
+            uint256 j = i;
+            while (j > 0 && (score[j - 1] < sc || (score[j - 1] == sc && key[j - 1] > ky))) {
+                members[j] = members[j - 1];
+                score[j] = score[j - 1];
+                key[j] = key[j - 1];
+                j--;
+            }
+            members[j] = m;
+            score[j] = sc;
+            key[j] = ky;
+        }
+    }
+
+    function _assignTurnsAndDeposits() internal {
+        uint256 n = members.length;
+        for (uint256 i; i < n; i++) {
+            address m = members[i];
+            turnOf[m] = uint8(i + 1);
+            required[m] = _requiredDepositFor(m, n, i + 1);
+        }
+        activeCount = uint8(n);
+    }
+
+    function _allLocked() internal view returns (bool) {
+        uint256 n = members.length;
+        for (uint256 i; i < n; i++) {
+            if (locked[members[i]] < required[members[i]]) return false;
+        }
+        return true;
+    }
+
+    function _activate() internal {
+        state = State.Active;
+        // Demo squads (5-minute rounds) never write trust: otherwise sybils farm Reliable in an hour.
+        countsForTrust = members.length >= TRUST_MIN_MEMBERS && contribution >= TRUST_MIN_CONTRIBUTION
+            && roundLength >= TRUST_MIN_ROUND_LENGTH;
+        currentRound = 1;
+        uint64 d = firstDeadline;
+        // Keep the chosen weekday/time: if activation ran past the anchor, roll forward whole rounds.
+        if (d == 0) d = uint64(block.timestamp + roundLength);
+        else if (d <= block.timestamp) d += uint64(((block.timestamp - d) / roundLength + 1) * roundLength);
+        roundDeadline = d;
+        emit Activated(roundDeadline);
+    }
+
+    function _pullDeposit(address m, uint256 amt) internal {
+        token.safeTransferFrom(m, address(this), amt);
+        locked[m] += amt;
+        totalLocked += amt;
     }
 }

@@ -47,6 +47,22 @@ abstract contract Base is Test {
         }
     }
 
+    function _start(Squad s) internal {
+        vm.prank(s.organizer());
+        s.start();
+    }
+
+    function _lockAll(Squad s) internal {
+        uint256 n = s.memberCount();
+        for (uint256 i; i < n; i++) {
+            address m = s.memberAt(i);
+            if (s.locked(m) < s.required(m)) {
+                vm.prank(m);
+                s.lockDeposit();
+            }
+        }
+    }
+
     /// Member with turn t (1-based), valid after start().
     function _turn(Squad s, uint256 t) internal view returns (address) {
         return s.memberAt(t - 1);
