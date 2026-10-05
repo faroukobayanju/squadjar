@@ -55,7 +55,8 @@ assert.deepStrictEqual(
 // a squad event from a non-squad contract does not turn a refund into a payout
 assert.deepStrictEqual(run([transfer(SQ, B, 1), log(C, "RoundSettled", { round: 1, collector: B, amount: n(1), missed: [A] })]).map((r) => r.kind), ["refund"]);
 // member to member, withdraw, and other tokens ignored
-assert.deepStrictEqual(run([transfer(A, B, 300)]).map((r) => [r.member, r.kind]), [[A, "sent"], [B, "received"]]);
+assert.deepStrictEqual(run([transfer(A, B, 300)]).map((r) => [r.member, r.kind, r.counterparty]), [[A, "sent", B], [B, "received", A]]);
+assert.deepStrictEqual(run([transfer(A, DEAD, 300)])[0].counterparty, undefined);
 assert.deepStrictEqual(run([transfer(A, DEAD, 300)]).map((r) => r.kind), ["withdraw"]);
 assert.deepStrictEqual(run([log(C, "Transfer", { from: ZERO, to: A, value: n(1) })]), []);
 // a member marked stopped paying in this settle, or before it, gets no "paid from deposit" row

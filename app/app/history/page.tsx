@@ -9,7 +9,7 @@ import { useMyAccount } from "@/lib/live/account";
 import { usePoll } from "@/lib/live/squads";
 import type { Kind } from "@/lib/activity-classify";
 
-type Item = { tx: string; logIndex: number; kind: Kind; amount: number; round: number | null; at: string; squadName: string | null; slug: string | null };
+type Item = { tx: string; logIndex: number; kind: Kind; amount: number; round: number | null; at: string; squadName: string | null; slug: string | null; counterpartyName: string | null };
 
 function useLiveHistory(): Item[] | undefined {
   const { getAccessToken } = usePrivy();
@@ -26,7 +26,7 @@ const useHistory: () => Item[] | undefined = isLive ? useLiveHistory : () => [];
 
 const IN = new Set<Kind>(["topup", "payout", "refund", "received"]);
 
-function label({ kind, round, squadName }: Item) {
+function label({ kind, round, squadName, counterpartyName: who }: Item) {
   const sq = squadName ?? "a squad";
   switch (kind) {
     case "topup":
@@ -42,11 +42,11 @@ function label({ kind, round, squadName }: Item) {
     case "covered":
       return `Missed round ${round} · paid from your deposit · ${sq}`;
     case "withdraw":
-      return "Cashed out";
+      return "Cashed out to bank";
     case "sent":
-      return "Sent money";
+      return who ? `Sent to ${who}` : "Sent money";
     case "received":
-      return "Got money";
+      return who ? `From ${who}` : "Got money";
     case "stopped":
       return `Stopped paying · ${sq}`;
   }

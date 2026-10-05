@@ -50,3 +50,4 @@ create table if not exists activity (
 create index if not exists activity_member_at on activity (member, at desc);
 alter table activity drop constraint if exists activity_kind_check;
 alter table activity add constraint activity_kind_check check (kind in ('topup','deposit','contribution','payout','refund','covered','withdraw','sent','received','stopped'));
+alter table activity add column if not exists counterparty text;

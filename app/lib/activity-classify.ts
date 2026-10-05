@@ -21,7 +21,8 @@ const ZERO = "0x0000000000000000000000000000000000000000";
 const DEAD = "0x000000000000000000000000000000000000dead";
 
 export type Kind = "topup" | "deposit" | "contribution" | "payout" | "refund" | "covered" | "withdraw" | "sent" | "received" | "stopped";
-export type Row = { logIndex: number; member: string; kind: Kind; amount: bigint; squad: string | null; round: number | null };
+/** `counterparty` only on sent/received: the other member. */
+export type Row = { logIndex: number; member: string; kind: Kind; amount: bigint; squad: string | null; round: number | null; counterparty?: string };
 type RawLog = { address: string; topics: readonly Hex[] | [Hex, ...Hex[]] | []; data: Hex; logIndex: number | null };
 /** `stoppedBefore(squad, member)`: the member was already marked stopped paying before this tx. */
 export type Ctx = { token: string; isSquad: (a: string) => boolean; contribution: (squad: string) => bigint; stoppedBefore?: (squad: string, member: string) => boolean };
@@ -77,8 +78,8 @@ export function classify(logs: readonly RawLog[], { token, isSquad, contribution
     } else if (!sq(from) && to === DEAD) {
       add(i, from, "withdraw", v);
     } else if (!sq(from) && !sq(to) && to !== ZERO) {
-      add(i, from, "sent", v);
-      add(i, to, "received", v);
+      rows.push({ logIndex: i, member: from, kind: "sent", amount: v, squad: null, round: null, counterparty: to });
+      rows.push({ logIndex: i, member: to, kind: "received", amount: v, squad: null, round: null, counterparty: from });
     }
   }
   // A miss moves no sNGN (the deposit covers it inside the jar), so it gets its own row. Members who stopped paying
@@ -97,7 +98,7 @@ export function classify(logs: readonly RawLog[], { token, isSquad, contribution
   return rows;
 }
 
-export type DbRow = { tx: string; log_index: number; member: string; kind: Kind; amount: string; squad: string | null; round: number | null; block: string; at: string };
+export type DbRow = { tx: string; log_index: number; member: string; kind: Kind; amount: string; squad: string | null; round: number | null; counterparty: string | null; block: string; at: string };
 
 /** Reads what classify() needs from the chain (isSquad on every factory, cached in `cache`), then classifies. */
 export async function rowsFor(client: PublicClient, receipt: TransactionReceipt, factories: readonly string[], token: string, cache = new Map<string, boolean>()): Promise<DbRow[]> {
@@ -139,21 +140,24 @@ export async function rowsFor(client: PublicClient, receipt: TransactionReceipt,
     amount: formatUnits(r.amount, 18), // whole naira, exact
     squad: r.squad,
     round: r.round,
+    counterparty: r.counterparty ?? null,
     block: receipt.blockNumber.toString(),
     at,
   }));
 }
 
 type Sql = { query: (q: string, params: unknown[]) => Promise<unknown> };
-/** One idempotent insert; returns how many rows were new. */
+/** One idempotent insert; returns how many rows were new. Re-runs fill in a counterparty that older rows lack. */
 export async function insertRows(sql: Sql, rows: DbRow[]): Promise<number> {
   if (!rows.length) return 0;
   const col = <K extends keyof DbRow>(k: K) => rows.map((r) => r[k]);
   const res = (await sql.query(
-    `insert into activity (tx, log_index, member, kind, amount, squad, round, block, at)
-     select * from unnest($1::text[], $2::int[], $3::text[], $4::text[], $5::numeric[], $6::text[], $7::int[], $8::bigint[], $9::timestamptz[])
-     on conflict do nothing returning 1`,
-    [col("tx"), col("log_index"), col("member"), col("kind"), col("amount"), col("squad"), col("round"), col("block"), col("at")],
-  )) as unknown[];
-  return res.length;
+    `insert into activity (tx, log_index, member, kind, amount, squad, round, block, at, counterparty)
+     select * from unnest($1::text[], $2::int[], $3::text[], $4::text[], $5::numeric[], $6::text[], $7::int[], $8::bigint[], $9::timestamptz[], $10::text[])
+     on conflict (tx, log_index, member) do update set counterparty = excluded.counterparty
+       where activity.counterparty is null and excluded.counterparty is not null
+     returning (xmax = 0) as inserted`,
+    [col("tx"), col("log_index"), col("member"), col("kind"), col("amount"), col("squad"), col("round"), col("block"), col("at"), col("counterparty")],
+  )) as { inserted: boolean }[];
+  return res.filter((r) => r.inserted).length;
 }
