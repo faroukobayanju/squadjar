@@ -450,6 +450,9 @@ contract Squad {
             currentRound = r + 1;
             uint64 next = roundDeadline + roundLength;
             if (next <= block.timestamp) next += uint64(((block.timestamp - next) / roundLength + 1) * roundLength);
+            // Same rule as round 1: a late settle can't leave members seconds to pay. Never fires on an
+            // on-time settle, where the lead is at least roundLength - grace (> roundLength / 2 for every preset).
+            if (next < block.timestamp + roundLength / 2) next += roundLength;
             roundDeadline = next;
         }
     }
@@ -491,6 +494,7 @@ contract Squad {
         uint256 n = members.length;
         uint256 sumKept; // deposits owed back to members still paying
         uint256 honest;
+        uint256 payers; // members still paying
         address lastPayer;
         for (uint256 i; i < n; i++) {
             address m = members[i];
@@ -500,6 +504,7 @@ contract Squad {
             } else {
                 sumKept += locked[m];
                 lastPayer = m;
+                payers++;
                 if (missCount[m] == 0) honest++;
             }
         }
@@ -508,7 +513,10 @@ contract Squad {
 
         uint256 avail = token.balanceOf(address(this));
         uint256 pool = avail > sumKept ? avail - sumKept : 0; // forfeits net of unrepaid fronting
-        uint256 share = honest > 0 ? pool / honest : 0;
+        // Forfeits go to members still paying with zero misses. If none has zero misses, every member
+        // still paying shares them equally, so one arbitrary peer never takes the whole pool.
+        uint256 sharers = honest > 0 ? honest : payers;
+        uint256 share = sharers > 0 ? pool / sharers : 0;
 
         for (uint256 i; i < n; i++) {
             address m = members[i];
@@ -517,10 +525,8 @@ contract Squad {
             locked[m] = 0;
             totalLocked -= amt;
             if (avail < sumKept) amt = (amt * avail) / sumKept;
-            if (missCount[m] == 0) {
-                amt += share;
-                if (countsForTrust) trust.recordCompleted(m);
-            }
+            if (honest == 0 || missCount[m] == 0) amt += share;
+            if (missCount[m] == 0 && countsForTrust) trust.recordCompleted(m);
             if (amt > 0) token.safeTransfer(m, amt);
         }
         uint256 dust = token.balanceOf(address(this));

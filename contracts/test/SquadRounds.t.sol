@@ -387,6 +387,133 @@ contract SquadRoundsTest is Base {
         assertEq(token.balanceOf(address(s)), 0);
     }
 
+    /// Same shape as the zero-miss test, but t2..t5 each miss round 2 once and then refill, so nobody
+    /// still paying has zero misses (honest == 0). The forfeited pool is split among the 4 payers instead of
+    /// going whole to the last payer. 5 members, c = C + 2. Required deposits by turn: 4c, 3c, 2c, c, c (11c).
+    /// r1: all pay, t1 collects 5c. r2: only t1 pays; t2..t5 miss (first miss), covered c each from their
+    /// deposits (3c -> 2c, 2c -> c, c -> 0, c -> 0), payout c + 4c = 5c to t2. t2..t5 then refill c each (4c).
+    /// r3: t1 misses (first miss), covered c: 4c -> 3c. r4: t1 misses again with a refill owed -> stopped;
+    /// cover c: 3c -> 2c. r5: cover c: 2c -> c, so t1's last c is forfeited.
+    /// Jar at finish: deposits 11c + refills 4c + contributions (5 + 1 + 4 + 4 + 4 = 18c) - payouts 5 * 5c
+    /// = 8c. sumKept = t2..t5 deposits back to full = 3c + 2c + c + c = 7c, so pool = c = 1000e18 + 2.
+    /// honest = 0 (t2..t5 each have missCount 1) and 4 members are still paying:
+    /// share = floor(c / 4) = 250e18, dust = pool - 4 * share = 2 wei, paid to the last payer t5.
+    /// Net: each of t2..t4 = +250e18 (0 plus its share: t2 -4c deposits -4c paid +5c collected +3c refunded),
+    /// t5 = +250e18 + 2, t1 = -2c paid + 5c collected - 4c deposit = -c. Jar ends at 0.
+    function test_finishSplitsPoolAmongPayersWhenNoneZeroMiss() public {
+        uint256 c = C + 2;
+        Squad s = _squad(5, c);
+        _start(s);
+        address[5] memory t;
+        uint256[5] memory b0;
+        for (uint256 i; i < 5; i++) {
+            t[i] = _turn(s, i + 1);
+            b0[i] = token.balanceOf(t[i]);
+        }
+        _lockAll(s);
+
+        _payAllExcept(s, address(0)); // r1: t1 collects 5c
+        vm.warp(uint256(s.roundDeadline()) - s.roundLength()); // r2 opens on schedule
+        vm.prank(t[0]);
+        s.contribute(); // r2: only t1 pays
+        _warpPastGrace(s);
+        s.settleRound(2); // t2..t5 miss once, covered from deposits
+        for (uint256 i = 1; i < 5; i++) {
+            assertEq(s.missCount(t[i]), 1);
+            vm.prank(t[i]);
+            s.refillDeposit();
+            assertEq(s.locked(t[i]), s.required(t[i]));
+        }
+        _payAllExcept(s, t[0]); // r3: t1 misses, covered 1c: 4c -> 3c
+        _warpPastGrace(s);
+        s.settleRound(3);
+        _payAllExcept(s, t[0]); // r4: t1 misses again with refill owed -> stopped; cover 1c: 3c -> 2c
+        _warpPastGrace(s);
+        s.settleRound(4);
+        assertTrue(s.stoppedPaying(t[0]));
+        assertEq(s.locked(t[0]), 2 * c);
+        _payAllExcept(s, address(0)); // r5: the 4 active members pay; t1 cover 1c (2c -> 1c); finish
+        assertEq(uint8(s.state()), uint8(Squad.State.Completed));
+
+        for (uint256 i = 1; i < 5; i++) assertEq(s.missCount(t[i]), 1); // nobody still paying has zero misses
+        assertEq(token.balanceOf(t[1]), b0[1] + 250e18);
+        assertEq(token.balanceOf(t[2]), b0[2] + 250e18);
+        assertEq(token.balanceOf(t[3]), b0[3] + 250e18);
+        assertEq(token.balanceOf(t[4]), b0[4] + 250e18 + 2); // last payer also gets the dust
+        assertEq(token.balanceOf(t[0]), b0[0] - c);
+        assertEq(token.balanceOf(address(s)), 0);
+    }
+
+    /// Weekly, 5 members, c = C (counts for trust). t1 collects round 1, misses round 2 (trust miss 1,
+    /// covered, refill owed), misses round 3 without refilling: `_stop` records the stopping miss (miss 2).
+    /// Rounds 4 and 5 add nothing for t1 (stopped members are not recorded again). t2..t5 pay all five
+    /// rounds on time and finish with no misses: onTime 5, missed 0, completed 1. t1: onTime 1 (round 1
+    /// only), late 0, missed 2, completed 0 (stopped members are skipped when completions are recorded).
+    function test_trustWritesInTrustCountingSquad() public {
+        Squad s = _squadWith(5, C, SquadFactory.Period.Weekly);
+        _start(s);
+        _lockAll(s);
+        assertTrue(s.countsForTrust());
+        address t1 = _turn(s, 1);
+        address t2 = _turn(s, 2);
+
+        _payAllExcept(s, address(0)); // r1: everyone on time, t1 collects
+        _payAllExcept(s, t1); // r2: t1 misses, covered
+        _warpPastGrace(s);
+        s.settleRound(2);
+        (uint32 on, uint32 late, uint32 missed, uint32 done) = registry.records(t1);
+        assertEq(on, 1);
+        assertEq(late, 0);
+        assertEq(missed, 1);
+        assertEq(done, 0);
+        assertFalse(s.stoppedPaying(t1));
+
+        _payAllExcept(s, t1); // r3: t1 misses again, no refill -> stopped (the stopping miss is recorded)
+        _warpPastGrace(s);
+        s.settleRound(3);
+        assertTrue(s.stoppedPaying(t1));
+        (, , missed, ) = registry.records(t1);
+        assertEq(missed, 2);
+        assertEq(s.missCount(t1), 1); // the stopping miss is in the registry but not in missCount
+
+        _payAllExcept(s, address(0)); // r4: 4 active members, auto-settles
+        _payAllExcept(s, address(0)); // r5: finish
+        assertEq(uint8(s.state()), uint8(Squad.State.Completed));
+
+        (on, late, missed, done) = registry.records(t1);
+        assertEq(on, 1);
+        assertEq(late, 0);
+        assertEq(missed, 2); // rounds 4 and 5 add nothing
+        assertEq(done, 0);
+        (on, late, missed, done) = registry.records(t2);
+        assertEq(on, 5);
+        assertEq(late, 0);
+        assertEq(missed, 0);
+        assertEq(done, 1);
+    }
+
+    /// Demo: roundLength 300, grace 60. Round 1's deadline is D. Settling at D + 100 leaves a 200s lead to
+    /// D + 300 (>= 150), which stays. Settling at D + 200 would leave only 100s, so round 2 is pushed one
+    /// more round to D + 600 (400s of room) and the phase stays aligned to the original schedule.
+    function test_lateSettleKeepsHalfRoundToPay() public {
+        Squad ok = _active(3, C);
+        Squad late = _active(3, C); // same activation time, same deadline
+        uint256 d = ok.roundDeadline();
+        assertEq(uint256(late.roundDeadline()), d);
+
+        vm.warp(d + 100);
+        ok.settleRound(1);
+        assertEq(uint256(ok.roundDeadline()), d + 300); // 200s lead: unchanged
+
+        vm.warp(d + 200);
+        late.settleRound(1);
+        assertEq(uint8(late.state()), uint8(Squad.State.Active));
+        assertEq(late.currentRound(), 2);
+        assertEq(uint256(late.roundDeadline()), d + 600); // bumped one more round
+        assertEq((uint256(late.roundDeadline()) - d) % late.roundLength(), 0); // phase kept
+        assertGe(uint256(late.roundDeadline()) - block.timestamp, late.roundLength() / 2);
+    }
+
     function test_getStateReturnsArrays() public {
         Squad s = _active(3, C);
         Squad.SquadView memory v = s.getState();
