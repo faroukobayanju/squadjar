@@ -20,3 +20,13 @@ Checked against platform.kimi.ai/docs/api/chat (platform.moonshot.ai redirects t
 ## Acceptance
 
 `node lib/kimi-draft.check.ts` covers "8 of us, 5k every Friday" and "We be 8, 5k every Friday" as tool args. Run the real model with `KIMI_API_KEY` set in `.env.local`.
+
+## Free option (no deposit)
+
+Moonshot's own API needs a prepaid balance. For the hackathon, use OpenRouter's free Kimi K2 (rate-limited, no card):
+
+- `KIMI_BASE_URL=https://openrouter.ai/api/v1`
+- `KIMI_MODEL=moonshotai/kimi-k2:free`
+- `KIMI_API_KEY=<OpenRouter key>` (openrouter.ai → Keys)
+
+`lib/kimi.ts` only sends Moonshot's `thinking` switch to Moonshot URLs. Cloudflare Workers AI (`@cf/moonshotai/kimi-k2.6`, free daily allowance) is another option.

@@ -25,7 +25,9 @@ async function chat(body: object): Promise<Message | null> {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${KEY}` },
       // Thinking off: these are short structured replies and the 8s budget can't fit a reasoning pass.
-      body: JSON.stringify({ model: MODEL, thinking: { type: "disabled" }, ...body }),
+      // `thinking` is a Moonshot-only switch; other OpenAI-compatible hosts of Kimi (e.g. OpenRouter's free
+      // moonshotai/kimi-k2:free) reject or ignore unknown fields, so only send it to Moonshot.
+      body: JSON.stringify({ model: MODEL, ...(BASE.includes("moonshot") ? { thinking: { type: "disabled" } } : {}), ...body }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!r.ok) {
