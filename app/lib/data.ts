@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import * as store from "./store";
 import { isLive } from "./live/chain";
 import { useLiveMe, useLivePublicSquads, useLiveRecords, useLiveSquad, useLiveSquads } from "./live/squads";
-import { useLiveActions, useLiveInviteCode, useLiveJoinRequests, useLiveNotifications, useLivePayout, useLiveRemindLink, type Nudge } from "./live/actions";
+import { useLiveActions, useLiveInviteCode, useLiveJoinRequests, useLiveNotifications, useLivePayout, useLiveRemind, type Nudge } from "./live/actions";
 import type { Actions, JoinRequests, PublicSquad, Squad, Tier } from "./types";
 import type { PayRecord } from "./record-line";
 
@@ -37,8 +37,8 @@ export const useJustStamped = (slug: string) => store.useStore((s) => (!isLive &
 const useDemoPayout = () => store.useStore((s) => s.lastPayout);
 export const useLastPayout = isLive ? useLivePayout : useDemoPayout;
 /** Members' invite code (live only; the demo has no joining). */
-/** Server-written WhatsApp link for the squad reminder; null/undefined = use the local template. `waiting` = ids still owing, joined. */
-export const useRemindLink: (slug: string, waiting: string) => string | null | undefined = isLive ? useLiveRemindLink : () => null;
+/** Fetches the server-written WhatsApp reminder link on demand; null in the demo (use the local template). */
+export const useRemind: () => ((slug: string) => Promise<string | null>) | null = isLive ? useLiveRemind : () => null;
 export type { Nudge };
 export const useNotifications: () => Nudge[] | undefined = isLive ? useLiveNotifications : () => undefined;
 export const useInviteCode: (slug: string, enabled: boolean) => string | null | undefined = isLive ? useLiveInviteCode : () => undefined;

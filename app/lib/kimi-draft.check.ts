@@ -34,6 +34,13 @@ assert.strictEqual(cleanMessage(`"Pay here ${link}"`, link, 280), `Pay here ${li
 assert.strictEqual(cleanMessage("Send tokens now", link, 280), null);
 assert.strictEqual(cleanMessage("x".repeat(260), link, 280), null);
 assert.strictEqual(cleanMessage(undefined, link, 280), null);
+// Only our pay link may appear.
+assert.strictEqual(cleanMessage(`Pay here ${link} or at https://evil.example/pay`, link, 280), null);
+assert.strictEqual(cleanMessage(`Pay at http://x.ng`, link, 280), null);
+assert.strictEqual(cleanMessage(`Pay at www.paystack-help.ng`, link, 280), null);
+assert.strictEqual(cleanMessage(`Quick: bit.ly/abc ${link}`, link, 280), null);
+assert.strictEqual(cleanMessage(`See x.com for news. ${link}`, link, 280), null);
+assert.strictEqual(cleanMessage(`Ada, Bola: ₦5,000 is due Fri, 6:00 pm. ${link}`, link, 280), `Ada, Bola: ₦5,000 is due Fri, 6:00 pm. ${link}`);
 
 // Nudge stages (epoch seconds). Weekly: T-24h, T-1h, missed during grace, nothing after.
 const D = 1_000_000;

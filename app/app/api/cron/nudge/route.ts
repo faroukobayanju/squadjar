@@ -51,22 +51,29 @@ export async function GET(req: Request) {
       const whenAt = (stage === "missed" ? deadline + v.grace : deadline) * 1000;
       await Promise.all(
         todo.map(async (m) => {
-          const { name, lang } = who.get(m) ?? { name: "", lang: "en" as const };
-          const vars = { name: name.slice(0, 24), amount, squad: s.name, when: dueLabel(whenAt, lang), link };
-          const template = tr(lang, stage === "missed" ? "nudgeLate" : "nudgeSoon", vars);
-          const body = await compose(
-            stage === "missed"
-              ? "Write one short, kind message to this member: their contribution for this round is late. They can still pay before `when`, after that it counts as a miss and their deposit covers it."
-              : "Write one short, friendly message to this member reminding them their contribution is due at `when`.",
-            vars,
-            lang,
-            link,
-            280,
-            template,
-          );
-          const ins = await sql`insert into notifications (member, squad, round, stage, channel, body)
-            values (${m}, ${squad}, ${round}, ${stage}, 'inapp', ${body}) on conflict do nothing returning member`;
-          sent += ins.length;
+          // No profile row: they never finished sign-up, so there's no name, language or inbox to write to.
+          const p = who.get(m);
+          if (!p) return;
+          const { name, lang } = p;
+          try {
+            const vars = { name, amount, squad: s.name, when: dueLabel(whenAt, lang), link };
+            const template = tr(lang, stage === "missed" ? "nudgeLate" : "nudgeSoon", vars);
+            const body = await compose(
+              stage === "missed"
+                ? "Write one short, kind message to this member: their contribution for this round is late. They can still pay before `when`, after that it counts as a miss and their deposit covers it."
+                : "Write one short, friendly message to this member reminding them their contribution is due at `when`.",
+              vars,
+              lang,
+              link,
+              280,
+              template,
+            );
+            const ins = await sql`insert into notifications (member, squad, round, stage, channel, body)
+              values (${m}, ${squad}, ${round}, ${stage}, 'inapp', ${body}) on conflict do nothing returning member`;
+            sent += ins.length;
+          } catch (e) {
+            console.error("cron nudge: member failed", { squad, round, stage }, e); // the rest still go out; retried next run
+          }
         }),
       );
     }

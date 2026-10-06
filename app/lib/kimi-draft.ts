@@ -46,11 +46,15 @@ export function normalizeDraft(args: unknown): DraftReply {
   return reply(draft);
 }
 
-/** Kimi's free text, or null when it breaks the rules (banned word, too long, no pay link). Adds the link when it fits. */
+// Any link but ours: a scheme, www., or a bare domain like bit.ly or x.ng. Member names reach the prompt, so a
+// name can try to steer Kimi into adding one; a false match only costs us the template.
+const OTHER_LINK = /https?:\/\/|www\.|\b[a-z0-9-]+\.[a-z]{2,}\b/i;
+
+/** Kimi's free text, or null when it breaks the rules (banned word, any other link, too long). Adds the pay link when missing. */
 export function cleanMessage(text: unknown, link: string, max: number): string | null {
   if (typeof text !== "string") return null;
   let s = text.trim().replace(/^["“]|["”]$/g, "").trim();
-  if (!s || hasBanned(s)) return null;
+  if (!s || hasBanned(s) || OTHER_LINK.test(s.split(link).join(" "))) return null;
   if (!s.includes(link)) s = `${s} ${link}`;
   return s.length <= max ? s : null;
 }
