@@ -52,8 +52,12 @@ function usePrivyWrite() {
       async function send(c: Call): Promise<TransactionReceipt> {
         // Simulate first so contract errors surface decoded (ContractFunctionRevertedError.data.errorName).
         await withRetry(() => publicClient.simulateContract({ ...c, account }));
+        // Explicit 1.5x gas margin: start() sorts turns with prevrandao, so the block it lands in can cost up to ~5% more
+        // than the estimate (seen in scripts/e2e). Sponsored, so the margin costs the user nothing.
+        const est = await withRetry(() => publicClient.estimateContractGas({ ...c, account } as Parameters<typeof publicClient.estimateContractGas>[0]));
+        const gasLimit = (est * BigInt(3)) / BigInt(2);
         const data = encodeFunctionData({ abi: c.abi, functionName: c.functionName, args: c.args });
-        const { hash } = await withRetry(() => sendTransaction({ to: c.address, data, chainId: monadTestnet.id }, { address: account, sponsor: true }));
+        const { hash } = await withRetry(() => sendTransaction({ to: c.address, data, chainId: monadTestnet.id, gasLimit }, { address: account, sponsor: true }));
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
         if (receipt.status === "reverted") throw new Error("Transaction reverted");
         // Money history: the server re-reads this receipt itself. Never blocks or throws.
