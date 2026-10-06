@@ -4,9 +4,6 @@ export function naira(n: number) {
   return `₦${Math.round(n).toLocaleString("en-NG")}`;
 }
 
-/** A public squad's minimum tier label key, by registry value (0 New, 1 Building, 2 Reliable). */
-export const MIN_TIER_KEY = ["minTier0", "minTier1", "minTier2"] as const;
-
 export function initials(name: string) {
   return name.slice(0, 2).toUpperCase();
 }

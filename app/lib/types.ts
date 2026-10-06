@@ -1,17 +1,8 @@
-import type { PayRecord } from "./record-line";
 export type Tier = "New" | "Building" | "Reliable";
 export type Period = "Demo" | "Weekly" | "Monthly";
 export type SquadState = "Open" | "Depositing" | "Active" | "Completed" | "Cancelled";
 
 export type Member = { id: string; name: string; tier: Tier };
-
-/** A public squad's listing terms. minTier is the registry value: 0 New, 1 Building, 2 Reliable. */
-export type PublicTerms = { description: string | null; minTier: number; approval: boolean };
-export type PublicSquad = PublicTerms & { slug: string; name: string; contribution: number; period: Period; members: number; maxMembers: number };
-export type RequestStatus = "pending" | "accepted" | "declined";
-export type JoinRequest = { member: string; name: string; tier: number; record: PayRecord };
-/** GET /requests: the organizer gets `requests`, anyone else their own `status`. */
-export type JoinRequests = { requests?: JoinRequest[]; status?: RequestStatus | null };
 
 export type Squad = {
   slug: string;
@@ -36,7 +27,6 @@ export type Squad = {
   myDeposit: number;
   myRequired: number;
   myOwed: number;
-  pub?: PublicTerms; // set on public squads (live only)
 };
 
 /** Someone found by @username, to send money to. */
@@ -52,12 +42,8 @@ export type Actions = {
   send(to: `0x${string}`, amount: number): Promise<void>;
   /** Test mode: the money leaves the balance for good; nothing reaches a bank. */
   withdraw(amount: number): Promise<void>;
-  /** `pub` makes the squad public (anyone can find it); without it, joining needs the link and code. */
-  createSquad(input: { name: string; contribution: number; size: number; period: Period; due: number; pub?: PublicTerms }): Promise<string>;
+  createSquad(input: { name: string; contribution: number; size: number; period: Period; due: number }): Promise<string>;
   join(slug: string, code: string): Promise<void>;
-  /** Public squad: request to join, and join right away once the request is accepted. */
-  joinPublic(slug: string): Promise<RequestStatus>;
-  decideRequest(slug: string, member: string, decision: "accepted" | "declined"): Promise<void>;
   leave(slug: string): Promise<void>;
   start(slug: string): Promise<void>;
   lockDeposit(slug: string): Promise<void>;
