@@ -16,7 +16,7 @@ import { dueLabel, naira } from "@/lib/format";
 import { useOrigin } from "@/lib/origin";
 import { refreshAll } from "@/lib/live/squads";
 import { rich, useLang, useT } from "@/lib/i18n";
-import { ME, clearJustStamped, collectorOf, myTurn, payoutAmount, useActions, useJustStamped, useMe, useSquad, type Squad } from "@/lib/data";
+import { ME, clearJustStamped, collectorOf, myTurn, payoutAmount, useActions, useJustStamped, useMe, useRemindLink, useSquad, type Squad } from "@/lib/data";
 
 export default function SquadPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ code?: string }> }) {
   const { slug } = use(params);
@@ -205,6 +205,8 @@ function RemindSquad({ squad }: { squad: Squad }) {
   const t = useT();
   const r = squad.currentRound;
   const waiting = squad.members.filter((m) => !(squad.paid[r] ?? []).includes(m.id) && m.id !== ME);
+  // The server's message (Kimi, in my language) once it answers; until then, or without it, the local template.
+  const written = useRemindLink(squad.slug, squad.address && squad.state === "Active" ? waiting.map((m) => m.id).join(",") : "");
   if (!waiting.length) return null;
   const text = t("remindText", {
     names: waiting.map((m) => m.name).join(", "),
@@ -215,7 +217,7 @@ function RemindSquad({ squad }: { squad: Squad }) {
   });
   return (
     <a
-      href={`https://wa.me/?text=${encodeURIComponent(text)}`}
+      href={written ?? `https://wa.me/?text=${encodeURIComponent(text)}`}
       target="_blank"
       rel="noreferrer"
       className="mt-5 inline-flex min-h-12 items-center gap-2 font-semibold text-ink underline decoration-rule decoration-2 hover:decoration-ink"

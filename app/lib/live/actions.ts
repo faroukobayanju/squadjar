@@ -242,3 +242,35 @@ export function useLiveJoinRequests(slug: string, enabled: boolean): JoinRequest
     return (await r.json()) as JoinRequests;
   });
 }
+
+/** One signed-in POST per `key`: the JSON reply, or null when it failed (callers fall back). */
+function useAuthedOnce<T>(url: string, key: string | null, init?: RequestInit): T | null | undefined {
+  const { getAccessToken } = usePrivy();
+  const [got, setGot] = useState<{ key: string; v: T | null }>();
+  useEffect(() => {
+    if (!key) return;
+    let alive = true;
+    (async () => {
+      const r = await fetch(url, { ...init, headers: { authorization: `Bearer ${await getAccessToken()}` } });
+      return r.ok ? ((await r.json()) as T) : null;
+    })()
+      .catch(() => null)
+      .then((v) => alive && setGot({ key, v }));
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- key covers url and init
+  }, [key]);
+  return got?.key === key ? got.v : undefined;
+}
+
+/** The squad's WhatsApp reminder written by the server (Kimi, in my language), asked again when who still owes changes. */
+export const useLiveRemindLink = (slug: string, waiting: string): string | null | undefined =>
+  useAuthedOnce<{ waLink: string }>(`/api/squads/${encodeURIComponent(slug)}/remind`, waiting ? `remind:${slug}:${waiting}` : null, { method: "POST" })?.waLink ?? null;
+
+export type Nudge = { squad: string; slug: string; squadName: string; body: string; sentAt: string };
+/** My in-app pay nudges, newest first, read once per mount. */
+export function useLiveNotifications(): Nudge[] | undefined {
+  const { address: me } = useMyAccount();
+  return useAuthedOnce<Nudge[]>("/api/notifications", me ? `notices:${me}` : null) ?? undefined;
+}
