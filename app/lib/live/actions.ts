@@ -10,7 +10,9 @@ import { useMyAccount } from "./account";
 import { useWrite } from "./tx";
 import { refreshAll, resolveSlug, usePoll } from "./squads";
 import { DemoError } from "../store";
-import type { Actions, JoinRequests, Payout, Period, PublicTerms, RequestStatus } from "../types";
+import { RECORD_BLOCKED } from "../record-line";
+import { BURN } from "../money-out";
+import type { Actions, JoinRequests, Payout, Period, Person, PublicTerms, RequestStatus } from "../types";
 
 const PERIOD_INDEX: Record<Period, number> = { Demo: 0, Weekly: 1, Monthly: 2 };
 const PAYOUT_KEY = "squadjar-payout";
@@ -55,7 +57,23 @@ export function useLiveActions(): Actions {
     return {
       addMoney: async (amount) => {
         await write({ address: TOKEN, abi: tokenAbi, functionName: "faucet", args: [toUnits(amount)] });
-        await refreshAll();
+        await refreshAll().catch(() => {}); // the money has moved: a failed refresh must not show an error
+      },
+
+      findPerson: async (username) => {
+        const r = await authed(`/api/users/lookup?u=${encodeURIComponent(username)}`);
+        if (r.status === 404 || r.status === 400) return null;
+        if (!r.ok) throw new Error(`lookup ${r.status}`);
+        return (await r.json()) as Person;
+      },
+      send: async (to, amount) => {
+        if (me && to.toLowerCase() === me.toLowerCase()) throw new DemoError("You can't send money to yourself.");
+        await write({ address: TOKEN, abi: tokenAbi, functionName: "transfer", args: [to, toUnits(amount)] });
+        await refreshAll().catch(() => {}); // the money has moved: a failed refresh must not show an error
+      },
+      withdraw: async (amount) => {
+        await write({ address: TOKEN, abi: tokenAbi, functionName: "transfer", args: [BURN, toUnits(amount)] });
+        await refreshAll().catch(() => {}); // the money has moved: a failed refresh must not show an error
       },
 
       createSquad: async ({ name, contribution, size, period, due, pub }) => {
@@ -102,6 +120,7 @@ export function useLiveActions(): Actions {
           await refreshAll(); // the squad is no longer Open: the page switches to its "already started" notice
           throw new DemoError("This squad has already started.");
         }
+        if (r.status === 403 && (await r.json().catch(() => null))?.error === "record") throw new DemoError(RECORD_BLOCKED);
         if (!r.ok) throw new Error(`request ${r.status}`);
         const { status, code } = (await r.json()) as { status: RequestStatus; code?: string };
         await (code ? join(slug, code) : refreshAll()); // the code comes back once accepted; join with it like an invite link

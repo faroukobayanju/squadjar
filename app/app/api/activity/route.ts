@@ -13,8 +13,9 @@ export const POST = route(async (req: Request) => {
 export const GET = route(async (req: Request) => {
   const me = await requireUser(req);
   const rows = await sql`
-    select a.tx, a.log_index as "logIndex", a.kind, a.amount::float8 as amount, a.round, a.at, s.name as "squadName", s.slug
-    from activity a left join squads s on s.address = a.squad
+    select a.tx, a.log_index as "logIndex", a.kind, a.amount::float8 as amount, a.round, a.at, s.name as "squadName", s.slug,
+      u.display_name as "counterpartyName"
+    from activity a left join squads s on s.address = a.squad left join users u on u.address = a.counterparty
     where a.member = ${me.address}
     order by a.at desc, a.log_index desc
     limit 100`;

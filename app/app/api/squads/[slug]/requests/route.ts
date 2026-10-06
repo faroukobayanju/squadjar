@@ -1,9 +1,11 @@
 import { isAddress, type Address } from "viem";
 import { bad, requireUser, route } from "@/lib/auth-server";
 import { sql } from "@/lib/db";
-import { publicClient, readTiers } from "@/lib/live/chain";
+import { publicClient } from "@/lib/live/chain";
 import { squadAbi } from "@/lib/live/abi";
 import { canRequest, codeReleasable } from "@/lib/public-squads";
+import { recordOf, recordsOf } from "@/lib/record";
+import { blockedByRecord } from "@/lib/record-line";
 
 type Ctx = { params: Promise<{ slug: string }> };
 
@@ -22,8 +24,10 @@ export const POST = route(async (req: Request, ctx: Ctx) => {
   const me = await requireUser(req);
   const row = await squadOf(ctx);
   if (row.visibility !== "public") return bad("forbidden", 403);
-  const [tier] = await readTiers([me.address]);
+  const record = await recordOf(me.address);
+  const { tier } = record;
   if (!canRequest({ tier, minTier: row.min_tier })) return bad("tier", 403);
+  if (blockedByRecord(record)) return bad("record", 403);
   const view = await publicClient.readContract({ address: row.address as Address, abi: squadAbi, functionName: "getState" });
   if (view.state !== 0) return bad("started", 409); // 0 = Open; joining a started squad would fail anyway
 
@@ -47,8 +51,10 @@ export const GET = route(async (req: Request, ctx: Ctx) => {
   }
   const pending = await sql`select r.member, u.display_name from join_requests r left join users u on u.address = r.member
     where r.squad = ${row.address} and r.status = 'pending' order by r.created_at`;
-  const tiers = await readTiers(pending.map((p) => p.member as Address));
-  return Response.json({ requests: pending.map((p, i) => ({ member: p.member, name: p.display_name ?? "Someone", tier: tiers[i] })) });
+  const records = await recordsOf(pending.map((p) => p.member as Address));
+  return Response.json({
+    requests: pending.map((p) => ({ member: p.member, name: p.display_name ?? "Someone", tier: records[p.member].tier, record: records[p.member] })),
+  });
 });
 
 /** Organizer only (checked onchain): accept or decline one request. */

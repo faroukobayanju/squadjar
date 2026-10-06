@@ -39,7 +39,7 @@ create table if not exists activity (
   tx text not null,
   log_index int not null,
   member text not null,
-  kind text not null check (kind in ('topup','deposit','contribution','payout','refund','covered','withdraw','sent','received')),
+  kind text not null check (kind in ('topup','deposit','contribution','payout','refund','covered','withdraw','sent','received','stopped')),
   amount numeric not null,
   squad text,
   round int,
@@ -48,3 +48,6 @@ create table if not exists activity (
   primary key (tx, log_index, member)
 );
 create index if not exists activity_member_at on activity (member, at desc);
+alter table activity drop constraint if exists activity_kind_check;
+alter table activity add constraint activity_kind_check check (kind in ('topup','deposit','contribution','payout','refund','covered','withdraw','sent','received','stopped'));
+alter table activity add column if not exists counterparty text;

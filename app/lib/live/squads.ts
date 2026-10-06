@@ -9,6 +9,7 @@ import { useMyAccount } from "./account";
 import { startChainClock } from "./clock";
 import { TIERS, toSquad } from "../chain-map";
 import type { PublicSquad, PublicTerms, Squad, Tier } from "../types";
+import type { PayRecord } from "../record-line";
 
 const POLL_MS = 4000;
 
@@ -208,4 +209,14 @@ export function useLivePublicSquads(): PublicSquad[] | null | undefined {
     };
   }, []);
   return list;
+}
+
+/** Payment records by lowercase id (GET /api/record is public). Ids that aren't 0x addresses (the demo's "me") are skipped. */
+export function useLiveRecords(ids: readonly string[]): Record<string, PayRecord> | undefined {
+  const who = [...new Set(ids.map((a) => a.toLowerCase()).filter((a) => /^0x[0-9a-f]{40}$/.test(a)))].sort();
+  return usePoll(who.length ? `records:${who.join(",")}` : null, async () => {
+    const r = await getJson<Record<string, PayRecord>>(`/api/record?a=${who.join(",")}`);
+    if (!r) throw new Error("records unavailable"); // keep the last good value
+    return r;
+  });
 }

@@ -3,6 +3,7 @@
 export const tokenAbi = [
   {type:"function",name:"faucet",inputs:[{name:"amount",type:"uint256"}],outputs:[],stateMutability:"nonpayable"},
   {type:"function",name:"approve",inputs:[{name:"spender",type:"address"},{name:"value",type:"uint256"}],outputs:[{name:"",type:"bool"}],stateMutability:"nonpayable"},
+  {type:"function",name:"transfer",inputs:[{name:"to",type:"address"},{name:"value",type:"uint256"}],outputs:[{name:"",type:"bool"}],stateMutability:"nonpayable"},
   {type:"function",name:"allowance",inputs:[{name:"owner",type:"address"},{name:"spender",type:"address"}],outputs:[{name:"",type:"uint256"}],stateMutability:"view"},
   {type:"function",name:"balanceOf",inputs:[{name:"account",type:"address"}],outputs:[{name:"",type:"uint256"}],stateMutability:"view"},
   {type:"function",name:"FAUCET_MAX",inputs:[],outputs:[{name:"",type:"uint256"}],stateMutability:"view"},

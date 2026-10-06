@@ -7,7 +7,9 @@ import { KNOWN } from "@/lib/errors";
 import { MIN_TIER_LABEL, naira } from "@/lib/format";
 import { TIERS } from "@/lib/chain-map";
 import { useOrigin } from "@/lib/origin";
-import { ME, isLive, useActions, useInviteCode, useJoinRequests, useMe, type PublicTerms, type Squad } from "@/lib/data";
+import { ME, isLive, useActions, useInviteCode, useJoinRequests, useMe, useRecords, type PublicTerms, type Squad } from "@/lib/data";
+import { useMyAccount } from "@/lib/live/account";
+import { RECORD_BLOCKED, blockedByRecord, recordLine, stoppedLine } from "@/lib/record-line";
 import { ConfirmButton, DEPOSIT_WINDOW, ErrorNote, GHOST_BTN, INK_BTN, PAID_LABEL, SquadTitle, useRun } from "./ui";
 
 /** Open, and I'm in it: invite, then the organizer starts (3+ members). */
@@ -20,6 +22,9 @@ export function OpenView({ squad }: { squad: Squad }) {
   const canStart = isLive && organizer && squad.members.length >= 3;
   const short = Math.max(0, 3 - squad.members.length);
   const seatsLeft = squad.maxMembers - squad.members.length;
+  const { address: myAddr } = useMyAccount();
+  const idOf = (id: string) => (id === ME ? (myAddr ?? ME) : id).toLowerCase();
+  const records = useRecords(squad.members.map((m) => idOf(m.id)));
 
   // Live invites carry the code; without it the link would only show "this invite doesn't work".
   const link = isLive ? (code ? `${origin}/s/${squad.slug}?code=${code}` : null) : `${origin}/s/${squad.slug}`;
@@ -58,11 +63,14 @@ export function OpenView({ squad }: { squad: Squad }) {
       </p>
       <ul className="mt-6 divide-y divide-rule rounded-lg border border-rule bg-paper">
         {squad.members.map((m) => (
-          <li key={m.id} className="flex min-h-12 items-center justify-between px-4">
-            <span className="font-semibold">
-              {m.id === ME ? (m.id === squad.organizerId ? "You (organizer)" : "You") : m.id === squad.organizerId ? `${m.name} (organizer)` : m.name}
+          <li key={m.id} className="flex min-h-12 items-center justify-between gap-3 px-4 py-2">
+            <span className="min-w-0">
+              <span className="block font-semibold">
+                {m.id === ME ? (m.id === squad.organizerId ? "You (organizer)" : "You") : m.id === squad.organizerId ? `${m.name} (organizer)` : m.name}
+              </span>
+              <StoppedNote line={stoppedLine(records?.[idOf(m.id)])} />
             </span>
-            <span className="font-mono text-xs text-stamp">{m.tier}</span>
+            <span className="shrink-0 font-mono text-xs text-stamp">{m.tier}</span>
           </li>
         ))}
         {Array.from({ length: seatsLeft }, (_, i) => (
@@ -156,6 +164,11 @@ export function JoinView({ squad, code }: { squad: Squad; code?: string }) {
   );
 }
 
+/** The red "Stopped paying in N squads" line; nothing when they never stopped. */
+function StoppedNote({ line }: { line: string | null }) {
+  return line ? <span className="block text-sm font-semibold text-bad">{line}</span> : null;
+}
+
 const PILL_BTN = "min-h-11 rounded-full border-[1.5px] border-ink px-4 text-sm font-semibold disabled:opacity-40";
 
 /** Organizer of a public squad that approves each person: accept or decline, polled. */
@@ -175,8 +188,14 @@ function JoinRequestList({ slug }: { slug: string }) {
           {requests.map((r) => (
             <li key={r.member} className="flex min-h-14 items-center justify-between gap-3 px-4 py-2">
               <span className="min-w-0">
-                <span className="block truncate font-semibold">{r.name}</span>
-                <span className="font-mono text-xs text-muted">{TIERS[r.tier] ?? "New"}</span>
+                <span className="flex items-center gap-2">
+                  <span className="truncate font-semibold">{r.name}</span>
+                  <span className="inline-flex h-6 shrink-0 items-center rounded-full border-[1.5px] border-rule px-2 font-mono text-xs text-muted">
+                    {TIERS[r.tier] ?? "New"}
+                  </span>
+                </span>
+                <span className="block font-mono text-xs text-muted tnum">{recordLine(r.record)}</span>
+                <StoppedNote line={stoppedLine(r.record)} />
               </span>
               <span className="flex shrink-0 gap-2">
                 <button type="button" disabled={busy} onClick={() => run(() => actions.decideRequest(slug, r.member, "declined"))} className={PILL_BTN}>
@@ -209,6 +228,9 @@ export function PublicJoinView({ squad, pub }: { squad: Squad; pub: PublicTerms 
   const status = useJoinRequests(squad.slug, pub.approval)?.status;
   const seatsLeft = squad.maxMembers - squad.members.length;
   const tooLow = me ? TIERS.indexOf(me.tier) < pub.minTier : false;
+  const { address: myAddr } = useMyAccount();
+  const mine = useRecords(myAddr ? [myAddr] : [])?.[myAddr?.toLowerCase() ?? ""];
+  const closed = !!mine && blockedByRecord(mine);
   const join = (label: string) => (
     <button type="button" disabled={busy} onClick={() => run(() => actions.joinPublic(squad.slug))} className={INK_BTN}>
       {busy ? (label === "Join squad" ? "Joining…" : "Sending…") : error ? "Retry" : label}
@@ -216,7 +238,7 @@ export function PublicJoinView({ squad, pub }: { squad: Squad; pub: PublicTerms 
   );
 
   const action =
-    seatsLeft <= 0 || !me || tooLow ? null : !pub.approval || status === "accepted" ? (
+    seatsLeft <= 0 || !me || tooLow || closed ? null : !pub.approval || status === "accepted" ? (
       join("Join squad")
     ) : status === null ? (
       join("Request to join")
@@ -252,6 +274,10 @@ export function PublicJoinView({ squad, pub }: { squad: Squad; pub: PublicTerms 
         {seatsLeft <= 0 ? (
           <p role="status" className="rounded-md border border-bad/40 bg-bad/8 px-4 py-3 text-sm">
             {KNOWN.Full}
+          </p>
+        ) : closed ? (
+          <p role="status" className="rounded-md border border-bad/40 bg-bad/8 px-4 py-3 text-sm">
+            {RECORD_BLOCKED}
           </p>
         ) : tooLow ? (
           <p role="status" className="rounded-md border border-rule bg-paper px-4 py-3 text-sm">

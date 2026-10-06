@@ -9,7 +9,7 @@ import { useMyAccount } from "@/lib/live/account";
 import { usePoll } from "@/lib/live/squads";
 import type { Kind } from "@/lib/activity-classify";
 
-type Item = { tx: string; logIndex: number; kind: Kind; amount: number; round: number | null; at: string; squadName: string | null; slug: string | null };
+type Item = { tx: string; logIndex: number; kind: Kind; amount: number; round: number | null; at: string; squadName: string | null; slug: string | null; counterpartyName: string | null };
 
 function useLiveHistory(): Item[] | undefined {
   const { getAccessToken } = usePrivy();
@@ -26,7 +26,7 @@ const useHistory: () => Item[] | undefined = isLive ? useLiveHistory : () => [];
 
 const IN = new Set<Kind>(["topup", "payout", "refund", "received"]);
 
-function label({ kind, round, squadName }: Item) {
+function label({ kind, round, squadName, counterpartyName: who }: Item) {
   const sq = squadName ?? "a squad";
   switch (kind) {
     case "topup":
@@ -42,11 +42,13 @@ function label({ kind, round, squadName }: Item) {
     case "covered":
       return `Missed round ${round} · paid from your deposit · ${sq}`;
     case "withdraw":
-      return "Cashed out";
+      return "Cashed out to bank";
     case "sent":
-      return "Sent money";
+      return who ? `Sent to ${who}` : "Sent money";
     case "received":
-      return "Got money";
+      return who ? `From ${who}` : "Got money";
+    case "stopped":
+      return `Stopped paying · ${sq}`;
   }
 }
 
@@ -81,15 +83,17 @@ export default function History() {
                 return (
                   <li key={`${it.tx}:${it.logIndex}:${it.kind}`} className="flex min-h-14 items-center justify-between gap-4 px-4 py-3">
                     <span className="min-w-0">
-                      <span className="block truncate text-sm font-semibold">{label(it)}</span>
+                      <span className={`block truncate text-sm font-semibold ${it.kind === "stopped" ? "text-muted" : ""}`}>{label(it)}</span>
                       <span className="block font-mono text-xs text-muted tnum">
                         {timeLabel(Date.parse(it.at))}
                       </span>
                     </span>
-                    <span className={`shrink-0 font-money text-lg font-bold tnum ${plus ? "text-stamp" : fromDeposit ? "text-muted" : "text-ink"}`}>
-                      {plus ? "+" : fromDeposit ? "" : "−"}
-                      {naira(it.amount)}
-                    </span>
+                    {it.kind !== "stopped" && (
+                      <span className={`shrink-0 font-money text-lg font-bold tnum ${plus ? "text-stamp" : fromDeposit ? "text-muted" : "text-ink"}`}>
+                        {plus ? "+" : fromDeposit ? "" : "−"}
+                        {naira(it.amount)}
+                      </span>
+                    )}
                   </li>
                 );
               })}
