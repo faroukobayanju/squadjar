@@ -1,17 +1,31 @@
-export const KNOWN: Record<string, string> = {
-  AlreadyPaid: "You've already paid this round.",
-  PastGrace: "This round has closed. Your deposit covers it when the round settles.",
-  RoundNotOpen: "This round isn't open yet.",
-  DeadlineTooFar: "Pick a first due day within the next 60 days.",
-  BadInvite: "This invite link doesn't work. Ask for a fresh one.",
-  Full: "This squad is full.",
-  AlreadyMember: "You're already in this squad.",
-  TooFewMembers: "You need at least 3 people to start.",
-  NothingOwed: "Your deposit is already in.",
-  MemberStoppedPaying: "You've been marked as stopped paying in this squad.",
-  FaucetCapExceeded: "Test top-ups are capped at ₦200,000 at a time.",
-  ERC20InsufficientBalance: "Not enough balance. Add money first.",
+import type { Key, T, Vars } from "./i18n/core";
+
+/** Contract error name -> the copy key people see. */
+export const KNOWN: Record<string, Key> = {
+  AlreadyPaid: "errAlreadyPaid",
+  PastGrace: "errPastGrace",
+  RoundNotOpen: "errRoundNotOpen",
+  DeadlineTooFar: "errDeadlineTooFar",
+  BadInvite: "errBadInvite",
+  Full: "errFull",
+  AlreadyMember: "errAlreadyMember",
+  TooFewMembers: "errTooFewMembers",
+  NothingOwed: "errNothingOwed",
+  MemberStoppedPaying: "errStoppedPaying",
+  FaucetCapExceeded: "errTopUpCap",
+  ERC20InsufficientBalance: "errNotEnough",
 };
+
+/** A known, user-facing failure caught before anything is sent: carries its copy key, shown as-is. */
+export class DemoError extends Error {
+  key: Key;
+  vars?: Vars;
+  constructor(key: Key, vars?: Vars) {
+    super(key);
+    this.key = key;
+    this.vars = vars;
+  }
+}
 
 /** Contract error name attached by lib/live/tx.ts, or found on a viem error's cause chain. */
 function errorName(e: unknown): string | undefined {
@@ -22,9 +36,10 @@ function errorName(e: unknown): string | undefined {
   }
 }
 
-export function friendlyError(e: unknown, kind: "payment" | "other"): string {
+export function friendlyError(e: unknown, kind: "payment" | "other", t: T): string {
+  if (e instanceof DemoError) return t(e.key, e.vars);
   const n = errorName(e);
-  if (n && KNOWN[n]) return KNOWN[n];
+  if (n && KNOWN[n]) return t(KNOWN[n]);
   console.error("[write failed]", e); // unknown failures: keep the real cause visible in the console
-  return kind === "payment" ? "Payment didn't go through. Your money is safe." : "That didn't go through. Try again.";
+  return t(kind === "payment" ? "errPayment" : "errGeneric");
 }

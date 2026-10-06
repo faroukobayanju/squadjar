@@ -1,4 +1,5 @@
-// Fails when UI copy (JSX text and string literals in pages and components) uses words the product never says.
+// Fails when UI copy (JSX text and string literals in pages and components, and every language's dictionary
+// in lib/i18n) uses words the product never says.
 // Uses the TypeScript parser already in devDependencies, so comments and identifiers are never flagged.
 // A non-copy literal (SDK config) is allowed with a `// copy-ok: <why>` comment on its line.
 import { readdirSync, readFileSync } from "node:fs";
@@ -19,6 +20,7 @@ function* walk(dir, match) {
 const files = [
   ...walk(join(root, "app"), (n) => n === "page.tsx"),
   ...walk(join(root, "components"), (n) => n.endsWith(".tsx")),
+  ...walk(join(root, "lib", "i18n"), (n) => /^(en|pcm|yo|ig|ha)\.ts$/.test(n)),
 ];
 
 const COPY = new Set([

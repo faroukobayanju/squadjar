@@ -6,7 +6,8 @@ import Link from "next/link";
 import { AppShell } from "@/components/shell";
 import { friendlyError } from "@/lib/errors";
 import { naira } from "@/lib/format";
-import { DemoError, type Squad } from "@/lib/data";
+import type { Squad } from "@/lib/data";
+import { rich, useT, type Key } from "@/lib/i18n";
 
 const PRESS = "flex w-full items-center justify-center rounded-lg active:scale-[0.98] disabled:opacity-70";
 export const INK_BTN = `${PRESS} min-h-14 bg-ink font-semibold text-manila`;
@@ -17,13 +18,14 @@ export const PAID_LABEL = "flex min-h-14 items-center justify-center gap-3 round
 /** "You need ₦X more" with an Add money link back to `next`; shown instead of a payment button when the balance is short. */
 export function AddMoneyNote({ short, balance, next }: { short: number; balance: number; next: string }) {
   const up = Math.ceil(short / 100) * 100;
+  const t = useT();
   return (
     <>
       <p className="mb-3 text-sm">
-        You need {naira(short)} more. Your balance is {naira(balance)}.
+        {t("needMore", { short: naira(short), balance: naira(balance) })}
       </p>
       <Link href={`/add-money?amount=${up}&next=${next}`} className={INK_BTN}>
-        Add {naira(up)}
+        {t("addAmount", { amount: naira(up) })}
       </Link>
     </>
   );
@@ -33,13 +35,14 @@ export function AddMoneyNote({ short, balance, next }: { short: number; balance:
 export function useRun(kind: "payment" | "other") {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const t = useT();
   async function run(fn: () => Promise<unknown>) {
     setBusy(true);
     setError(null);
     try {
       await fn();
     } catch (e) {
-      setError(e instanceof DemoError ? e.message : friendlyError(e, kind));
+      setError(friendlyError(e, kind, t));
     } finally {
       setBusy(false);
     }
@@ -73,6 +76,7 @@ export function ConfirmButton({
   onConfirm: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const t = useT();
   return (
     <>
       <button type="button" disabled={busy} onClick={() => ref.current?.showModal()} className={className}>
@@ -90,7 +94,7 @@ export function ConfirmButton({
             {label}
           </button>
           <button value="cancel" className={GHOST_BTN}>
-            Not now
+            {t("notNow")}
           </button>
         </form>
       </dialog>
@@ -99,11 +103,12 @@ export function ConfirmButton({
 }
 
 export function SquadTitle({ squad, meta }: { squad: Squad; meta: string }) {
+  const t = useT();
   return (
     <header>
       <h1 className="font-display text-[2.1rem] leading-none font-extrabold tracking-[-0.03em] text-balance">{squad.name}</h1>
       <p className="mt-2 font-mono text-xs text-muted">
-        {meta} · <span className="font-money text-[13px] font-bold text-ink">{naira(squad.contribution)}</span> each · {squad.period}
+        {rich(t("squadMeta"), { status: meta, amount: <span className="font-money text-[13px] font-bold text-ink">{naira(squad.contribution)}</span>, period: t(`period${squad.period}`) })}
       </p>
     </header>
   );
@@ -111,16 +116,17 @@ export function SquadTitle({ squad, meta }: { squad: Squad; meta: string }) {
 
 /** A whole-screen message: not found, cancelled, already started. */
 export function Notice({ title, body }: { title: string; body: string }) {
+  const t = useT();
   return (
     <AppShell>
       <h1 className="font-display text-3xl font-extrabold tracking-[-0.03em] text-balance">{title}</h1>
       <p className="mt-2 max-w-[38ch] text-muted">{body}</p>
       <Link href="/home" className="mt-6 inline-flex min-h-12 items-center font-semibold underline">
-        Go to your squads
+        {t("goToSquads")}
       </Link>
     </AppShell>
   );
 }
 
 /** How long members get to lock deposits after start (Squad.depositWindow per period). */
-export const DEPOSIT_WINDOW: Record<Squad["period"], string> = { Demo: "5 minutes", Weekly: "2 days", Monthly: "3 days" };
+export const DEPOSIT_WINDOW: Record<Squad["period"], Key> = { Demo: "windowDemo", Weekly: "windowWeekly", Monthly: "windowMonthly" };

@@ -3,10 +3,11 @@
 import { useEffect, useRef } from "react";
 import { PrivyProvider, useCreateWallet, usePrivy } from "@privy-io/react-auth";
 import { monadTestnet } from "@/lib/live/chain";
+import { LanguageProvider } from "@/lib/i18n";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
-  if (!appId) return <>{children}</>;
+  if (!appId) return <LanguageProvider>{children}</LanguageProvider>;
   return (
     <PrivyProvider
       appId={appId}
@@ -18,7 +19,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       }}
     >
       <EnsureAccount />
-      {children}
+      <LanguageProvider>{children}</LanguageProvider>
     </PrivyProvider>
   );
 }

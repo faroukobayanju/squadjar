@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from "motion/react";
 import { initials, inkVariant, stampTilt } from "@/lib/format";
+import { useT } from "@/lib/i18n";
 
 type Props = { memberId: string; name: string; round: number; fresh?: boolean; size?: "sm" | "md" | "lg" };
 
@@ -10,11 +11,12 @@ const SIZE = { sm: "size-7 text-[9px] border-2", md: "size-10 text-[11px] border
 /** A rubber-stamp mark in stamp-pad ink. `fresh` plays the one authored moment: the thunk. */
 export function Stamp({ memberId, name, round, fresh, size = "sm" }: Props) {
   const reduce = useReducedMotion();
+  const t = useT();
   const tilt = stampTilt(memberId, round);
   return (
     <motion.span
       role="img"
-      aria-label={`${name} paid round ${round}`}
+      aria-label={t("stampAria", { name, round })}
       className={`ink ${inkVariant(memberId, round)} inline-grid shrink-0 place-items-center rounded-full border-stamp font-mono font-medium text-stamp ${SIZE[size]}`}
       initial={fresh && !reduce ? { scale: 1.9, rotate: -24, opacity: 0 } : false}
       animate={{ scale: 1, rotate: tilt, opacity: 0.92 }}
@@ -39,10 +41,11 @@ export function EmptyBox({ size = "sm", label }: { size?: "sm" | "md" | "lg"; la
 }
 
 /** Rectangular mark across a collector's box. */
-export function PaidOutMark({ label = "PAID OUT" }: { label?: string }) {
+export function PaidOutMark({ label }: { label?: string }) {
+  const t = useT();
   return (
     <span className="ink ink-3 inline-block -rotate-6 border-2 border-stamp px-1 py-px font-mono text-[8px] whitespace-nowrap font-medium tracking-wide text-stamp">
-      {label}
+      {label ?? t("paidOut")}
     </span>
   );
 }

@@ -6,6 +6,7 @@ import { ErrorNote, GHOST_BTN, INK_BTN, useRun } from "@/components/squad/ui";
 import { naira } from "@/lib/format";
 import { isLive, type Squad } from "@/lib/data";
 import { useMyAccount } from "@/lib/live/account";
+import { rich, useT } from "@/lib/i18n";
 
 const SIGNER = process.env.NEXT_PUBLIC_PRIVY_SIGNER_ID;
 const POLICY = process.env.NEXT_PUBLIC_PRIVY_AUTOPAY_POLICY_ID;
@@ -22,6 +23,7 @@ function Toggle({ squad, address }: { squad: Squad; address: string }) {
   const { address: me } = useMyAccount();
   const [state, setState] = useState<{ enabled: boolean; signer: boolean } | null>(null);
   const { run, busy, error } = useRun("other");
+  const t = useT();
 
   const call = async (init?: RequestInit) => {
     const res = await fetch(init ? "/api/autopay" : `/api/autopay?squad=${address}`, {
@@ -53,20 +55,19 @@ function Toggle({ squad, address }: { squad: Squad; address: string }) {
     <section aria-labelledby="autopay" className="mt-8 rounded-lg border border-rule bg-paper p-4">
       <div className="flex items-baseline justify-between">
         <h2 id="autopay" className="font-semibold">
-          Auto-pay
+          {t("autopay")}
         </h2>
         {state.enabled && state.signer && (
-          <span className="inline-flex h-7 items-center rounded-full border-[1.5px] border-stamp bg-stamp/10 px-2.5 font-mono text-xs text-stamp">On</span>
+          <span className="inline-flex h-7 items-center rounded-full border-[1.5px] border-stamp bg-stamp/10 px-2.5 font-mono text-xs text-stamp">{t("autopayOn")}</span>
         )}
       </div>
       <p className="mt-1 max-w-[42ch] text-sm text-muted">
-        Squadjar pays your <span className="font-money font-bold text-ink">{naira(squad.contribution)}</span> each round, only into {squad.name}. Turn it off
-        anytime.
+        {rich(t("autopayBody", { squad: squad.name }), { amount: <span className="font-money font-bold text-ink">{naira(squad.contribution)}</span> })}
       </p>
       <div className="mt-4">
         <ErrorNote error={error} />
         <button type="button" disabled={busy} onClick={() => set(!(state.enabled && state.signer))} className={state.enabled && state.signer ? GHOST_BTN : INK_BTN}>
-          {busy ? "Saving…" : state.enabled && state.signer ? "Turn off" : "Turn on"}
+          {busy ? t("saving") : state.enabled && state.signer ? t("turnOff") : t("turnOn")}
         </button>
       </div>
     </section>
@@ -85,6 +86,7 @@ function StopAll() {
   const { address: me } = useMyAccount();
   const { run, busy, error } = useRun("other");
   const [done, setDone] = useState(false);
+  const t = useT();
   if (!me) return null;
   return (
     <div className="mt-10">
@@ -106,7 +108,7 @@ function StopAll() {
         }
         className={GHOST_BTN}
       >
-        {busy ? "Stopping…" : done ? "Auto-pay is off everywhere" : "Stop auto-pay everywhere"}
+        {busy ? t("stopping") : done ? t("autopayOffAll") : t("stopAutopayAll")}
       </button>
     </div>
   );

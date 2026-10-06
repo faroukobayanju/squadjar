@@ -9,7 +9,8 @@ import { friendlyError } from "@/lib/errors";
 import { EmptyBox, Stamp } from "@/components/stamp";
 import { Bar } from "@/components/skeleton";
 import { naira } from "@/lib/format";
-import { DemoError, ME, collectorOf, useActions, useMe, useSquad } from "@/lib/data";
+import { ME, collectorOf, useActions, useMe, useSquad } from "@/lib/data";
+import { rich, useT } from "@/lib/i18n";
 
 export default function PayPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -20,13 +21,14 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const now = useNow();
+  const t = useT();
   const gated = useRequireLogin();
   if (gated) return null;
 
   if (squad === undefined || (squad && !me)) {
     return (
       <Frame slug={slug}>
-        <div aria-busy="true" aria-label="Loading">
+        <div aria-busy="true" aria-label={t("loading")}>
           <Bar className="mt-4 h-8 w-56" />
           <Bar className="mt-1 h-[clamp(3.6rem,19vw,5rem)] w-48" />
           <Bar className="mt-8 h-36 w-full" />
@@ -39,8 +41,8 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
   if (!squad || squad.state !== "Active") {
     return (
       <Frame slug={slug}>
-        <h1 className="font-display text-3xl font-extrabold tracking-[-0.03em]">Nothing to pay here.</h1>
-        <p className="mt-2 text-muted">This squad isn&apos;t collecting right now.</p>
+        <h1 className="font-display text-3xl font-extrabold tracking-[-0.03em]">{t("nothingToPay")}</h1>
+        <p className="mt-2 text-muted">{t("notCollecting")}</p>
       </Frame>
     );
   }
@@ -61,7 +63,7 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
       const res = await payRound(slug);
       router.push(res.settled ? `/s/${slug}/payout` : `/s/${slug}`);
     } catch (e) {
-      setError(e instanceof DemoError ? e.message : friendlyError(e, "payment"));
+      setError(friendlyError(e, "payment", t));
       setBusy(false);
     }
   }
@@ -69,28 +71,28 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
   return (
     <Frame slug={slug} label={squad.name}>
       <h1 className="mt-4 font-display text-[1.6rem] leading-tight font-extrabold tracking-[-0.03em]">
-        Round {r} contribution
+        {t("roundContribution", { round: r })}
       </h1>
       <p className="mt-1 font-money text-[clamp(3.6rem,19vw,5rem)] leading-[0.95] font-bold tnum">{naira(squad.contribution)}</p>
 
       <dl className="mt-8 divide-y divide-rule border-y border-rule text-sm">
-        <Row k="Goes into" v={`${squad.name} jar`} />
-        <Row k="This round's collector" v={collector.id === ME ? "You" : collector.name} />
-        <Row k="Your balance after" v={naira(Math.max(0, balance - squad.contribution))} />
+        <Row k={t("goesInto")} v={t("jarOf", { name: squad.name })} />
+        <Row k={t("roundCollector")} v={collector.id === ME ? t("you") : collector.name} />
+        <Row k={t("balanceAfter")} v={naira(Math.max(0, balance - squad.contribution))} />
       </dl>
 
       <div className="mt-8">
         <p className="text-sm text-muted">
           {paidCount === squad.members.length - 1 && !alreadyPaid
-            ? "Everyone else has paid. Yours completes the round."
-            : `${paidCount} of ${squad.members.length} have paid round ${r}.`}
+            ? t("everyoneElsePaid")
+            : t("nPaidRound", { paid: paidCount, total: squad.members.length, round: r })}
         </p>
-        <ul className="mt-3 flex flex-wrap gap-2" aria-label="Who has paid this round">
+        <ul className="mt-3 flex flex-wrap gap-2" aria-label={t("whoPaidAria")}>
           {squad.members.map((m) =>
             (squad.paid[r] ?? []).includes(m.id) ? (
               <li key={m.id}><Stamp memberId={m.id} name={m.name} round={r} /></li>
             ) : (
-              <li key={m.id}><EmptyBox label={`${m.id === ME ? "You haven't" : `${m.name} hasn't`} paid`} /></li>
+              <li key={m.id}><EmptyBox label={m.id === ME ? t("youHaventPaid") : t("nameHasntPaid", { name: m.name })} /></li>
             ),
           )}
         </ul>
@@ -98,30 +100,28 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
 
       {!alreadyPaid && (
         <div className="mt-10 flex items-center gap-4">
-          <EmptyBox size="lg" label="Your box for this round" />
-          <p className="max-w-[24ch] text-sm text-muted">Your stamp lands here when you pay.</p>
+          <EmptyBox size="lg" label={t("yourBox")} />
+          <p className="max-w-[24ch] text-sm text-muted">{t("stampLands")}</p>
         </div>
       )}
 
       <div className="mt-auto pt-10">
         <ErrorNote error={error} />
         {alreadyPaid ? (
-          <p className="text-center font-semibold text-muted">You&apos;ve paid round {r}.</p>
+          <p className="text-center font-semibold text-muted">{t("youPaidRound", { round: r })}</p>
         ) : closed ? (
           <p className="text-center text-sm text-muted">
-            Round {r} has closed. Your deposit covers this payment when the round settles, usually within a minute. Top up your deposit to stay in good standing.
+            {t("roundClosed", { round: r })}
           </p>
         ) : notOpenYet ? (
           <p className={PAID_LABEL}>
-            <span>
-              Round {r} opens in <Countdown to={squad.roundOpensAt} />
-            </span>
+            <span>{rich(t("roundOpensIn", { round: r }), { time: <Countdown to={squad.roundOpensAt} /> })}</span>
           </p>
         ) : short > 0 ? (
           <AddMoneyNote short={short} balance={balance} next={`/s/${slug}/pay`} />
         ) : (
           <button type="button" onClick={pay} disabled={busy} className={PALM_BTN}>
-            {busy ? "Stamping…" : error ? `Retry ${naira(squad.contribution)}` : `Pay ${naira(squad.contribution)}`}
+            {busy ? t("stamping") : t(error ? "retryAmount" : "payAmount", { amount: naira(squad.contribution) })}
           </button>
         )}
       </div>
@@ -138,10 +138,11 @@ function Row({ k, v }: { k: string; v: string }) {
   );
 }
 
-function Frame({ slug, label = "Squad", children }: { slug: string; label?: string; children: React.ReactNode }) {
+function Frame({ slug, label, children }: { slug: string; label?: string; children: React.ReactNode }) {
+  const t = useT();
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[480px] flex-col px-4 pt-2 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-      <BackLink href={`/s/${slug}`} label={label} />
+      <BackLink href={`/s/${slug}`} label={label ?? t("squad")} />
       <main className="mt-2 flex flex-1 flex-col">{children}</main>
     </div>
   );

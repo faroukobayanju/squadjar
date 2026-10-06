@@ -8,6 +8,7 @@ import { isLive } from "@/lib/data";
 import { useMyAccount } from "@/lib/live/account";
 import { usePoll } from "@/lib/live/squads";
 import type { Kind } from "@/lib/activity-classify";
+import { useLang, useT, type T } from "@/lib/i18n";
 
 type Item = { tx: string; logIndex: number; kind: Kind; amount: number; round: number | null; at: string; squadName: string | null; slug: string | null; counterpartyName: string | null };
 
@@ -26,52 +27,54 @@ const useHistory: () => Item[] | undefined = isLive ? useLiveHistory : () => [];
 
 const IN = new Set<Kind>(["topup", "payout", "refund", "received"]);
 
-function label({ kind, round, squadName, counterpartyName: who }: Item) {
-  const sq = squadName ?? "a squad";
+function label({ kind, round, squadName, counterpartyName: who }: Item, t: T) {
+  const v = { squad: squadName ?? t("aSquad"), round: round ?? "", name: who ?? "" };
   switch (kind) {
     case "topup":
-      return "Added money";
+      return t("hAdded");
     case "deposit":
-      return `Deposit locked · ${sq}`;
+      return t("hDeposit", v);
     case "contribution":
-      return round ? `Paid round ${round} · ${sq}` : `Paid · ${sq}`;
+      return t(round ? "hPaidRound" : "hPaid", v);
     case "payout":
-      return `Payout · round ${round} · ${sq}`;
+      return t("hPayout", v);
     case "refund":
-      return `Deposit back · ${sq}`;
+      return t("hRefund", v);
     case "covered":
-      return `Missed round ${round} · paid from your deposit · ${sq}`;
+      return t("hCovered", v);
     case "withdraw":
-      return "Cashed out to bank";
+      return t("hWithdraw");
     case "sent":
-      return who ? `Sent to ${who}` : "Sent money";
+      return t(who ? "hSentTo" : "hSent", v);
     case "received":
-      return who ? `From ${who}` : "Got money";
+      return t(who ? "hFrom" : "hGot", v);
     case "stopped":
-      return `Stopped paying · ${sq}`;
+      return t("hStopped", v);
   }
 }
 
 export default function History() {
   const items = useHistory();
+  const t = useT();
+  const lang = useLang();
   const days: { day: string; items: Item[] }[] = [];
   for (const it of items ?? []) {
-    const day = dayLabel(Date.parse(it.at));
+    const day = dayLabel(Date.parse(it.at), undefined, lang, [t("today"), t("yesterday")]);
     if (days.at(-1)?.day !== day) days.push({ day, items: [] });
     days.at(-1)!.items.push(it);
   }
   return (
     <AppShell>
-      <BackLink href="/home" label="Home" />
-      <h1 className="mt-2 font-display text-[2.1rem] leading-none font-extrabold tracking-[-0.03em]">History</h1>
+      <BackLink href="/home" label={t("home")} />
+      <h1 className="mt-2 font-display text-[2.1rem] leading-none font-extrabold tracking-[-0.03em]">{t("history")}</h1>
       {!items ? (
-        <div className="mt-8 grid gap-3" aria-busy="true" aria-label="Loading history">
+        <div className="mt-8 grid gap-3" aria-busy="true" aria-label={t("loadingHistory")}>
           <Bar className="h-4 w-20" />
           <Bar className="h-14 w-full rounded-lg" />
           <Bar className="h-14 w-full rounded-lg" />
         </div>
       ) : !items.length ? (
-        <p className="mt-8 max-w-[38ch] text-muted">Nothing yet. Add money or join a squad to see it here.</p>
+        <p className="mt-8 max-w-[38ch] text-muted">{t("historyEmpty")}</p>
       ) : (
         days.map(({ day, items }) => (
           <section key={day} className="mt-8">
@@ -83,9 +86,9 @@ export default function History() {
                 return (
                   <li key={`${it.tx}:${it.logIndex}:${it.kind}`} className="flex min-h-14 items-center justify-between gap-4 px-4 py-3">
                     <span className="min-w-0">
-                      <span className={`block truncate text-sm font-semibold ${it.kind === "stopped" ? "text-muted" : ""}`}>{label(it)}</span>
+                      <span className={`block truncate text-sm font-semibold ${it.kind === "stopped" ? "text-muted" : ""}`}>{label(it, t)}</span>
                       <span className="block font-mono text-xs text-muted tnum">
-                        {timeLabel(Date.parse(it.at))}
+                        {timeLabel(Date.parse(it.at), lang)}
                       </span>
                     </span>
                     {it.kind !== "stopped" && (
