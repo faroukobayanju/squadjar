@@ -5,8 +5,10 @@ import { Plus } from "@phosphor-icons/react";
 import { Countdown } from "@/components/countdown";
 import { naira } from "@/lib/format";
 import { ME, collectorOf, type Squad } from "@/lib/data";
+import { rich, useT } from "@/lib/i18n";
 
 export function SquadList({ squads }: { squads: Squad[] }) {
+  const t = useT();
   return (
     <ul className="grid gap-3">
       {squads.map((q) => (
@@ -20,7 +22,7 @@ export function SquadList({ squads }: { squads: Squad[] }) {
           className="flex min-h-16 items-center gap-3 rounded-lg border-[1.5px] border-dashed border-rule px-4 font-semibold text-ink hover:border-ink"
         >
           <Plus size={20} aria-hidden />
-          Start a squad
+          {t("startSquad")}
         </Link>
       </li>
     </ul>
@@ -32,6 +34,7 @@ function SquadRow({ squad: q }: { squad: Squad }) {
   const paid = q.paid[r] ?? [];
   const iPaid = paid.includes(ME);
   const collector = q.state === "Active" ? collectorOf(q) : undefined;
+  const t = useT();
   return (
     <Link
       href={`/s/${q.slug}`}
@@ -43,7 +46,7 @@ function SquadRow({ squad: q }: { squad: Squad }) {
       </div>
       {q.state === "Active" && (
         <>
-          <div className="mt-3 flex flex-wrap gap-1.5" aria-label={`${paid.length} of ${q.members.length} paid this round`}>
+          <div className="mt-3 flex flex-wrap gap-1.5" aria-label={t("rowPaidAria", { paid: paid.length, total: q.members.length })}>
             {q.members.map((m) => (
               <span
                 key={m.id}
@@ -53,13 +56,13 @@ function SquadRow({ squad: q }: { squad: Squad }) {
           </div>
           <p className="mt-3 flex justify-between gap-3 font-mono text-xs">
             <span className="text-muted">
-              R{r} of {q.members.length} · {collector?.id === ME ? "you collect" : `${collector?.name} collects`}
+              {collector?.id === ME ? t("rowRoundYou", { round: r, total: q.members.length }) : t("rowRoundOther", { round: r, total: q.members.length, name: collector?.name ?? "" })}
             </span>
             {iPaid ? (
-              <span className="text-stamp">paid</span>
+              <span className="text-stamp">{t("rowPaid")}</span>
             ) : (
               <span className="font-medium text-ink">
-                due in <Countdown to={q.roundDeadline} />
+                {rich(t("rowDueIn"), { time: <Countdown to={q.roundDeadline} /> })}
               </span>
             )}
           </p>
@@ -67,23 +70,23 @@ function SquadRow({ squad: q }: { squad: Squad }) {
       )}
       {q.state === "Open" && (
         <p className="mt-2 font-mono text-xs text-muted">
-          Inviting · {q.members.length} of {q.maxMembers} joined
+          {t("rowInviting", { count: q.members.length, max: q.maxMembers })}
         </p>
       )}
       {q.state === "Depositing" && (
         <p className="mt-2 flex justify-between gap-3 font-mono text-xs">
-          <span className="text-muted">Locking deposits</span>
+          <span className="text-muted">{t("rowLocking")}</span>
           {q.myDeposit < q.myRequired ? (
             <span className="font-medium text-ink">
-              lock yours in <Countdown to={q.depositDeadline} />
+              {rich(t("rowLockYours"), { time: <Countdown to={q.depositDeadline} /> })}
             </span>
           ) : (
-            <span className="text-stamp">deposit in</span>
+            <span className="text-stamp">{t("rowDepositIn")}</span>
           )}
         </p>
       )}
-      {q.state === "Completed" && <p className="mt-2 font-mono text-xs text-muted">Completed · deposits returned</p>}
-      {q.state === "Cancelled" && <p className="mt-2 font-mono text-xs text-muted">Cancelled · deposits returned</p>}
+      {q.state === "Completed" && <p className="mt-2 font-mono text-xs text-muted">{t("rowCompleted")}</p>}
+      {q.state === "Cancelled" && <p className="mt-2 font-mono text-xs text-muted">{t("rowCancelled")}</p>}
     </Link>
   );
 }

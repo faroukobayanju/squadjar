@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { HOW_IT_WORKS } from "@/components/how-it-works";
 import { safeNext } from "@/lib/next";
+import { useT } from "@/lib/i18n";
 
 export default function Intro() {
   return (
@@ -15,6 +16,7 @@ export default function Intro() {
 
 function Deck() {
   const router = useRouter();
+  const t = useT();
   const next = safeNext(useSearchParams().get("next") ?? undefined);
   const track = useRef<HTMLDivElement>(null);
   const [i, setI] = useState(0);
@@ -39,7 +41,7 @@ function Deck() {
       <div className="flex h-12 items-center justify-between">
         <span className="font-display text-xl font-extrabold tracking-[-0.03em]">Squadjar</span>
         <button type="button" onClick={go} className="inline-flex min-h-12 items-center px-1 font-semibold text-muted underline">
-          Skip
+          {t("skip")}
         </button>
       </div>
       <div
@@ -48,11 +50,11 @@ function Deck() {
         className="mt-6 flex flex-1 snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {HOW_IT_WORKS.map((c, n) => (
-          <section key={c.title} aria-label={`${n + 1} of ${HOW_IT_WORKS.length}`} className="flex w-full shrink-0 snap-center flex-col justify-center pr-1">
+          <section key={c.title} aria-label={t("stepOf", { n: n + 1, total: HOW_IT_WORKS.length })} className="flex w-full shrink-0 snap-center flex-col justify-center pr-1">
             <div className="rounded-lg border border-rule bg-paper p-6">
-              <span className="font-mono text-xs text-stamp">{n + 1} of {HOW_IT_WORKS.length}</span>
-              <h1 className="mt-3 font-display text-[2rem] leading-[1] font-extrabold tracking-[-0.03em] text-balance">{c.title}</h1>
-              <p className="mt-4 text-lg text-muted">{c.body}</p>
+              <span className="font-mono text-xs text-stamp">{t("stepOf", { n: n + 1, total: HOW_IT_WORKS.length })}</span>
+              <h1 className="mt-3 font-display text-[2rem] leading-[1] font-extrabold tracking-[-0.03em] text-balance">{t(c.title)}</h1>
+              <p className="mt-4 text-lg text-muted">{t(c.body)}</p>
             </div>
           </section>
         ))}
@@ -63,7 +65,7 @@ function Deck() {
         ))}
       </div>
       <button type="button" onClick={last ? go : advance} className="mt-6 flex min-h-14 w-full items-center justify-center rounded-lg bg-ink font-semibold text-manila active:scale-[0.98]">
-        {last ? "Done" : "Next"}
+        {last ? t("done") : t("next")}
       </button>
     </div>
   );

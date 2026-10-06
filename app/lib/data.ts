@@ -48,7 +48,7 @@ export const resetDemo = store.resetDemo;
 
 const pause = (ms: number) => new Promise((ok) => setTimeout(ok, ms)); // network-shaped, so a press reads as a real action
 const notInDemo = async () => {
-  throw new store.DemoError("Not available in the demo yet.");
+  throw new store.DemoError("errNotInDemo");
 };
 const demoActions: Actions = {
   addMoney: async (amount) => (await pause(700), store.addMoney(amount)),

@@ -4,14 +4,16 @@ import Link from "next/link";
 import { AppShell } from "@/components/shell";
 import { SquadList } from "@/components/squad-list";
 import { SquadListSkeleton } from "@/components/skeleton";
-import { MIN_TIER_LABEL, naira } from "@/lib/format";
+import { MIN_TIER_KEY, naira } from "@/lib/format";
 import { isLive, usePublicSquads, useSquads, type Squad } from "@/lib/data";
+import { useT } from "@/lib/i18n";
 
 export default function Squads() {
   const squads = useSquads();
+  const t = useT();
   return (
     <AppShell>
-      <h1 className="mb-6 font-display text-[2.1rem] leading-none font-extrabold tracking-[-0.03em]">Squads</h1>
+      <h1 className="mb-6 font-display text-[2.1rem] leading-none font-extrabold tracking-[-0.03em]">{t("squads")}</h1>
       {squads ? <SquadList squads={squads} /> : <SquadListSkeleton />}
       {isLive && <FindSquad mine={squads} />}
     </AppShell>
@@ -20,16 +22,17 @@ export default function Squads() {
 
 function FindSquad({ mine }: { mine?: Squad[] }) {
   const all = usePublicSquads();
+  const t = useT();
   const list = all?.filter((p) => !mine?.some((q) => q.slug === p.slug));
   return (
     <section aria-labelledby="find" className="mt-12">
       <h2 id="find" className="mb-3 font-semibold">
-        Find a squad
+        {t("findSquad")}
       </h2>
       {list === undefined ? (
         <SquadListSkeleton rows={1} />
       ) : !list?.length ? (
-        <p className="text-sm text-muted">{all === null ? "Couldn't load public squads. Try again in a moment." : "No public squads are open right now."}</p>
+        <p className="text-sm text-muted">{all === null ? t("findLoadFail") : t("findNone")}</p>
       ) : (
         <ul className="grid gap-3">
           {list.map((p) => (
@@ -45,10 +48,10 @@ function FindSquad({ mine }: { mine?: Squad[] }) {
                 {p.description && <p className="mt-1 text-sm text-muted">{p.description}</p>}
                 <p className="mt-2 flex items-center justify-between gap-3 font-mono text-xs">
                   <span className="text-muted">
-                    {p.period} · {p.maxMembers - p.members} of {p.maxMembers} seats left
+                    {t("findSeats", { period: t(`period${p.period}`), left: p.maxMembers - p.members, max: p.maxMembers })}
                   </span>
                   <span className="inline-flex h-7 shrink-0 items-center rounded-full border-[1.5px] border-rule px-2.5 font-mono text-xs text-muted">
-                    {MIN_TIER_LABEL[p.minTier]}
+                    {t(MIN_TIER_KEY[p.minTier])}
                   </span>
                 </p>
               </Link>

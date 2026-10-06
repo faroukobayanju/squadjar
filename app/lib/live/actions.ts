@@ -10,7 +10,6 @@ import { useMyAccount } from "./account";
 import { useWrite } from "./tx";
 import { refreshAll, resolveSlug, usePoll } from "./squads";
 import { DemoError } from "../store";
-import { RECORD_BLOCKED } from "../record-line";
 import { BURN } from "../money-out";
 import type { Actions, JoinRequests, Payout, Period, Person, PublicTerms, RequestStatus } from "../types";
 
@@ -67,7 +66,7 @@ export function useLiveActions(): Actions {
         return (await r.json()) as Person;
       },
       send: async (to, amount) => {
-        if (me && to.toLowerCase() === me.toLowerCase()) throw new DemoError("You can't send money to yourself.");
+        if (me && to.toLowerCase() === me.toLowerCase()) throw new DemoError("errSendSelf");
         await write({ address: TOKEN, abi: tokenAbi, functionName: "transfer", args: [to, toUnits(amount)] });
         await refreshAll().catch(() => {}); // the money has moved: a failed refresh must not show an error
       },
@@ -78,7 +77,7 @@ export function useLiveActions(): Actions {
 
       createSquad: async ({ name, contribution, size, period, due, pub }) => {
         name = name.trim();
-        if (!name) throw new DemoError("Give your squad a name.");
+        if (!name) throw new DemoError("errNameMissing");
         const code = toHex(crypto.getRandomValues(new Uint8Array(32)));
         const inviteHash = keccak256(encodeAbiParameters([{ type: "bytes32" }], [code]));
         const receipt = await write({
@@ -118,9 +117,9 @@ export function useLiveActions(): Actions {
         const r = await authed(`/api/squads/${encodeURIComponent(slug)}/requests`, { method: "POST" });
         if (r.status === 409) {
           await refreshAll(); // the squad is no longer Open: the page switches to its "already started" notice
-          throw new DemoError("This squad has already started.");
+          throw new DemoError("startedTitle");
         }
-        if (r.status === 403 && (await r.json().catch(() => null))?.error === "record") throw new DemoError(RECORD_BLOCKED);
+        if (r.status === 403 && (await r.json().catch(() => null))?.error === "record") throw new DemoError("recordBlocked");
         if (!r.ok) throw new Error(`request ${r.status}`);
         const { status, code } = (await r.json()) as { status: RequestStatus; code?: string };
         await (code ? join(slug, code) : refreshAll()); // the code comes back once accepted; join with it like an invite link

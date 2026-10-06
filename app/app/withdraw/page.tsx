@@ -6,8 +6,7 @@ import { ErrorNote, GHOST_BTN, PALM_BTN, useRun } from "@/components/squad/ui";
 import { naira } from "@/lib/format";
 import { amountProblem, BANKS, maskAccount, validAccountNumber } from "@/lib/money-out";
 import { useActions, useMe } from "@/lib/data";
-
-const TEST_NOTE = "Test mode: no real money is sent to your bank.";
+import { rich, useT } from "@/lib/i18n";
 
 // The account number lives only in this component's state: never stored, never sent anywhere.
 export default function Withdraw() {
@@ -18,35 +17,32 @@ export default function Withdraw() {
   const [amount, setAmount] = useState("5000");
   const [step, setStep] = useState<"form" | "confirm" | "done">("form");
   const out = useRun("payment");
+  const t = useT();
   const value = toAmount(amount);
   const to = `${bank} ${maskAccount(account)}`;
 
   if (step === "done")
     return (
       <Receipt
-        title={
-          <>
-            <Money n={value} /> sent to {to}
-          </>
-        }
-        lines={["Test mode"]}
+        title={rich(t("withdrawnTitle", { to }), { amount: <Money n={value} /> })}
+        lines={[t("testMode")]}
       />
     );
 
   if (step === "confirm")
     return (
-      <Column title="Withdraw">
+      <Column title={t("withdraw")}>
         <p className="mt-8 font-display text-2xl leading-tight font-extrabold tracking-[-0.02em] text-balance">
-          Send <Money n={value} /> to {to}?
+          {rich(t("withdrawConfirm", { to }), { amount: <Money n={value} /> })}
         </p>
-        <p className="mt-2 text-sm text-muted">{TEST_NOTE} The money still leaves your balance.</p>
+        <p className="mt-2 text-sm text-muted">{t("testNote")} {t("stillLeaves")}</p>
         <div className="mt-auto grid gap-3 pt-8">
           <ErrorNote error={out.error} />
           <button type="button" disabled={out.busy} onClick={() => out.run(async () => (await withdraw(value), setStep("done")))} className={PALM_BTN}>
-            {out.busy ? "Withdrawing…" : `Withdraw ${naira(value)}`}
+            {out.busy ? t("withdrawing") : t("withdrawAmount", { amount: naira(value) })}
           </button>
           <button type="button" disabled={out.busy} onClick={() => setStep("form")} className={GHOST_BTN}>
-            Change
+            {t("change")}
           </button>
         </div>
       </Column>
@@ -54,12 +50,12 @@ export default function Withdraw() {
 
   const accountOk = validAccountNumber(account);
   return (
-    <Column title="Withdraw">
+    <Column title={t("withdraw")}>
       <form onSubmit={(e) => (e.preventDefault(), bank && accountOk && me && !amountProblem(value, me.balance) && setStep("confirm"))} className="flex flex-1 flex-col">
-        <p className="mt-3 rounded-md border border-rule bg-paper px-4 py-3 text-sm">{TEST_NOTE}</p>
+        <p className="mt-3 rounded-md border border-rule bg-paper px-4 py-3 text-sm">{t("testNote")}</p>
 
         <label htmlFor="bank" className="mt-8 block text-sm font-semibold">
-          Bank
+          {t("bank")}
         </label>
         <select
           id="bank"
@@ -68,7 +64,7 @@ export default function Withdraw() {
           className="mt-2 min-h-14 w-full rounded-md border-[1.5px] border-muted bg-paper px-3 font-semibold focus:border-stamp focus:outline-none"
         >
           <option value="" disabled>
-            Pick your bank
+            {t("pickBank")}
           </option>
           {BANKS.map((b) => (
             <option key={b}>{b}</option>
@@ -76,7 +72,7 @@ export default function Withdraw() {
         </select>
 
         <label htmlFor="acct" className="mt-6 block text-sm font-semibold">
-          Account number
+          {t("accountNumber")}
         </label>
         <input
           id="acct"
@@ -90,11 +86,11 @@ export default function Withdraw() {
           className="mt-2 min-h-14 w-full rounded-md border-[1.5px] border-muted bg-paper px-3 font-mono text-lg tnum tracking-[0.08em] focus:border-stamp focus:outline-none"
         />
         <p id="acct-help" className="mt-2 text-xs text-muted">
-          10 digits.
+          {t("tenDigits")}
         </p>
 
         <AmountField amount={amount} setAmount={setAmount} me={me} />
-        <Submit me={me} amount={value} ready={!!bank && accountOk} label={`Withdraw ${naira(value || 0)}`} next="/withdraw" />
+        <Submit me={me} amount={value} ready={!!bank && accountOk} label={t("withdrawAmount", { amount: naira(value || 0) })} next="/withdraw" />
       </form>
     </Column>
   );

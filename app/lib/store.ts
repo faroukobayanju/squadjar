@@ -5,6 +5,7 @@
 
 import { useSyncExternalStore } from "react";
 import type { Member, Payout, Period, Squad } from "./types";
+import { DemoError } from "./errors";
 export type { Member, Payout, Period, Squad, SquadState, Tier } from "./types";
 
 export type State = {
@@ -164,12 +165,12 @@ export function myTurn(q: Squad) {
   return q.members.findIndex((m) => m.id === ME) + 1;
 }
 
-export class DemoError extends Error {}
+export { DemoError };
 
 export function addMoney(amount: number) {
   const s = load();
-  if (!Number.isFinite(amount) || amount < 100) throw new DemoError("Add at least ₦100.");
-  if (amount > 200000) throw new DemoError("Test top-ups are capped at ₦200,000 at a time.");
+  if (!Number.isFinite(amount) || amount < 100) throw new DemoError("errAddAtLeast");
+  if (amount > 200000) throw new DemoError("errTopUpCap");
   commit({ ...s, balance: s.balance + amount });
 }
 
@@ -177,10 +178,10 @@ export function addMoney(amount: number) {
 export function payRound(slug: string): { settled: boolean; payout?: Payout } {
   const s = load();
   const q = squadBySlug(s, slug);
-  if (!q || q.state !== "Active") throw new DemoError("This squad isn't collecting right now.");
+  if (!q || q.state !== "Active") throw new DemoError("notCollecting");
   const r = q.currentRound;
-  if ((q.paid[r] ?? []).includes(ME)) throw new DemoError("You've already paid this round.");
-  if (s.balance < q.contribution) throw new DemoError(`Add ₦${(q.contribution - s.balance).toLocaleString("en-NG")} to pay.`);
+  if ((q.paid[r] ?? []).includes(ME)) throw new DemoError("errAlreadyPaid");
+  if (s.balance < q.contribution) throw new DemoError("errAddToPay", { amount: `₦${(q.contribution - s.balance).toLocaleString("en-NG")}` });
 
   const paid = { ...q.paid, [r]: [...(q.paid[r] ?? []), ME] };
   let balance = s.balance - q.contribution;
@@ -225,10 +226,10 @@ export function clearJustStamped() {
 export function createSquad(input: { name: string; contribution: number; size: number; period: Period }): string {
   const s = load();
   const name = input.name.trim();
-  if (!name) throw new DemoError("Give your squad a name.");
-  if (name.length > 40) throw new DemoError("Keep the name under 40 characters.");
-  if (!(input.contribution >= 100)) throw new DemoError("Contributions start at ₦100.");
-  if (!(input.size >= 3 && input.size <= 20)) throw new DemoError("A squad is 3 to 20 people.");
+  if (!name) throw new DemoError("errNameMissing");
+  if (name.length > 40) throw new DemoError("errNameLong");
+  if (!(input.contribution >= 100)) throw new DemoError("errContributionMin");
+  if (!(input.size >= 3 && input.size <= 20)) throw new DemoError("errSquadSize");
   const base = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "squad";
   let slug = base;
   for (let i = 2; s.squads.some((q) => q.slug === slug); i++) slug = `${base}-${i}`;

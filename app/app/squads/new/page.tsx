@@ -6,19 +6,20 @@ import { Sparkle } from "@phosphor-icons/react";
 import { BackLink } from "@/components/shell";
 import { parseDraft } from "@/lib/draft";
 import { nextDue } from "@/lib/due";
-import { MIN_TIER_LABEL, naira } from "@/lib/format";
-import { friendlyError } from "@/lib/errors";
-import { DemoError, isLive, useActions, type Period } from "@/lib/data";
+import { MIN_TIER_KEY, naira } from "@/lib/format";
+import { DemoError, friendlyError } from "@/lib/errors";
+import { isLive, useActions, type Period } from "@/lib/data";
+import { rich, useT, type Key } from "@/lib/i18n";
 
-const PERIODS: { value: Period; label: string }[] = [
-  { value: "Weekly", label: "Weekly" },
-  { value: "Monthly", label: "Monthly" },
-  { value: "Demo", label: "Quick demo (5-minute rounds)" },
+const PERIODS: { value: Period; label: Key }[] = [
+  { value: "Weekly", label: "periodWeekly" },
+  { value: "Monthly", label: "periodMonthly" },
+  { value: "Demo", label: "periodDemoOption" },
 ];
 
 // Mon first, as people say it; values are Date.getDay() (0 = Sunday).
-const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0].map((d) => ({ d, label: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d] }));
-const HOURS = Array.from({ length: 24 }, (_, h) => ({ h, label: `${h % 12 || 12}:00 ${h < 12 ? "am" : "pm"}` }));
+const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0].map((d) => ({ d, label: `day${d}` as Key }));
+const HOURS = Array.from({ length: 24 }, (_, h) => ({ h, label: h < 12 ? ("hourAm" as const) : ("hourPm" as const), h12: h % 12 || 12 }));
 const MONTH_DAYS = Array.from({ length: 28 }, (_, i) => i + 1);
 const PILL = "min-h-11 rounded-full border-[1.5px] px-3.5 text-sm font-semibold";
 const pill = (on: boolean) => `${PILL} ${on ? "border-ink bg-ink text-manila" : "border-rule"}`;
@@ -26,6 +27,7 @@ const pill = (on: boolean) => `${PILL} ${on ? "border-ink bg-ink text-manila" : 
 export default function NewSquad() {
   const router = useRouter();
   const { createSquad } = useActions();
+  const t = useT();
   const [ask, setAsk] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -50,8 +52,8 @@ export default function NewSquad() {
     if (d.size) setSize(String(d.size));
     if (d.period) setPeriod(d.period);
     if (d.weekday !== undefined) setWeekday(d.weekday);
-    const missing = [!d.contribution && "how much each person pays", !d.size && "how many of you", !d.period && "weekly or monthly"].filter(Boolean);
-    setNote(missing.length ? `Filled what I could. Still need: ${missing.join(", ")}.` : "Filled in below. Check it, then create.");
+    const missing = [!d.contribution && t("newNeedAmount"), !d.size && t("newNeedSize"), !d.period && t("newNeedPeriod")].filter(Boolean);
+    setNote(missing.length ? t("newFilledSome", { missing: missing.join(", ") }) : t("newFilledAll"));
   }
 
   async function submit(e: React.FormEvent) {
@@ -65,7 +67,7 @@ export default function NewSquad() {
       const slug = await createSquad({ name, contribution: Number(amount.replace(/\D/g, "")), size: Number(size), period, due, pub });
       router.push(`/s/${slug}`);
     } catch (err) {
-      setError(err instanceof DemoError ? err.message : isLive ? friendlyError(err, "other") : "Couldn't create the squad. Try again.");
+      setError(isLive || err instanceof DemoError ? friendlyError(err, "other", t) : t("newCreateFail"));
       setBusy(false);
     }
   }
@@ -75,20 +77,20 @@ export default function NewSquad() {
 
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[480px] flex-col px-4 pt-2 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-      <BackLink href="/home" label="Home" />
-      <h1 className="mt-2 font-display text-[2.1rem] leading-none font-extrabold tracking-[-0.03em]">Start a squad</h1>
+      <BackLink href="/home" label={t("home")} />
+      <h1 className="mt-2 font-display text-[2.1rem] leading-none font-extrabold tracking-[-0.03em]">{t("startSquad")}</h1>
 
       <section className="mt-6 rounded-lg border border-rule bg-paper p-4">
         <label htmlFor="ask" className="flex items-center gap-2 text-sm font-semibold">
           <Sparkle size={18} weight="fill" className="text-stamp" aria-hidden />
-          Describe it in your own words
+          {t("newDescribe")}
         </label>
         <textarea
           id="ask"
           rows={2}
           value={ask}
           onChange={(e) => setAsk(e.target.value)}
-          placeholder="8 of us, 5k every Friday, called CSC 300L Squad"
+          placeholder={t("newDescribeExample")}
           className="mt-2 w-full resize-none rounded-md border border-rule bg-manila/40 px-3 py-2 placeholder:text-muted/80"
         />
         <button
@@ -97,7 +99,7 @@ export default function NewSquad() {
           disabled={!ask.trim()}
           className="mt-2 min-h-11 rounded-full border-[1.5px] border-ink px-4 text-sm font-semibold disabled:opacity-40"
         >
-          Fill the form
+          {t("newFill")}
         </button>
         {note && (
           <p role="status" className="mt-2 text-sm text-muted">
@@ -107,11 +109,11 @@ export default function NewSquad() {
       </section>
 
       <form onSubmit={submit} className="mt-6 flex flex-1 flex-col gap-5">
-        <Field id="name" label="Squad name">
+        <Field id="name" label={t("squadName")}>
           <input id="name" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} required className={INPUT} />
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field id="amount" label="Each person pays">
+          <Field id="amount" label={t("eachPays")}>
             <div className={`${INPUT} flex items-center`}>
               <span className="text-muted">₦</span>
               <input
@@ -123,15 +125,15 @@ export default function NewSquad() {
               />
             </div>
           </Field>
-          <Field id="size" label="People">
+          <Field id="size" label={t("people")}>
             <input id="size" type="number" min={3} max={20} value={size} onChange={(e) => setSize(e.target.value)} className={INPUT} />
           </Field>
         </div>
-        <Field id="period" label="How often">
+        <Field id="period" label={t("howOften")}>
           <select id="period" value={period} onChange={(e) => setPeriod(e.target.value as Period)} className={INPUT}>
             {PERIODS.map((p) => (
               <option key={p.value} value={p.value}>
-                {p.label}
+                {t(p.label)}
               </option>
             ))}
           </select>
@@ -139,7 +141,7 @@ export default function NewSquad() {
 
         {period === "Weekly" && (
           <fieldset className="grid gap-2">
-            <legend className="mb-2 text-sm font-semibold">Due day</legend>
+            <legend className="mb-2 text-sm font-semibold">{t("dueDay")}</legend>
             <div className="flex flex-wrap gap-2">
               {WEEKDAYS.map(({ d, label }) => (
                 <button
@@ -149,7 +151,7 @@ export default function NewSquad() {
                   onClick={() => setWeekday(d)}
                   className={pill(weekday === d)}
                 >
-                  {label}
+                  {t(label)}
                 </button>
               ))}
             </div>
@@ -158,12 +160,12 @@ export default function NewSquad() {
         )}
         {period === "Monthly" && (
           <fieldset>
-            <legend className="mb-2 text-sm font-semibold">Due day</legend>
+            <legend className="mb-2 text-sm font-semibold">{t("dueDay")}</legend>
             <div className="grid grid-cols-2 gap-3">
-              <select aria-label="Day of the month" value={monthDay} onChange={(e) => setMonthDay(Number(e.target.value))} className={INPUT}>
+              <select aria-label={t("dayOfMonth")} value={monthDay} onChange={(e) => setMonthDay(Number(e.target.value))} className={INPUT}>
                 {MONTH_DAYS.map((d) => (
                   <option key={d} value={d}>
-                    Day {d}
+                    {t("dayN", { d })}
                   </option>
                 ))}
               </select>
@@ -174,11 +176,11 @@ export default function NewSquad() {
 
         {isLive && (
           <fieldset className="grid gap-3">
-            <legend className="mb-2 text-sm font-semibold">Who can join?</legend>
+            <legend className="mb-2 text-sm font-semibold">{t("whoCanJoin")}</legend>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { on: false, label: "Private", note: "Link and code" },
-                { on: true, label: "Public", note: "Anyone can find it" },
+                { on: false, label: t("private"), note: t("privateNote") },
+                { on: true, label: t("public"), note: t("publicNote") },
               ].map((o) => (
                 <button
                   key={o.label}
@@ -194,28 +196,28 @@ export default function NewSquad() {
             </div>
             {isPublic && (
               <>
-                <Field id="description" label="One line about it">
+                <Field id="description" label={t("oneLine")}>
                   <input
                     id="description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     maxLength={80}
-                    placeholder="Final-year savers, paying every Friday"
+                    placeholder={t("oneLineExample")}
                     className={`${INPUT} placeholder:text-muted/80`}
                   />
                 </Field>
-                <Field id="min-tier" label="Minimum tier">
+                <Field id="min-tier" label={t("minTier")}>
                   <select id="min-tier" value={minTier} onChange={(e) => setMinTier(Number(e.target.value))} className={INPUT}>
-                    {MIN_TIER_LABEL.map((label, i) => (
+                    {MIN_TIER_KEY.map((label, i) => (
                       <option key={label} value={i}>
-                        {label}
+                        {t(label)}
                       </option>
                     ))}
                   </select>
                 </Field>
-                {period === "Demo" && <p className="text-sm text-muted">Quick demo squads don&apos;t build trust, so everyone starts New.</p>}
+                {period === "Demo" && <p className="text-sm text-muted">{t("newDemoNoTrust")}</p>}
                 <label className="flex min-h-12 items-center justify-between gap-3 text-sm font-semibold">
-                  Approve each person
+                  {t("approveEach")}
                   <input type="checkbox" checked={approval} onChange={(e) => setApproval(e.target.checked)} className="size-5 accent-ink" />
                 </label>
               </>
@@ -225,8 +227,7 @@ export default function NewSquad() {
 
         {each > 0 && n >= 3 && (
           <p className="text-sm text-muted">
-            Each payout is <span className="font-money font-bold text-ink">{naira(each * n)}</span>. The squad runs {n} rounds,
-            one payout per person.
+            {rich(t("newPayoutLine", { n }), { amount: <span className="font-money font-bold text-ink">{naira(each * n)}</span> })}
           </p>
         )}
 
@@ -241,7 +242,7 @@ export default function NewSquad() {
             disabled={busy}
             className="flex min-h-14 w-full items-center justify-center rounded-lg bg-ink font-semibold text-manila active:scale-[0.98] disabled:opacity-70"
           >
-            {busy ? "Creating…" : "Create squad"}
+            {busy ? t("creating") : t("createSquad")}
           </button>
         </div>
       </form>
@@ -263,16 +264,17 @@ function Field({ id, label, children }: { id: string; label: string; children: R
 }
 
 function HourSelect({ id, value, onChange }: { id: string; value: number; onChange: (h: number) => void }) {
+  const t = useT();
   return (
     <div>
-      <select id={id} aria-label="Time" value={value} onChange={(e) => onChange(Number(e.target.value))} className={INPUT}>
-        {HOURS.map(({ h, label }) => (
+      <select id={id} aria-label={t("time")} value={value} onChange={(e) => onChange(Number(e.target.value))} className={INPUT}>
+        {HOURS.map(({ h, label, h12 }) => (
           <option key={h} value={h}>
-            {label}
+            {t(label, { h: h12 })}
           </option>
         ))}
       </select>
-      <p className="mt-1 font-mono text-xs text-muted">Nigeria time (WAT)</p>
+      <p className="mt-1 font-mono text-xs text-muted">{t("watTime")}</p>
     </div>
   );
 }

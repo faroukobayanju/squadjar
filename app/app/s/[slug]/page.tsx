@@ -12,10 +12,10 @@ import { Bar } from "@/components/skeleton";
 import { DepositingView } from "@/components/squad/depositing";
 import { JoinView, OpenView, PublicJoinView } from "@/components/squad/open";
 import { AddMoneyNote, ErrorNote, Notice, PAID_LABEL, PALM_BTN, useRun } from "@/components/squad/ui";
-import { KNOWN } from "@/lib/errors";
 import { dueLabel, naira } from "@/lib/format";
 import { useOrigin } from "@/lib/origin";
 import { refreshAll } from "@/lib/live/squads";
+import { rich, useLang, useT } from "@/lib/i18n";
 import { ME, clearJustStamped, collectorOf, myTurn, payoutAmount, useActions, useJustStamped, useMe, useSquad, type Squad } from "@/lib/data";
 
 export default function SquadPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ code?: string }> }) {
@@ -27,6 +27,8 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
   const now = useNow();
   const { refill, settle } = useActions();
   const topUp = useRun("payment");
+  const t = useT();
+  const lang = useLang();
 
   useEffect(() => {
     if (!fresh) return;
@@ -57,8 +59,8 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
   }, [overdue, addr, slug, settle]);
 
   if (squad === undefined) return <SquadSkeleton />;
-  if (!squad) return <Notice title="We can't find that squad." body="The link may be old. Ask whoever invited you for a fresh one." />;
-  if (squad.state === "Cancelled") return <Notice title="This squad was cancelled." body="Deposits were returned." />;
+  if (!squad) return <Notice title={t("notFoundTitle")} body={t("notFoundBody")} />;
+  if (squad.state === "Cancelled") return <Notice title={t("cancelledTitle")} body={t("cancelledBody")} />;
   if (!squad.amMember) {
     return squad.state === "Open" ? (
       squad.pub && !code ? (
@@ -67,7 +69,7 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
         <JoinView squad={squad} code={code} />
       )
     ) : (
-      <Notice title="This squad has already started." body="Ask the organizer about the next one, or start your own." />
+      <Notice title={t("startedTitle")} body={t("startedBody")} />
     );
   }
   if (squad.state === "Open") return <OpenView squad={squad} />;
@@ -83,18 +85,16 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
   const refillOwed = Math.max(0, squad.myRequired - squad.myDeposit);
 
   const action = done ? null : iStopped ? (
-    <p className={PAID_LABEL}>{KNOWN.MemberStoppedPaying}</p>
+    <p className={PAID_LABEL}>{t("errStoppedPaying")}</p>
   ) : iPaid ? (
-    <p className={PAID_LABEL}>Paid round {r}. Your stamp is on the card.</p>
+    <p className={PAID_LABEL}>{t("paidRound", { round: r })}</p>
   ) : notOpenYet ? (
     <p className={PAID_LABEL}>
-      <span>
-        Round {r} opens in <Countdown to={squad.roundOpensAt} />
-      </span>
+      <span>{rich(t("roundOpensIn", { round: r }), { time: <Countdown to={squad.roundOpensAt} /> })}</span>
     </p>
   ) : (
     <Link href={`/s/${slug}/pay`} className={PALM_BTN}>
-      Pay {naira(squad.contribution)}
+      {t("payAmount", { amount: naira(squad.contribution) })}
     </Link>
   );
 
@@ -103,16 +103,18 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
       <header>
         <h1 className="font-display text-[2.1rem] leading-none font-extrabold tracking-[-0.03em] text-balance">{squad.name}</h1>
         <p className="mt-2 font-mono text-xs text-muted">
-          {done ? "Completed" : `Round ${r} of ${squad.members.length}`} ·{" "}
-          <span className="font-money text-[13px] font-bold text-ink">{naira(squad.contribution)}</span> each · {squad.period}
+          {rich(t("squadMeta"), {
+            status: done ? t("metaCompleted") : t("metaRound", { round: r, total: squad.members.length }),
+            amount: <span className="font-money text-[13px] font-bold text-ink">{naira(squad.contribution)}</span>,
+            period: t(`period${squad.period}`),
+          })}
         </p>
       </header>
 
       {!done && !iStopped && refillOwed > 0 && (
-        <section aria-label="Top up your deposit" className="mt-8 rounded-md border border-warn/40 bg-warn/8 p-4">
+        <section aria-label={t("topUpAria")} className="mt-8 rounded-md border border-warn/40 bg-warn/8 p-4">
           <p className="text-sm">
-            Top up your deposit by <span className="font-money font-bold">{naira(refillOwed)}</span> before {dueLabel(squad.settleableAfter)} to stay in good
-            standing.
+            {rich(t("topUpBody", { when: dueLabel(squad.settleableAfter, lang) }), { amount: <span className="font-money font-bold">{naira(refillOwed)}</span> })}
           </p>
           <div className="mt-3">
             <ErrorNote error={topUp.error} />
@@ -120,7 +122,7 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
               <AddMoneyNote short={refillOwed - me.balance} balance={me.balance} next={`/s/${slug}`} />
             ) : (
               <button type="button" disabled={topUp.busy} onClick={() => topUp.run(() => refill(slug))} className={PALM_BTN}>
-                {topUp.busy ? "Topping up…" : topUp.error ? `Retry ${naira(refillOwed)}` : `Top up ${naira(refillOwed)}`}
+                {topUp.busy ? t("toppingUp") : t(topUp.error ? "retryAmount" : "topUpAmount", { amount: naira(refillOwed) })}
               </button>
             )}
           </div>
@@ -129,21 +131,21 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
 
       {done ? (
         <section className="mt-10">
-          <p className="font-display text-3xl font-extrabold tracking-[-0.03em]">Everyone collected.</p>
+          <p className="font-display text-3xl font-extrabold tracking-[-0.03em]">{t("everyoneCollected")}</p>
           <p className="mt-2 max-w-[34ch] text-muted">
-            Deposits went back to everyone who kept paying. Start the next squad when you&apos;re ready.
+            {t("completedBody")}
           </p>
         </section>
       ) : (
         <section aria-labelledby="next-payout" className="mt-10">
           <h2 id="next-payout" className="font-display text-[1.6rem] leading-tight font-extrabold tracking-[-0.03em]">
-            {collector.id === ME ? "You collect" : `${collector.name} collects`} in <Countdown to={squad.roundDeadline} />
+            {rich(collector.id === ME ? t("youCollectIn") : t("nameCollectsIn", { name: collector.name }), { time: <Countdown to={squad.roundDeadline} /> })}
           </h2>
           <p className="mt-2 font-money text-[clamp(4rem,23vw,7rem)] leading-[0.9] font-bold tracking-[-0.02em] tnum">
             {naira(payoutAmount(squad))}
           </p>
           <p className="mt-2 text-sm text-muted">
-            The jar pays automatically when everyone has paid, or when the round closes.
+            {t("jarPaysAuto")}
           </p>
         </section>
       )}
@@ -152,10 +154,10 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
         <section aria-labelledby="this-round" className="mt-8">
           <div className="flex items-baseline justify-between">
             <h2 id="this-round" className="font-semibold">
-              This round
+              {t("thisRound")}
             </h2>
             <p className="font-mono text-xs text-muted tnum">
-              {paidIds.length} of {squad.members.length} paid
+              {t("nOfMPaid", { paid: paidIds.length, total: squad.members.length })}
             </p>
           </div>
           <ul className="mt-4 grid grid-cols-4 gap-y-5">
@@ -166,12 +168,12 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
                   {paid ? (
                     <Stamp memberId={m.id} name={m.name} round={r} size="lg" fresh={fresh?.round === r && m.id === ME} />
                   ) : (
-                    <EmptyBox size="lg" label={`${m.name} hasn't paid yet`} />
+                    <EmptyBox size="lg" label={t("hasntPaidYet", { name: m.name })} />
                   )}
                   <span className={`max-w-full truncate text-xs ${m.id === ME ? "font-bold" : ""}`}>
-                    {m.id === ME ? "You" : m.name}
+                    {m.id === ME ? t("you") : m.name}
                   </span>
-                  {squad.stopped.includes(m.id) && <span className="font-mono text-[10px] text-bad">Stopped paying</span>}
+                  {squad.stopped.includes(m.id) && <span className="font-mono text-[10px] text-bad">{t("stoppedPaying")}</span>}
                 </li>
               );
             })}
@@ -184,14 +186,14 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
 
       <section aria-labelledby="card" className="mt-12">
         <h2 id="card" className="mb-3 font-semibold">
-          The card
+          {t("theCard")}
         </h2>
         <StampCard squad={squad} fresh={fresh} />
         <p className="mt-3 flex items-center gap-2 text-sm text-muted">
           <LockSimple size={16} aria-hidden />
           {squad.myDeposit > 0
-            ? `Your deposit ${naira(squad.myDeposit)} is locked and comes back at the end. Turn ${myTurn(squad)}.`
-            : "Your deposit has been returned."}
+            ? t("depositLockedTurn", { amount: naira(squad.myDeposit), turn: myTurn(squad) })
+            : t("depositReturned")}
         </p>
       </section>
     </AppShell>
@@ -200,10 +202,17 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
 
 function RemindSquad({ squad }: { squad: Squad }) {
   const origin = useOrigin();
+  const t = useT();
   const r = squad.currentRound;
   const waiting = squad.members.filter((m) => !(squad.paid[r] ?? []).includes(m.id) && m.id !== ME);
   if (!waiting.length) return null;
-  const text = `${waiting.map((m) => m.name).join(", ")}: ${naira(squad.contribution)} for ${squad.name} is due. ${collectorOf(squad).name} collects this round. Pay here: ${origin}/s/${squad.slug}/pay`;
+  const text = t("remindText", {
+    names: waiting.map((m) => m.name).join(", "),
+    amount: naira(squad.contribution),
+    squad: squad.name,
+    collector: collectorOf(squad).name,
+    link: `${origin}/s/${squad.slug}/pay`,
+  });
   return (
     <a
       href={`https://wa.me/?text=${encodeURIComponent(text)}`}
@@ -212,22 +221,23 @@ function RemindSquad({ squad }: { squad: Squad }) {
       className="mt-5 inline-flex min-h-12 items-center gap-2 font-semibold text-ink underline decoration-rule decoration-2 hover:decoration-ink"
     >
       <WhatsappLogo size={20} aria-hidden />
-      Remind {waiting.length === 1 ? waiting[0].name : `the ${waiting.length} who haven't paid`}
+      {waiting.length === 1 ? t("remindOne", { name: waiting[0].name }) : t("remindMany", { n: waiting.length })}
     </a>
   );
 }
 
 function SquadSkeleton() {
+  const t = useT();
   return (
     <AppShell action={<Bar className="h-14 w-full rounded-lg" />}>
-      <div aria-busy="true" aria-label="Loading squad">
+      <div aria-busy="true" aria-label={t("loadingSquad")}>
         <Bar className="h-[2.1rem] w-56" />
         <Bar className="mt-2 h-4 w-48" />
         <Bar className="mt-10 h-8 w-64" />
         <Bar className="mt-2 h-[clamp(4rem,23vw,7rem)] w-full max-w-72" />
         <Bar className="mt-2 h-4 w-60" />
         <div className="mt-8 flex items-baseline justify-between">
-          <h2 className="font-semibold">This round</h2>
+          <h2 className="font-semibold">{t("thisRound")}</h2>
           <Bar className="h-4 w-16" />
         </div>
         <ul className="mt-4 grid grid-cols-4 gap-y-5">
@@ -238,7 +248,7 @@ function SquadSkeleton() {
             </li>
           ))}
         </ul>
-        <h2 className="mt-12 mb-3 font-semibold">The card</h2>
+        <h2 className="mt-12 mb-3 font-semibold">{t("theCard")}</h2>
         <Bar className="h-40 w-full rounded-lg" />
       </div>
     </AppShell>

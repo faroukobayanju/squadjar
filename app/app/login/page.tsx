@@ -8,9 +8,7 @@ import { BackLink } from "@/components/shell";
 import { useMyAccount } from "@/lib/live/account";
 import { safeNext } from "@/lib/next";
 import { hasPrivy } from "@/lib/live/chain";
-
-const BAD_CODE = "That code didn't work. Check it and try again.";
-const BAD_EMAIL = "That email doesn't look right. Check for typos.";
+import { useT } from "@/lib/i18n";
 
 export default function Login({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const sp = use(searchParams);
@@ -21,6 +19,7 @@ export default function Login({ searchParams }: { searchParams: Promise<{ next?:
 // Hooks live in separate components: Privy hooks only work inside PrivyProvider.
 function PrivyLogin({ next }: { next: string }) {
   const router = useRouter();
+  const t = useT();
   const { ready, authenticated, address } = useMyAccount();
   const onError = (e: unknown) => console.error("[login]", e);
   const { sendCode, loginWithCode } = useLoginWithEmail({ onError });
@@ -45,8 +44,8 @@ function PrivyLogin({ next }: { next: string }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!sent && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setError(BAD_EMAIL);
-    if (sent && !/^\d{6}$/.test(code)) return setError(BAD_CODE);
+    if (!sent && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setError(t("loginBadEmail"));
+    if (sent && !/^\d{6}$/.test(code)) return setError(t("loginBadCode"));
     setBusy(true);
     try {
       if (sent) await loginWithCode({ code });
@@ -56,7 +55,7 @@ function PrivyLogin({ next }: { next: string }) {
       }
     } catch (err) {
       console.error("[login]", err);
-      setError(sent ? BAD_CODE : "We couldn't send a code. Check your email and try again.");
+      setError(sent ? t("loginBadCode") : t("loginSendFail"));
     }
     setBusy(false);
   }
@@ -67,7 +66,7 @@ function PrivyLogin({ next }: { next: string }) {
     try {
       await sendCode({ email });
     } catch {
-      setError("We couldn't send a code. Check your email and try again.");
+      setError(t("loginSendFail"));
     }
   }
 
@@ -75,8 +74,8 @@ function PrivyLogin({ next }: { next: string }) {
     return (
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-[420px] flex-col px-4 pt-2 pb-8" aria-live="polite">
         <BackLink href="/" label="Squadjar" />
-        <h1 className="mt-8 font-display text-[2.4rem] leading-[0.95] font-extrabold tracking-[-0.04em]">You&apos;re in</h1>
-        <p className="mt-3 text-muted">Setting up your account. This takes a few seconds the first time.</p>
+        <h1 className="mt-8 font-display text-[2.4rem] leading-[0.95] font-extrabold tracking-[-0.04em]">{t("loginIn")}</h1>
+        <p className="mt-3 text-muted">{t("loginSettingUp")}</p>
       </div>
     );
 
@@ -101,20 +100,21 @@ function PrivyLogin({ next }: { next: string }) {
       error={error}
       busy={busy}
       onSubmit={submit}
-      onGoogle={() => initOAuth({ provider: "google" }).catch((err) => (console.error("[login google]", err), setError("Google sign-in didn't work. Try again.")))}
+      onGoogle={() => initOAuth({ provider: "google" }).catch((err) => (console.error("[login google]", err), setError(t("loginGoogleFail"))))}
     />
   );
 }
 
 function DemoLogin({ next }: { next: string }) {
   const router = useRouter();
+  const t = useT();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError(BAD_EMAIL);
+      setError(t("loginBadEmail"));
       return;
     }
     router.push(next);
@@ -149,15 +149,16 @@ type ViewProps = {
 
 function LoginView({ email, onEmail, code, onCode, onBack, onResend, error, busy, onSubmit, onGoogle }: ViewProps) {
   const asking = code !== undefined;
+  const t = useT();
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[420px] flex-col px-4 pt-2 pb-8">
       <BackLink href="/" label="Squadjar" />
-      <h1 className="mt-8 font-display text-[2.4rem] leading-[0.95] font-extrabold tracking-[-0.04em]">Log in or sign up</h1>
-      <p className="mt-3 text-muted">One code to your email. No passwords.</p>
+      <h1 className="mt-8 font-display text-[2.4rem] leading-[0.95] font-extrabold tracking-[-0.04em]">{t("loginTitle")}</h1>
+      <p className="mt-3 text-muted">{t("loginLead")}</p>
 
       <form onSubmit={onSubmit} noValidate className="mt-8 grid gap-2">
         <label htmlFor="email" className="text-sm font-semibold">
-          Email
+          {t("email")}
         </label>
         <input
           id="email"
@@ -173,9 +174,9 @@ function LoginView({ email, onEmail, code, onCode, onBack, onResend, error, busy
         />
         {asking && (
           <>
-            <p className="text-sm text-muted">We sent a code to {email}.</p>
+            <p className="text-sm text-muted">{t("loginSent", { email })}</p>
             <label htmlFor="code" className="mt-2 text-sm font-semibold">
-              6-digit code
+              {t("loginCode")}
             </label>
             <input
               id="code"
@@ -196,15 +197,15 @@ function LoginView({ email, onEmail, code, onCode, onBack, onResend, error, busy
           </p>
         )}
         <button type="submit" disabled={busy} className="mt-3 flex min-h-14 items-center justify-center rounded-lg bg-ink font-semibold text-manila active:scale-[0.98] disabled:opacity-60">
-          {asking ? "Log in" : "Send my code"}
+          {asking ? t("logIn") : t("loginSendCode")}
         </button>
         {asking && (
           <div className="mt-1 flex justify-between text-sm font-semibold">
             <button type="button" onClick={onBack} className="min-h-11 underline underline-offset-4">
-              Use a different email
+              {t("loginOtherEmail")}
             </button>
             <button type="button" onClick={onResend} className="min-h-11 underline underline-offset-4">
-              Send a new code
+              {t("loginResend")}
             </button>
           </div>
         )}
@@ -212,7 +213,7 @@ function LoginView({ email, onEmail, code, onCode, onBack, onResend, error, busy
 
       <div className="my-6 flex items-center gap-3 text-sm text-muted" aria-hidden>
         <span className="h-px flex-1 bg-rule" />
-        or
+        {t("or")}
         <span className="h-px flex-1 bg-rule" />
       </div>
 
@@ -222,7 +223,7 @@ function LoginView({ email, onEmail, code, onCode, onBack, onResend, error, busy
         className="flex min-h-14 items-center justify-center gap-2 rounded-lg border-[1.5px] border-ink font-semibold active:scale-[0.98]"
       >
         <GoogleLogo size={20} weight="bold" aria-hidden />
-        Continue with Google
+        {t("loginGoogle")}
       </button>
     </div>
   );
