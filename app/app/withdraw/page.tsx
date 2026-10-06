@@ -4,7 +4,7 @@ import { useState } from "react";
 import { AmountField, Column, Money, Receipt, Submit, toAmount } from "@/components/money-out";
 import { ErrorNote, GHOST_BTN, PALM_BTN, useRun } from "@/components/squad/ui";
 import { naira } from "@/lib/format";
-import { BANKS, maskAccount, validAccountNumber } from "@/lib/money-out";
+import { amountProblem, BANKS, maskAccount, validAccountNumber } from "@/lib/money-out";
 import { useActions, useMe } from "@/lib/data";
 
 const TEST_NOTE = "Test mode: no real money is sent to your bank.";
@@ -55,7 +55,7 @@ export default function Withdraw() {
   const accountOk = validAccountNumber(account);
   return (
     <Column title="Withdraw">
-      <form onSubmit={(e) => (e.preventDefault(), setStep("confirm"))} className="flex flex-1 flex-col">
+      <form onSubmit={(e) => (e.preventDefault(), bank && accountOk && me && !amountProblem(value, me.balance) && setStep("confirm"))} className="flex flex-1 flex-col">
         <p className="mt-3 rounded-md border border-rule bg-paper px-4 py-3 text-sm">{TEST_NOTE}</p>
 
         <label htmlFor="bank" className="mt-8 block text-sm font-semibold">

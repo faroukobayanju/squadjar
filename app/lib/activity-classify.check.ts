@@ -57,6 +57,8 @@ assert.deepStrictEqual(run([transfer(SQ, B, 1), log(C, "RoundSettled", { round: 
 // member to member, withdraw, and other tokens ignored
 assert.deepStrictEqual(run([transfer(A, B, 300)]).map((r) => [r.member, r.kind, r.counterparty]), [[A, "sent", B], [B, "received", A]]);
 assert.deepStrictEqual(run([transfer(A, DEAD, 300)])[0].counterparty, undefined);
+// a self-transfer moves nothing, and two rows would share one (tx, log_index, member) key
+assert.deepStrictEqual(run([transfer(A, A, 300)]), []);
 assert.deepStrictEqual(run([transfer(A, DEAD, 300)]).map((r) => r.kind), ["withdraw"]);
 assert.deepStrictEqual(run([log(C, "Transfer", { from: ZERO, to: A, value: n(1) })]), []);
 // a member marked stopped paying in this settle, or before it, gets no "paid from deposit" row

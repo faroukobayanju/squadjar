@@ -57,7 +57,7 @@ export function useLiveActions(): Actions {
     return {
       addMoney: async (amount) => {
         await write({ address: TOKEN, abi: tokenAbi, functionName: "faucet", args: [toUnits(amount)] });
-        await refreshAll();
+        await refreshAll().catch(() => {}); // the money has moved: a failed refresh must not show an error
       },
 
       findPerson: async (username) => {
@@ -69,11 +69,11 @@ export function useLiveActions(): Actions {
       send: async (to, amount) => {
         if (me && to.toLowerCase() === me.toLowerCase()) throw new DemoError("You can't send money to yourself.");
         await write({ address: TOKEN, abi: tokenAbi, functionName: "transfer", args: [to, toUnits(amount)] });
-        await refreshAll();
+        await refreshAll().catch(() => {}); // the money has moved: a failed refresh must not show an error
       },
       withdraw: async (amount) => {
         await write({ address: TOKEN, abi: tokenAbi, functionName: "transfer", args: [BURN, toUnits(amount)] });
-        await refreshAll();
+        await refreshAll().catch(() => {}); // the money has moved: a failed refresh must not show an error
       },
 
       createSquad: async ({ name, contribution, size, period, due, pub }) => {

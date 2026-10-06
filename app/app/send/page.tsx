@@ -4,7 +4,7 @@ import { useState } from "react";
 import { AmountField, Column, Money, Receipt, Submit, toAmount } from "@/components/money-out";
 import { ErrorNote, GHOST_BTN, PALM_BTN, useRun } from "@/components/squad/ui";
 import { naira } from "@/lib/format";
-import { normUsername } from "@/lib/money-out";
+import { amountProblem, normUsername } from "@/lib/money-out";
 import { useMyAccount } from "@/lib/live/account";
 import { useActions, useMe, type Person } from "@/lib/data";
 
@@ -100,7 +100,7 @@ export default function Send() {
         )}
       </form>
 
-      <form onSubmit={(e) => (e.preventDefault(), setStep("confirm"))} className="flex flex-1 flex-col">
+      <form onSubmit={(e) => (e.preventDefault(), person && me && !amountProblem(value, me.balance) && setStep("confirm"))} className="flex flex-1 flex-col">
         <AmountField amount={amount} setAmount={setAmount} me={me} />
         <Submit me={me} amount={value} ready={!!person} label={person ? `Send ${naira(value || 0)} to ${person.displayName}` : "Find someone first"} next="/send" />
       </form>
