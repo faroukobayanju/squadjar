@@ -114,7 +114,7 @@ export const ha = {
   yourSquads: "Ƙungiyoyinku",
   homeEmpty: "Babu ƙungiya tukuna. Ku fara ɗaya, ku gayyaci mutanenku.",
 
-  // Squads list and find a squad
+  // Squads list
   rowPaidAria: "{paid} cikin {total} sun biya a wannan zagaye",
   rowRoundYou: "Z{round} cikin {total} · ku ne za ku karɓa",
   rowRoundOther: "Z{round} cikin {total} · {name} zai karɓa",
@@ -128,14 +128,6 @@ export const ha = {
   rowCancelled: "An soke · an mayar da kuɗin ajiya",
 
   // Create squad
-  newDescribe: "Ku bayyana shi a yadda kuke so",
-  newDescribeExample: "8 of us, 5k every Friday, called CSC 300L Squad",
-  newFill: "Cika fom ɗin",
-  newNeedAmount: "nawa kowane mutum zai biya",
-  newNeedSize: "ku nawa ne",
-  newNeedPeriod: "kowane mako ko kowane wata",
-  newFilledSome: "Na cika abin da zan iya. Har yanzu ana bukatar: {missing}.",
-  newFilledAll: "Na cika shi a ƙasa. Ku duba, sannan ku ƙirƙira.",
   newCreateFail: "Ba mu iya ƙirƙirar ƙungiyar ba. Ku sake gwadawa.",
   squadName: "Sunan ƙungiya",
   eachPays: "Kowane mutum zai biya",
@@ -191,7 +183,6 @@ export const ha = {
   nudgeLate: "{name}, {amount} ɗinka na {squad} ya makara. Ka biya kafin {when}, in ba haka ba za a ƙidaya shi a matsayin wanda aka rasa: {link}",
   inbox: "Tunatarwa",
   inboxEmpty: "Babu tunatarwa tukuna.",
-  newFilling: "Ina cika fom ɗin…",
   loadingSquad: "Ana loda ƙungiya",
   loadingSquads: "Ana loda ƙungiyoyi",
   needMore: "Kuna buƙatar ƙarin {short}. Kuɗinku {balance} ne.",

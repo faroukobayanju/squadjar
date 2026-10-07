@@ -18,5 +18,3 @@ export function recordLine(r: PayRecord, t: T): string {
 export const stoppedLine = (r: PayRecord | undefined, t: T): string | null =>
   r?.stoppedSquads ? t(r.stoppedSquads === 1 ? "stoppedInOne" : "stoppedInMany", { n: r.stoppedSquads }) : null;
 
-/** Public squads are closed to anyone who stopped paying in any squad. Private squads are the organizer's call. */
-export const blockedByRecord = (r: PayRecord): boolean => r.stoppedSquads > 0;

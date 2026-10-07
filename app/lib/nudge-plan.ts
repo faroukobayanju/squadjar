@@ -1,4 +1,4 @@
-// Pure, no runtime imports, so `node lib/kimi-draft.check.ts` runs it directly.
+// Pure, no runtime imports, so `node lib/nudge-plan.check.ts` runs it directly.
 // Which pay nudge (if any) an Active squad's unpaid members get right now, and which of those were already sent.
 export type Stage = "t24h" | "t1h" | "missed";
 
