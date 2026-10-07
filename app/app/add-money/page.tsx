@@ -3,6 +3,7 @@
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BackLink } from "@/components/shell";
+import { QuickChips } from "@/components/money-out";
 import { naira } from "@/lib/format";
 import { safeNext } from "@/lib/next";
 import { friendlyError } from "@/lib/errors";
@@ -10,8 +11,6 @@ import { Bar } from "@/components/skeleton";
 import { isLive, useActions, useMe } from "@/lib/data";
 import { DemoError } from "@/lib/errors";
 import { useT } from "@/lib/i18n";
-
-const QUICK = [2000, 5000, 10000, 20000];
 
 export default function AddMoney({ searchParams }: { searchParams: Promise<{ amount?: string; next?: string }> }) {
   const sp = use(searchParams);
@@ -49,7 +48,7 @@ export default function AddMoney({ searchParams }: { searchParams: Promise<{ amo
           {t("amount")}
         </label>
         <div className="mt-2 flex min-h-16 items-center rounded-md border-[1.5px] border-muted bg-paper px-4 focus-within:border-stamp">
-          <span className="font-money text-3xl font-bold text-muted">₦</span>
+          <span className="font-money text-3xl font-bold tnum">₦</span>
           <input
             id="amount"
             inputMode="numeric"
@@ -63,18 +62,7 @@ export default function AddMoney({ searchParams }: { searchParams: Promise<{ amo
         <p id="amount-help" className="mt-2 text-xs text-muted">
           {t("topupRange")}
         </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {QUICK.map((q) => (
-            <button
-              key={q}
-              type="button"
-              onClick={() => setAmount(String(q))}
-              className={`min-h-11 rounded-full border-[1.5px] px-4 font-money font-bold tnum ${value === q ? "border-ink bg-ink text-manila" : "border-rule"}`}
-            >
-              {naira(q)}
-            </button>
-          ))}
-        </div>
+        <QuickChips value={value} setAmount={setAmount} />
 
         <fieldset className="mt-8 rounded-lg border border-rule bg-paper p-4">
           <legend className="px-1 text-sm font-semibold">{t("card")}</legend>

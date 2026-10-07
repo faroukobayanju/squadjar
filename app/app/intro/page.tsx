@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { HOW_IT_WORKS } from "@/components/how-it-works";
+import { HOW_IT_WORKS, HowVisual } from "@/components/how-it-works";
 import { safeNext } from "@/lib/next";
 import { useT } from "@/lib/i18n";
 
@@ -51,10 +51,14 @@ function Deck() {
       >
         {HOW_IT_WORKS.map((c, n) => (
           <section key={c.title} aria-label={t("stepOf", { n: n + 1, total: HOW_IT_WORKS.length })} className="flex w-full shrink-0 snap-center flex-col justify-center pr-1">
-            <div className="rounded-lg border border-rule bg-paper p-6">
-              <span className="font-mono text-xs text-stamp">{t("stepOf", { n: n + 1, total: HOW_IT_WORKS.length })}</span>
-              <h1 className="mt-3 font-display text-[2rem] leading-[1] font-extrabold tracking-[-0.03em] text-balance">{t(c.title)}</h1>
-              <p className="mt-4 text-lg text-muted">{t(c.body)}</p>
+            <div className="overflow-hidden rounded-lg border border-rule bg-paper">
+              <div className="ledger flex min-h-40 items-center justify-center border-b border-rule px-6 py-8">
+                <HowVisual step={n} size="md" />
+              </div>
+              <div className="p-6">
+                <h1 className="font-display text-[2rem] leading-[1] font-extrabold tracking-[-0.03em] text-balance">{t(c.title)}</h1>
+                <p className="mt-4 text-lg text-muted">{t(c.body)}</p>
+              </div>
             </div>
           </section>
         ))}

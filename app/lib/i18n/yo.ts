@@ -69,8 +69,6 @@ export const yo = {
   landingLead: "Gbogbo ènìyàn ń san ní ìyípo kọ̀ọ̀kan, ẹnìkan ń gbà á, kòló sì ń sanwó fúnra rẹ̀ lásìkò.",
   landingCaption: "Káàdì ẹgbẹ́ àpẹẹrẹ: akẹ́kọ̀ọ́ {count}, {amount} lọ́sẹ̀. A máa ń tẹ àmì sí àpótí ẹni tó bá san.",
   howItWorks: "Bí ó ṣe ń ṣiṣẹ́",
-  landingStopsTitle: "Tí ẹnìkan bá dẹ́kun láti san ńkọ́?",
-  landingStopsBody: "Kí ìyípo àkọ́kọ́ tó bẹ̀rẹ̀, gbogbo ènìyàn ń fi owó ìdógò tí a máa dá padà sílẹ̀. Tí ọmọ ẹgbẹ́ kan bá kùnà láti san, owó ìdógò rẹ̀ yóò bò ó, olùgbà yóò sì gba owó rẹ̀ lẹ́kùnrẹ́rẹ́.",
   landingNoTreasurer: "Kò sí akápò tí o máa lé kiri, kò sì sí àkọọ́lẹ̀ tí ẹnìkan lè kó. Owó náà wà nínú kòló títí ìgbà rẹ yóò fi kàn.",
   landingFooter: "Squadjar ń lo owó àyẹ̀wò báyìí bí a ṣe ń dán an wò pẹ̀lú ẹgbẹ́ akẹ́kọ̀ọ́.",
 
@@ -359,7 +357,7 @@ export const yo = {
 
   // Profile
   trustScore: "Àmì ìgbẹ́kẹ̀lé",
-  profileTrustLine: "Àmì ìgbẹ́kẹ̀lé, ìpele {tier} · {count} lásìkò nínú gbogbo ẹgbẹ́ rẹ",
+  profileTrustLine: "Àmì ìgbẹ́kẹ̀lé · {count} lásìkò nínú gbogbo ẹgbẹ́ rẹ",
   howTurns: "Bí a ṣe ń jèrè ìgbà",
   howTurnsBody: "Ìsanwó lásìkò kọ̀ọ̀kan jẹ́ àmì kan. Pípẹ́ ń gba 2, àìsan ń gba 10. Ẹgbẹ́ ọ̀sọ̀ọ̀sẹ̀ àti oṣooṣù tó ní ènìyàn 5 tàbí jù bẹ́ẹ̀ lọ, ní {amount} tàbí jù bẹ́ẹ̀ lọ lọ́wọ́ ẹnìkọ̀ọ̀kan, ló ń kà.",
   demoNoCount: "Ẹgbẹ́ àyẹ̀wò kíákíá kò kà sí àmì ìgbẹ́kẹ̀lé rẹ.",

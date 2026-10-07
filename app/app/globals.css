@@ -97,6 +97,14 @@ body::before {
   background: color-mix(in srgb, var(--stamp) 22%, transparent);
   color: var(--ink);
 }
+/* Selected text on an ink or palm fill keeps its own colour. */
+.bg-ink ::selection,
+.bg-ink::selection,
+.bg-palm ::selection,
+.bg-palm::selection {
+  background: color-mix(in srgb, var(--stamp) 45%, transparent);
+  color: inherit;
+}
 
 :focus-visible {
   outline: 3px solid var(--stamp);
@@ -105,19 +113,47 @@ body::before {
 }
 
 input,
-textarea {
+textarea,
+[contenteditable] {
   caret-color: var(--palm);
+}
+
+::placeholder {
+  color: var(--muted);
+  opacity: 0.8;
+}
+
+:root {
+  accent-color: var(--stamp);
 }
 
 a {
   text-underline-offset: 3px;
 }
 
+/* Pencil-rule scrollbars in both themes; the thumb darkens to faded ink on hover. */
 * {
-  scrollbar-color: var(--rule) transparent;
+  scrollbar-color: color-mix(in srgb, var(--muted) 45%, transparent) transparent;
+  scrollbar-width: thin;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--muted) 45%, transparent);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
 
-.tnum {
+/* The Stamped Naira Rule: every Zilla amount sets tabular figures, so no call site can forget. */
+.tnum,
+.font-money {
   font-variant-numeric: tabular-nums;
 }
 

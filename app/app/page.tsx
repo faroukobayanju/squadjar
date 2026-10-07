@@ -6,6 +6,7 @@ import { StampCard } from "@/components/stamp-card";
 import { naira } from "@/lib/format";
 import { useSampleSquad } from "@/lib/data";
 import { LanguagePicker } from "@/components/language-picker";
+import { LogoMark } from "@/components/logo-mark";
 import { useT } from "@/lib/i18n";
 
 export default function Landing() {
@@ -33,7 +34,7 @@ export default function Landing() {
           </p>
           <Link
             href="/login"
-            className="mt-8 inline-flex min-h-14 items-center rounded-lg bg-ink px-7 font-semibold text-manila transition-transform active:scale-[0.98]"
+            className="mt-8 inline-flex min-h-14 items-center rounded-lg bg-ink px-7 font-semibold whitespace-nowrap text-manila transition-transform active:scale-[0.98]"
           >
             {t("startSquad")}
           </Link>
@@ -50,24 +51,23 @@ export default function Landing() {
         )}
       </section>
 
-      <section className="border-t border-rule py-16">
-        <h2 className="mb-8 font-display text-[clamp(1.9rem,5vw,2.8rem)] leading-[1] font-extrabold tracking-[-0.03em] text-balance">{t("howItWorks")}</h2>
+      <section className="grid gap-8 border-t border-rule py-16 md:grid-cols-[1fr_1.6fr] md:gap-14">
+        <div>
+          <h2 className="font-display text-[clamp(1.9rem,5vw,2.8rem)] leading-[1] font-extrabold tracking-[-0.03em] text-balance">{t("howItWorks")}</h2>
+          <p className="mt-4 max-w-[34ch] text-lg text-muted">{t("landingNoTreasurer")}</p>
+        </div>
         <HowItWorks />
       </section>
 
-      <section className="grid gap-10 border-t border-rule py-16 md:grid-cols-2">
-        <h2 className="font-display text-[clamp(1.9rem,5vw,2.8rem)] leading-[1] font-extrabold tracking-[-0.03em] text-balance">
-          {t("landingStopsTitle")}
-        </h2>
-        <div className="grid gap-5 text-lg">
-          <p>{t("landingStopsBody")}</p>
-          <p className="text-muted">{t("landingNoTreasurer")}</p>
+      <footer className="grid gap-6 border-t border-rule py-10 sm:grid-cols-[1fr_auto] sm:items-center">
+        <div className="flex items-center gap-4">
+          <LogoMark className="size-14 shrink-0" />
+          <p className="max-w-[36ch] text-sm text-muted">{t("landingFooter")}</p>
         </div>
-      </section>
-
-      <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-rule py-8 text-sm text-muted">
-        <span>{t("landingFooter")}</span>
-        <Link href="/login" className="font-semibold text-ink underline">
+        <Link
+          href="/login"
+          className="inline-flex min-h-14 items-center justify-center rounded-lg bg-ink px-7 font-semibold whitespace-nowrap text-manila transition-transform active:scale-[0.98]"
+        >
           {t("startSquad")}
         </Link>
       </footer>
