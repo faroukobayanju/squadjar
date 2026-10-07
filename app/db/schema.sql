@@ -51,3 +51,14 @@ create index if not exists activity_member_at on activity (member, at desc);
 alter table activity drop constraint if exists activity_kind_check;
 alter table activity add constraint activity_kind_check check (kind in ('topup','deposit','contribution','payout','refund','covered','withdraw','sent','received','stopped'));
 alter table activity add column if not exists counterparty text;
+create table if not exists notifications (
+  member text not null,
+  squad text not null references squads(address),
+  round int not null,
+  stage text not null check (stage in ('t24h','t1h','missed')),
+  channel text not null check (channel in ('inapp','email')),
+  body text not null,
+  sent_at timestamptz not null default now(),
+  primary key (member, squad, round, stage, channel)
+);
+create index if not exists notifications_member_sent on notifications (member, sent_at desc);

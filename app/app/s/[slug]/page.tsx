@@ -16,7 +16,7 @@ import { dueLabel, naira } from "@/lib/format";
 import { useOrigin } from "@/lib/origin";
 import { refreshAll } from "@/lib/live/squads";
 import { rich, useLang, useT } from "@/lib/i18n";
-import { ME, clearJustStamped, collectorOf, myTurn, payoutAmount, useActions, useJustStamped, useMe, useSquad, type Squad } from "@/lib/data";
+import { ME, clearJustStamped, collectorOf, myTurn, payoutAmount, useActions, useJustStamped, useMe, useRemind, useSquad, type Squad } from "@/lib/data";
 
 export default function SquadPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ code?: string }> }) {
   const { slug } = use(params);
@@ -205,6 +205,7 @@ function RemindSquad({ squad }: { squad: Squad }) {
   const t = useT();
   const r = squad.currentRound;
   const waiting = squad.members.filter((m) => !(squad.paid[r] ?? []).includes(m.id) && m.id !== ME);
+  const remind = useRemind();
   if (!waiting.length) return null;
   const text = t("remindText", {
     names: waiting.map((m) => m.name).join(", "),
@@ -216,6 +217,20 @@ function RemindSquad({ squad }: { squad: Squad }) {
   return (
     <a
       href={`https://wa.me/?text=${encodeURIComponent(text)}`}
+      onClick={(e) => {
+        if (!remind || !squad.address || squad.state !== "Active") return; // demo: the template link as is
+        // Ask the server (Kimi, in my language) only on tap. Open the tab now, inside the click, so it isn't
+        // blocked; point it at the server's link, or the template if that takes over 2s or fails.
+        e.preventDefault();
+        const fallback = e.currentTarget.href;
+        const w = window.open("", "_blank");
+        if (w) w.opener = null;
+        const late = new Promise<null>((r) => setTimeout(() => r(null), 2000));
+        Promise.race([remind(squad.slug).catch(() => null), late]).then((url) => {
+          if (w) w.location.href = url ?? fallback;
+          else window.location.href = url ?? fallback;
+        });
+      }}
       target="_blank"
       rel="noreferrer"
       className="mt-5 inline-flex min-h-12 items-center gap-2 font-semibold text-ink underline decoration-rule decoration-2 hover:decoration-ink"
