@@ -1,0 +1,14 @@
+graph TD
+  U[Member's phone] -->|email or Google| P[Privy login]
+  P -->|embedded account| U
+  U -->|screens| W[Next.js app on Vercel]
+  U -->|pay, join, collect| PM[Privy sponsored fees]
+  PM --> SQ[Squad contract]
+  W -->|names, invites, history| DB[(Neon Postgres)]
+  CR[Cron jobs every minute] -->|settle, auto-pay, nudge| W
+  W -->|relayer and auto-pay signer| SQ
+  F[SquadFactory] -->|creates| SQ
+  SQ -->|naira balance| T[sNGN token]
+  SQ -->|on-time, late, stopped| TR[TrustRegistry]
+  TR -->|turn order| SQ
+  SQ -.->|events indexed| DB
