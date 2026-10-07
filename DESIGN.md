@@ -160,7 +160,7 @@ The esusu collector's cardboard contribution card, owned by a squad of students.
 The system is dense where it records (the card, the ledger meta) and loud in only two places: the payout figure and the palm-orange action that moves money. Everything else is ink on paper. Depth comes from paper on paper, never from light.
 
 **Key Characteristics:**
-- People come before money. The squad screen leads with who collects next, and the balance is one quiet line.
+- People come before money. The squad screen leads with who collects next. Home is the one exception: it carries the balance block (amount in Zilla Slab plus the Add money / Send / Withdraw / History row), below the greeting and tier.
 - Payments are ink stamps with initials, not checkmarks.
 - Paper and ink materials: a raster fiber ground, 40px ruled ledger lines, raster ink-pressure masks on every stamp.
 - One loud color. Palm-oil orange belongs to Pay, Add money and the current-round tint, nothing else.
@@ -292,7 +292,7 @@ A rectangular stamp-blue mark with a 2px border, 8px mono, tilted −6°, set ac
 ### Don't:
 - **Don't** use green checkmarks for payments. Payments are blue stamps.
 - **Don't** use shadows, glows, blur, gradients or confetti.
-- **Don't** lead a screen with the user's balance.
+- **Don't** lead a squad screen with the user's balance; Home's balance block is the only place it is prominent.
 - **Don't** use system-ui or an unloaded font as the visible face.
 
 ## Decisions Log
