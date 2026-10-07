@@ -40,12 +40,12 @@ export default function Home() {
         <p className="text-sm text-muted">
           {rich(t("homeBalance"), { amount: <span className="mt-1 block font-money text-[clamp(2.6rem,13vw,3.25rem)] leading-none font-bold text-ink tnum">{naira(me.balance)}</span> })}
         </p>
-        <div className={`mt-5 grid gap-2 ${ACTIONS.length === 4 ? "grid-cols-4" : "grid-cols-2"}`}>
+        <div className={`mt-5 grid gap-1.5 ${ACTIONS.length === 4 ? "grid-cols-4" : "grid-cols-2"}`}>
           {ACTIONS.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
-              className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-lg px-1 text-[clamp(11px,3.2vw,13px)] font-semibold whitespace-nowrap transition-transform active:scale-[0.98] ${href === "/add-money" ? "bg-palm text-on-palm active:bg-palm-press" : "border-[1.5px] border-rule bg-paper"}`}
+              className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-lg px-0.5 text-[clamp(11px,3.2vw,13px)] font-semibold whitespace-nowrap transition-transform active:scale-[0.98] ${href === "/add-money" ? "bg-palm text-on-palm active:bg-palm-press" : "border-[1.5px] border-rule bg-paper"}`}
             >
               <Icon size={22} aria-hidden />
               {t(label)}

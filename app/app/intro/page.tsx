@@ -52,7 +52,7 @@ function Deck() {
         {HOW_IT_WORKS.map((c, n) => (
           <section key={c.title} aria-label={t("stepOf", { n: n + 1, total: HOW_IT_WORKS.length })} className="flex w-full shrink-0 snap-center flex-col justify-center pr-1">
             <div className="overflow-hidden rounded-lg border border-rule bg-paper">
-              <div className="ledger flex min-h-40 items-center justify-center border-b border-rule px-6 py-8">
+              <div className="ledger flex h-[200px] items-center justify-center px-6">
                 <HowVisual step={n} size="md" />
               </div>
               <div className="p-6">

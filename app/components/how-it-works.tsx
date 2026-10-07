@@ -47,7 +47,7 @@ export function HowVisual({ step, size = "sm" }: { step: number; size?: "sm" | "
     );
   else if (step === 1)
     art = (
-      <ol className={`grid ${size === "md" ? "gap-2 text-base" : "gap-1 text-sm"}`}>
+      <ol className={`grid ${size === "md" ? "auto-rows-[40px] text-base" : "gap-1 text-sm"}`}>
         {SQUAD.slice(0, 3).map(([id, name], n) => (
           <li key={id} className="flex items-center gap-3">
             <span className="w-3 font-mono text-xs text-muted tnum">{n + 1}</span>
