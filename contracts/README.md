@@ -17,13 +17,17 @@ Rotating savings (ajo) where no member holds the jar. Foundry, Solidity 0.8.24.
 
 Addresses: `deployments/<chainId>.json` (10143 = Monad testnet, 31337 = local anvil).
 
-### Monad testnet deployment (2026-10-05)
+### Monad testnet deployment (2026-10-07)
 
 | Contract | Address |
 |---|---|
 | AjoNGN (sNGN) | `0xb7A57BeF0DD01A96C7626fDD6F143C9127d110C9` |
 | TrustRegistry | `0xe80e9A23B647CD653F3A5ef16222aD6794C23eCB` |
-| SquadFactory | `0x7B2aC330515073De9aCB8883ee0AAA8cE11B5d4B` |
+| SquadFactory (no deposit) | `0x7bBADfC407b7eC8941B7A72A4820Ae946dF48Ef2` |
+
+The no-deposit factory was deployed on 2026-10-07 in block 69087050 with `TOKEN` and `REGISTRY` reused, and allowlisted in the registry in the same block. It is verified on Sourcify and BlockVision (exact match). The previous factory `0x7B2aC330515073De9aCB8883ee0AAA8cE11B5d4B` (deposit rules, 2026-10-05) stays allowlisted so its squads keep recording trust.
+
+History of the 2026-10-05 deployment:
 
 The token is from the first deployment (blocks 68377315 to 68377316). The registry and factory were redeployed on 2026-10-05 in blocks 68461404 to 68461405 with `TOKEN` set, after the fix that stops a factory revocation from freezing squads; `deployBlock` in the JSON (68461309) is the simulation block, a safe lower bound for event scans. All three are verified on Sourcify (exact match). Registry owner and deployer: `0xfAc4f942A7c8232c7a7D8b654F8580e00a368dF6`. Consecutive blocks have different `mixHash` values, so `block.prevrandao` varies on Monad testnet.
 
