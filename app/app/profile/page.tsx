@@ -9,9 +9,15 @@ import { useMyAccount } from "@/lib/live/account";
 import { isLive, resetDemo, useMe, useRecords, type Tier } from "@/lib/data";
 import { stoppedLine, type PayRecord } from "@/lib/record-line";
 import { LanguagePicker } from "@/components/language-picker";
+import { TierPill } from "@/components/how-it-works";
+import { CaretRight } from "@phosphor-icons/react";
 import { rich, useT, type Key } from "@/lib/i18n";
 
 const TIERS: Tier[] = ["New", "Building", "Reliable"];
+const LINKS: { href: string; label: Key }[] = [
+  { href: "/intro?next=/profile", label: "howSquadjar" },
+  { href: "/history", label: "moneyHistory" },
+];
 
 export default function Profile() {
   const me = useMe();
@@ -25,25 +31,37 @@ export default function Profile() {
       ) : (
         <Bar className="h-[2.1rem] w-40" />
       )}
-      {me ? <p className="mt-6 font-money text-6xl leading-none font-bold tnum">{me.score}</p> : <Bar className="mt-6 h-[3.75rem] w-24" />}
-      <p className="mt-1 text-muted">
-        {me ? t("profileTrustLine", { tier: t(`tier${me.tier}`), count: me.onTime }) : t("trustScore")}
-      </p>
+      <div className="mt-6 flex items-end gap-3">
+        {me ? <p className="font-money text-6xl leading-none font-bold tnum">{me.score}</p> : <Bar className="h-[3.75rem] w-24" />}
+        {me && (
+          <span className="mb-1.5">
+            <TierPill tier={me.tier} on />
+          </span>
+        )}
+      </div>
+      <p className="mt-2 text-muted">{me ? t("profileTrustLine", { count: me.onTime }) : t("trustScore")}</p>
+
+      <div className="mt-8 divide-y divide-rule rounded-lg border border-rule bg-paper">
+        {LINKS.map(({ href, label }) => (
+          <Link key={href} href={href} className="flex min-h-13 items-center justify-between gap-3 px-4 font-semibold">
+            {t(label)}
+            <CaretRight size={18} className="text-muted" aria-hidden />
+          </Link>
+        ))}
+      </div>
 
       {isLive && <YourRecord />}
 
       <h2 className="mt-10 font-semibold">{t("howTurns")}</h2>
       <p className="mt-1 max-w-[42ch] text-sm text-muted">
-        {rich(t("howTurnsBody"), { amount: <span className="font-money font-bold">₦1,000</span> })}
+        {rich(t("howTurnsBody"), { amount: <span className="font-money font-bold tnum">₦1,000</span> })}
       </p>
       <p className="mt-1 max-w-[42ch] text-sm text-muted">{t("demoNoCount")}</p>
       <ol className="mt-4 divide-y divide-rule rounded-lg border border-rule bg-paper">
         {TIERS.map((tier) => (
           <li key={tier} className="flex gap-4 px-4 py-3">
-            <span
-              className={`mt-0.5 inline-flex h-7 shrink-0 items-center rounded-full border-[1.5px] px-2.5 font-mono text-xs ${tier === me?.tier ? "border-stamp bg-stamp/10 text-stamp" : "border-rule text-muted"}`}
-            >
-              {t(`tier${tier}`)}
+            <span className="mt-0.5">
+              <TierPill tier={tier} on={tier === me?.tier} />
             </span>
             <span className="text-sm">
               <span className="font-semibold">{t("tierPoints", { points: t(`points${tier}`) })}</span> {t(`means${tier}`)}
@@ -58,13 +76,6 @@ export default function Profile() {
         </h2>
         <LanguagePicker />
       </section>
-
-      <Link href="/intro?next=/profile" className="mt-8 inline-flex min-h-12 items-center text-sm font-semibold underline">
-        {t("howSquadjar")}
-      </Link>
-      <Link href="/history" className="flex min-h-12 items-center text-sm font-semibold underline">
-        {t("moneyHistory")}
-      </Link>
 
       <StopAutopayEverywhere />
 

@@ -67,8 +67,6 @@ export const pcm = {
   landingLead: "Everybody dey pay every round, one person go collect, and the jar go pay out on time by itself.",
   landingCaption: "See one squad card: {count} classmates, {amount} every week. Once person pay, dem go stamp im box.",
   howItWorks: "How e dey work",
-  landingStopsTitle: "Wetin happen if person stop to pay?",
-  landingStopsBody: "Before round one, everybody go lock deposit wey dem go collect back. If member miss, im deposit go cover am, so the person wey dey collect go still get full money.",
   landingNoTreasurer: "No treasurer to dey pursue, no account wey person fit empty. The money go siddon for jar till na your turn.",
   landingFooter: "Squadjar dey use test money for now as we dey try am with student squads.",
 
@@ -362,7 +360,7 @@ export const pcm = {
 
   // Profile
   trustScore: "Trust score",
-  profileTrustLine: "Trust score, {tier} tier · {count} paid on time for all your squads",
+  profileTrustLine: "Trust score · {count} paid on time for all your squads",
   howTurns: "How you go take get early turn",
   howTurnsBody: "Each time you pay on time na one point. Late go cost 2, miss go cost 10. Weekly and monthly squads wey get 5 people or more, at {amount} or more each, dey count.",
   demoNoCount: "Quick demo squads no dey count for your trust score.",

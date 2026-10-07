@@ -1,0 +1,24 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=JetBrains+Mono:wght@500&display=block" rel="stylesheet">
+<style>
+html,body{margin:0;background:#F2EADB}
+.wrap{width:1024px;height:1024px;display:grid;place-items:center;background:#F2EADB}
+</style></head><body><div class="wrap">
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="ink" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="1.6" numOctaves="1" seed="11" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -3.2 2.6" result="mask"/>
+      <feComposite in="SourceGraphic" in2="mask" operator="in"/>
+    </filter>
+    <path id="ring" d="M512,512 m-300,0 a300,300 0 1,1 600,0 a300,300 0 1,1 -600,0"/>
+  </defs>
+  <g transform="rotate(-7 512 512)" filter="url(#ink)" fill="none" stroke="#2B3CC4">
+    <circle cx="512" cy="512" r="388" stroke-width="30"/>
+    <circle cx="512" cy="512" r="330" stroke-width="8"/>
+    <text font-family="JetBrains Mono" font-weight="500" font-size="44" letter-spacing="6" fill="#2B3CC4" stroke="none">
+      <textPath href="#ring" startOffset="0" textLength="1860" lengthAdjust="spacing">SQUADJAR · SAVE TOGETHER · NOBODY HOLDS THE JAR ·</textPath>
+    </text>
+    <text x="506" y="626" text-anchor="middle" font-family="Bricolage Grotesque" font-weight="800" font-size="380" letter-spacing="-18" fill="#2B3CC4" stroke="none">sj</text>
+  </g>
+</svg></div></body></html>

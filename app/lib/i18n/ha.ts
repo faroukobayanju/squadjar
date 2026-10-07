@@ -69,8 +69,6 @@ export const ha = {
   landingLead: "Kowa yana biya a kowane zagaye, mutum ɗaya yana karɓa, kuma asusu yana biya a kan lokaci da kansa.",
   landingCaption: "Katin ƙungiya na misali: ɗalibai {count}, {amount} kowane mako. Ana buga tambari a akwatin duk wanda ya biya.",
   howItWorks: "Yadda yake aiki",
-  landingStopsTitle: "Idan wani ya daina biya fa?",
-  landingStopsBody: "Kafin zagaye na farko, kowa yana ajiye kuɗin ajiya da za a mayar. Idan ɗan ƙungiya ya rasa biya, kuɗin ajiyarsa zai rufe shi, don mai karɓa ya sami cikakken kuɗinsa.",
   landingNoTreasurer: "Babu ma'aji da za ku bi, babu asusun banki da wani zai kwashe. Kuɗin yana zaune a asusu har sai juyinku ya zo.",
   landingFooter: "Squadjar yana amfani da kuɗin gwaji yanzu yayin da muke gwada shi da ƙungiyoyin ɗalibai.",
 
@@ -364,7 +362,7 @@ export const ha = {
 
   // Profile
   trustScore: "Makin amana",
-  profileTrustLine: "Makin amana, matakin {tier} · {count} a kan lokaci a dukkan ƙungiyoyinku",
+  profileTrustLine: "Makin amana · {count} a kan lokaci a dukkan ƙungiyoyinku",
   howTurns: "Yadda ake samun juyi",
   howTurnsBody: "Kowane biya a kan lokaci maki ɗaya ne. Makarewa tana rage 2, rasa biya yana rage 10. Ƙungiyoyin mako-mako da wata-wata masu mutum 5 ko fiye, a {amount} ko fiye kowanne, suna ƙirguwa.",
   demoNoCount: "Ƙungiyoyin gwaji na gaggawa ba sa ƙirguwa a makin amanarku.",

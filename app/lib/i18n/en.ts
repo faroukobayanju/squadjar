@@ -65,8 +65,6 @@ export const en = {
   landingLead: "Everyone pays in each round, one person collects, and the jar pays out on time by itself.",
   landingCaption: "An example squad card: {count} classmates, {amount} a week. Every box is stamped when someone pays.",
   howItWorks: "How it works",
-  landingStopsTitle: "What if someone stops paying?",
-  landingStopsBody: "Everyone locks a refundable deposit before round one. If a member misses, their deposit covers it, so the person collecting still gets the full amount.",
   landingNoTreasurer: "There is no treasurer to chase and no account to empty. The money sits in the jar until it's your turn.",
   landingFooter: "Squadjar runs on test money while we pilot with student squads.",
 
@@ -360,7 +358,7 @@ export const en = {
 
   // Profile
   trustScore: "Trust score",
-  profileTrustLine: "Trust score, {tier} tier · {count} paid on time across all your squads",
+  profileTrustLine: "Trust score · {count} paid on time across all your squads",
   howTurns: "How turns are earned",
   howTurnsBody: "Each on-time payment is a point. Late costs 2, a miss costs 10. Weekly and monthly squads of 5 or more people, at {amount} or more each, count.",
   demoNoCount: "Quick demo squads don't count toward your trust score.",

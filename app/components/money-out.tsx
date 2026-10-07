@@ -38,7 +38,7 @@ export function AmountField({ amount, setAmount, me }: { amount: string; setAmou
         {t("amount")}
       </label>
       <div className="mt-2 flex min-h-16 items-center rounded-md border-[1.5px] border-muted bg-paper px-4 focus-within:border-stamp">
-        <span className="font-money text-3xl font-bold text-muted">₦</span>
+        <span className="font-money text-3xl font-bold tnum">₦</span>
         <input
           id="amount"
           inputMode="numeric"
@@ -57,19 +57,27 @@ export function AmountField({ amount, setAmount, me }: { amount: string; setAmou
           <Bar className="inline-block h-3 w-20 align-middle" />
         )}
       </p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {QUICK.map((q) => (
-          <button
-            key={q}
-            type="button"
-            onClick={() => setAmount(String(q))}
-            className={`min-h-11 rounded-full border-[1.5px] px-4 font-money font-bold tnum ${value === q ? "border-ink bg-ink text-manila" : "border-rule"}`}
-          >
-            {naira(q)}
-          </button>
-        ))}
-      </div>
+      <QuickChips value={value} setAmount={setAmount} />
     </>
+  );
+}
+
+/** One row of four equal ₦ quick-picks; fits a 360px phone. Shared with Add money. */
+export function QuickChips({ value, setAmount }: { value: number; setAmount: (s: string) => void }) {
+  return (
+    <div className="mt-3 grid grid-cols-4 gap-2">
+      {QUICK.map((q) => (
+        <button
+          key={q}
+          type="button"
+          aria-pressed={value === q}
+          onClick={() => setAmount(String(q))}
+          className={`min-h-11 rounded-full border-[1.5px] px-1 font-money text-[15px] font-bold whitespace-nowrap tnum ${value === q ? "border-ink bg-ink text-manila" : "border-rule"}`}
+        >
+          {naira(q)}
+        </button>
+      ))}
+    </div>
   );
 }
 

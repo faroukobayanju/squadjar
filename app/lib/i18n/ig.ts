@@ -69,8 +69,6 @@ export const ig = {
   landingLead: "Onye ọ bụla na-akwụ n'agba ọ bụla, otu onye na-anata, ite ego na-akwụ n'oge n'onwe ya.",
   landingCaption: "Kaadị otu ihe atụ: ụmụ klas {count}, {amount} kwa izu. A na-akụ stampụ n'igbe onye ọ bụla kwụrụ ụgwọ.",
   howItWorks: "Otú o si arụ ọrụ",
-  landingStopsTitle: "Ọ bụrụ na mmadụ akwụsị ịkwụ ụgwọ?",
-  landingStopsBody: "Tupu agba mbụ, onye ọ bụla na-etinye ego nkwụnye a ga-eweghachi. Ọ bụrụ na onye otu ahapụ ịkwụ, ego nkwụnye ya ga-akwụ ya, ka onye na-anata nweta ego ya niile.",
   landingNoTreasurer: "Ọ dịghị onye na-edebe ego ị ga-achụ, ọ dịghịkwa akaụntụ onye ga-ewepụ. Ego ahụ na-anọ n'ite ego ruo mgbe oge gị ruru.",
   landingFooter: "Squadjar na-eji ego nnwale ugbu a ka anyị na-anwale ya na otu ụmụ akwụkwọ.",
 
@@ -364,7 +362,7 @@ export const ig = {
 
   // Profile
   trustScore: "Akara ntụkwasị obi",
-  profileTrustLine: "Akara ntụkwasị obi, ọkwa {tier} · {count} n'oge n'otu gị niile",
+  profileTrustLine: "Akara ntụkwasị obi · {count} n'oge n'otu gị niile",
   howTurns: "Otú e si enweta oge",
   howTurnsBody: "Ịkwụ n'oge ọ bụla bụ otu akara. Igbu oge na-ewe 2, ịhapụ na-ewe 10. Otu kwa izu na kwa ọnwa nwere mmadụ 5 ma ọ bụ karịa, na {amount} ma ọ bụ karịa onye ọ bụla, na-agụ.",
   demoNoCount: "Otu ngosi ngwa ngwa adịghị agụ n'akara ntụkwasị obi gị.",
