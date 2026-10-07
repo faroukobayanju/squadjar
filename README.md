@@ -200,7 +200,7 @@ This is planned for mainnet. None of it is live, and the testnet app charges not
 ## 15. Team
 
 - **Farouk**, product and app: [faroukobayanju](https://github.com/faroukobayanju)
-- **Osas Haikeys**, contracts and infrastructure: [Haikeysgit](https://github.com/Haikeysgit)
+- **Obaseki Imisioluwa**, contracts and infrastructure: [Haikeysgit](https://github.com/Haikeysgit)
 
 We don't have real-user results yet, and we don't claim any.
 
