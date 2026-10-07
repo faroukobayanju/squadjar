@@ -1,0 +1,11 @@
+graph TD
+  A[Organizer creates squad] -->|invite link and code| B[Open: friends join]
+  B -->|organizer starts, 3+ members| C[Turns set by trust score]
+  C -->|everyone locks deposit| D[Active round]
+  D -->|members pay contribution| E{All paid or grace over?}
+  E -->|yes| F[Collector gets the jar]
+  E -->|someone missed| G[Deposit covers the miss]
+  G --> F
+  F -->|more rounds left| D
+  F -->|last round| H[Completed: deposits refunded]
+  C -->|deadline passes, fewer than 3 locked| X[Cancelled: money refunded]
