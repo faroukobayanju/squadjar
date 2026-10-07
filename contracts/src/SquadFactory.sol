@@ -34,10 +34,10 @@ contract SquadFactory is IMembership {
         registry = _registry;
     }
 
-    function timing(Period p) public pure returns (uint32 roundLength, uint32 grace, uint32 depositWindow) {
-        if (p == Period.Demo) return (300, 60, 300);
-        if (p == Period.Weekly) return (604800, 43200, 172800);
-        return (2592000, 172800, 259200);
+    function timing(Period p) public pure returns (uint32 roundLength, uint32 grace) {
+        if (p == Period.Demo) return (300, 60);
+        if (p == Period.Weekly) return (604800, 43200);
+        return (2592000, 172800);
     }
 
     function createSquad(
@@ -52,9 +52,9 @@ contract SquadFactory is IMembership {
         if (inviteHash == bytes32(0)) revert EmptyInvite();
         if (firstDeadline != 0 && firstDeadline <= block.timestamp) revert DeadlineInPast();
         if (firstDeadline != 0 && firstDeadline > block.timestamp + MAX_FIRST_DEADLINE_DELAY) revert DeadlineTooFar();
-        (uint32 rl, uint32 g, uint32 dw) = timing(period);
+        (uint32 rl, uint32 g) = timing(period);
         Squad s = new Squad(
-            token, ITrust(address(registry)), IMembership(address(this)), msg.sender, contribution, maxMembers, rl, g, dw, inviteHash, firstDeadline
+            token, ITrust(address(registry)), IMembership(address(this)), msg.sender, contribution, maxMembers, rl, g, inviteHash, firstDeadline
         );
         isSquad[address(s)] = true;
         squads.push(address(s));

@@ -43,11 +43,6 @@
         "internalType": "uint32"
       },
       {
-        "name": "_depositWindow",
-        "type": "uint32",
-        "internalType": "uint32"
-      },
-      {
         "name": "_inviteHash",
         "type": "bytes32",
         "internalType": "bytes32"
@@ -59,6 +54,19 @@
       }
     ],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "BUILDING",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -114,8 +122,14 @@
   },
   {
     "type": "function",
-    "name": "activeCount",
-    "inputs": [],
+    "name": "allowanceOf",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
     "outputs": [
       {
         "name": "",
@@ -131,25 +145,6 @@
     "inputs": [],
     "outputs": [],
     "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "cappedAtStart",
-    "inputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -186,7 +181,7 @@
   },
   {
     "type": "function",
-    "name": "coverPerRound",
+    "name": "credit",
     "inputs": [
       {
         "name": "",
@@ -218,32 +213,6 @@
   },
   {
     "type": "function",
-    "name": "depositDeadline",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint64",
-        "internalType": "uint64"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "depositWindow",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint32",
-        "internalType": "uint32"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "factory",
     "inputs": [],
     "outputs": [
@@ -257,13 +226,6 @@
   },
   {
     "type": "function",
-    "name": "finalizeDeposits",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "firstDeadline",
     "inputs": [],
     "outputs": [
@@ -271,19 +233,6 @@
         "name": "",
         "type": "uint64",
         "internalType": "uint64"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "frontedTotal",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -324,11 +273,6 @@
             "internalType": "uint32"
           },
           {
-            "name": "depositDeadline",
-            "type": "uint64",
-            "internalType": "uint64"
-          },
-          {
             "name": "roundDeadline",
             "type": "uint64",
             "internalType": "uint64"
@@ -354,17 +298,12 @@
             "internalType": "uint256[]"
           },
           {
-            "name": "required",
-            "type": "uint256[]",
-            "internalType": "uint256[]"
+            "name": "allowance",
+            "type": "uint8[]",
+            "internalType": "uint8[]"
           },
           {
             "name": "paidThisRound",
-            "type": "bool[]",
-            "internalType": "bool[]"
-          },
-          {
-            "name": "stopped",
             "type": "bool[]",
             "internalType": "bool[]"
           },
@@ -374,12 +313,12 @@
             "internalType": "uint8[]"
           },
           {
-            "name": "refillBy",
-            "type": "uint8[]",
-            "internalType": "uint8[]"
+            "name": "owed",
+            "type": "uint256[]",
+            "internalType": "uint256[]"
           },
           {
-            "name": "owed",
+            "name": "credit",
             "type": "uint256[]",
             "internalType": "uint256[]"
           },
@@ -387,11 +326,6 @@
             "name": "countsForTrust",
             "type": "bool",
             "internalType": "bool"
-          },
-          {
-            "name": "activeCount",
-            "type": "uint8",
-            "internalType": "uint8"
           },
           {
             "name": "totalLocked",
@@ -502,13 +436,6 @@
   {
     "type": "function",
     "name": "leave",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "lockDeposit",
     "inputs": [],
     "outputs": [],
     "stateMutability": "nonpayable"
@@ -667,26 +594,7 @@
   },
   {
     "type": "function",
-    "name": "refillBy",
-    "inputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "refillDeposit",
+    "name": "payBack",
     "inputs": [],
     "outputs": [],
     "stateMutability": "nonpayable"
@@ -703,25 +611,6 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "required",
-    "inputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -804,25 +693,6 @@
         "name": "",
         "type": "uint8",
         "internalType": "enum Squad.State"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "stoppedPaying",
-    "inputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -937,7 +807,7 @@
   },
   {
     "type": "event",
-    "name": "DepositLocked",
+    "name": "CreditPaid",
     "inputs": [
       {
         "name": "member",
@@ -950,19 +820,6 @@
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "Dropped",
-    "inputs": [
-      {
-        "name": "member",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
       }
     ],
     "anonymous": false
@@ -989,6 +846,50 @@
         "type": "address",
         "indexed": true,
         "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "PaidBack",
+    "inputs": [
+      {
+        "name": "member",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "PayoutHeld",
+    "inputs": [
+      {
+        "name": "member",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "round",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -1038,19 +939,6 @@
     "anonymous": false
   },
   {
-    "type": "event",
-    "name": "StoppedPaying",
-    "inputs": [
-      {
-        "name": "member",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
     "type": "error",
     "name": "AlreadyMember",
     "inputs": []
@@ -1072,17 +960,7 @@
   },
   {
     "type": "error",
-    "name": "DepositWindowOpen",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "Full",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "MemberStoppedPaying",
     "inputs": []
   },
   {
