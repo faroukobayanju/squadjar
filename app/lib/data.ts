@@ -4,9 +4,9 @@
 import { useMemo } from "react";
 import * as store from "./store";
 import { isLive } from "./live/chain";
-import { useLiveMe, useLivePublicSquads, useLiveRecords, useLiveSquad, useLiveSquads } from "./live/squads";
-import { useLiveActions, useLiveInviteCode, useLiveJoinRequests, useLiveNotifications, useLivePayout, useLiveRemind, type Nudge } from "./live/actions";
-import type { Actions, JoinRequests, PublicSquad, Squad, Tier } from "./types";
+import { useLiveMe, useLiveRecords, useLiveSquad, useLiveSquads } from "./live/squads";
+import { useLiveActions, useLiveInviteCode, useLiveNotifications, useLivePayout, useLiveRemind, type Nudge } from "./live/actions";
+import type { Actions, Squad, Tier } from "./types";
 import type { PayRecord } from "./record-line";
 
 export type { Member, Payout, Period, Person, Squad, SquadState, Tier } from "./types";
