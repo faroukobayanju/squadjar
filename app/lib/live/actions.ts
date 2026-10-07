@@ -213,18 +213,6 @@ export function useLiveInviteCode(slug: string, enabled: boolean): string | null
   return got?.slug === slug ? got.code : undefined;
 }
 
-/** A public squad's join requests, polled: the organizer's pending list, or my own request's status. */
-export function useLiveJoinRequests(slug: string, enabled: boolean): JoinRequests | undefined {
-  const { getAccessToken } = usePrivy();
-  const { address: me } = useMyAccount();
-  return usePoll(enabled && me ? `requests:${me}:${slug}` : null, async () => {
-    const token = await getAccessToken();
-    const r = await fetch(`/api/squads/${encodeURIComponent(slug)}/requests`, { headers: { authorization: `Bearer ${token}` } });
-    if (!r.ok) throw new Error(`requests ${r.status}`);
-    return (await r.json()) as JoinRequests;
-  });
-}
-
 /** One signed-in GET per `key`: the JSON reply, or null when it failed (callers fall back). */
 function useAuthedOnce<T>(url: string, key: string | null): T | null | undefined {
   const { getAccessToken } = usePrivy();
