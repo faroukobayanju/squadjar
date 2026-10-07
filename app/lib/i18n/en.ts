@@ -396,4 +396,6 @@ export const en = {
   errSquadSize: "A squad is 3 to 20 people.",
   errSendSelf: "You can't send money to yourself.",
   errNotInDemo: "Not available in the demo yet.",
+  tryReadyTitle: "The demo squad is getting ready.",
+  tryReadyBody: "Try again in a minute.",
 };

@@ -398,4 +398,6 @@ export const pcm = {
   errSquadSize: "Squad na 3 to 20 people.",
   errSendSelf: "You no fit send money give yourself.",
   errNotInDemo: "E never dey for the demo.",
+  tryReadyTitle: "The demo squad dey get ready.",
+  tryReadyBody: "Try am again after one minute.",
 } satisfies Record<keyof typeof en, string>;

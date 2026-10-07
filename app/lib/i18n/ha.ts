@@ -400,4 +400,6 @@ export const ha = {
   errSquadSize: "Ƙungiya mutum 3 zuwa 20 ce.",
   errSendSelf: "Ba za ku iya aika wa kanku kuɗi ba.",
   errNotInDemo: "Babu shi a gwajin tukuna.",
+  tryReadyTitle: "Ƙungiyar gwaji tana shiryawa.",
+  tryReadyBody: "Sake gwadawa bayan minti ɗaya.",
 } satisfies Record<keyof typeof en, string>;

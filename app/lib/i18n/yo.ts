@@ -400,4 +400,6 @@ export const yo = {
   errSquadSize: "Ẹgbẹ́ jẹ́ ènìyàn 3 sí 20.",
   errSendSelf: "O kò lè fi owó ránṣẹ́ sí ara rẹ.",
   errNotInDemo: "Kò tíì sí nínú àyẹ̀wò.",
+  tryReadyTitle: "Ẹgbẹ́ àyẹ̀wò ń múra sílẹ̀.",
+  tryReadyBody: "Tún gbìyànjú lẹ́yìn ìṣẹ́jú kan.",
 } satisfies Record<keyof typeof en, string>;
