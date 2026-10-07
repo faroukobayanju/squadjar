@@ -114,7 +114,7 @@ export const ig = {
   yourSquads: "Otu gị",
   homeEmpty: "Ị nweghị otu ọ bụla. Malite otu, kpọọ ndị gị.",
 
-  // Squads list and find a squad
+  // Squads list
   rowPaidAria: "{paid} n'ime {total} akwụọla n'agba a",
   rowRoundYou: "A{round} n'ime {total} · ị ga-anata",
   rowRoundOther: "A{round} n'ime {total} · {name} ga-anata",
@@ -128,14 +128,6 @@ export const ig = {
   rowCancelled: "Akagburu ya · ego nkwụnye alọghachila",
 
   // Create squad
-  newDescribe: "Kọwaa ya n'okwu gị",
-  newDescribeExample: "8 of us, 5k every Friday, called CSC 300L Squad",
-  newFill: "Dejupụta fọm ahụ",
-  newNeedAmount: "ego onye ọ bụla ga-akwụ",
-  newNeedSize: "ọnụ ọgụgụ unu",
-  newNeedPeriod: "kwa izu ma ọ bụ kwa ọnwa",
-  newFilledSome: "Ejupụtala m ihe m nwere ike. Ọ ka fọdụrụ: {missing}.",
-  newFilledAll: "Ejupụtala m ya n'okpuru. Lelee ya, mgbe ahụ mepụta.",
   newCreateFail: "Anyị enweghị ike ịmepụta otu ahụ. Nwaa ọzọ.",
   squadName: "Aha otu",
   eachPays: "Onye ọ bụla na-akwụ",
@@ -191,7 +183,6 @@ export const ig = {
   nudgeLate: "{name}, {amount} gị maka {squad} egbuola oge. Kwụọ tupu {when}, ma ọ bụghị ya a ga-agụ ya dị ka nke ị tụfuru: {link}",
   inbox: "Ihe ncheta",
   inboxEmpty: "Enweghị ihe ncheta ugbu a.",
-  newFilling: "Ana m ejupụta fọm ahụ…",
   loadingSquad: "Otu na-abata",
   loadingSquads: "Otu na-abata",
   needMore: "Ị chọrọ {short} ọzọ. Ego gị bụ {balance}.",

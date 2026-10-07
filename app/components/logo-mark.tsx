@@ -1,4 +1,4 @@
-// The Squadjar stamp (brand/logo.html) in stamp ink, so it follows the theme. Ink texture comes from the stamp masks.
+// The Squadjar stamp in stamp ink, so it follows the theme. Ink texture comes from the stamp masks.
 export function LogoMark({ className = "" }: { className?: string }) {
   return (
     <svg viewBox="0 0 1024 1024" role="img" aria-label="Squadjar" className={`ink ink-2 text-stamp ${className}`}>

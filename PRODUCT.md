@@ -34,7 +34,7 @@ No person ever holds the money. Other group-savings apps digitize the ledger but
 - Terminology follows `CONTEXT.md` (squad, jar, contribution, round, payout, collector, turn, deposit, missed, stopped paying, trust score, tier).
 - UI must never show: wallet, crypto, token, gas, transaction, blockchain, stake, address, default.
 - Currency is naira (₦) only. Network is Monad testnet.
-- Kimi drafts squads from plain language and writes reminders (English, Pidgin, Yoruba, Igbo, Hausa).
+- Reminders and nudges use fixed templates in English, Pidgin, Yoruba, Igbo and Hausa.
 
 ## Evidence on Hand
 

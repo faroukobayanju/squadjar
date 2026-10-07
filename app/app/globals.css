@@ -75,7 +75,7 @@ body {
 }
 
 /* Paper fibre lives on a fixed, non-interactive layer so scrolling never repaints it.
-   Tile: public/textures/paper.png (tools/gen-textures.py). */
+   Tile: public/textures/paper.png. */
 body::before {
   content: "";
   position: fixed;
