@@ -13,3 +13,5 @@ broadcast/
 .superpowers/
 
 contracts/deployments/31337.json
+.impeccable/
+.claude/

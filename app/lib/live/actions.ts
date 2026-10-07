@@ -234,7 +234,7 @@ function useAuthedOnce<T>(url: string, key: string | null): T | null | undefined
   return got?.key === key ? got.v : undefined;
 }
 
-/** Asks the server for the squad's WhatsApp reminder (Kimi, in my language): its wa.me link, or null. One billable call per tap. */
+/** Asks the server for the squad's WhatsApp reminder (in my language): its wa.me link, or null. */
 export function useLiveRemind(): (slug: string) => Promise<string | null> {
   const { getAccessToken } = usePrivy();
   return async (slug) => {

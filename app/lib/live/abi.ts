@@ -1,4 +1,4 @@
-// Hand-written from docs/superpowers/plans/2026-10-02-squadjar-contracts.md. Plain `as const` literals so viem infers arg/result types.
+// Hand-written from the Squad contract. Plain `as const` literals so viem infers arg/result types.
 
 export const tokenAbi = [
   {type:"function",name:"faucet",inputs:[{name:"amount",type:"uint256"}],outputs:[],stateMutability:"nonpayable"},
