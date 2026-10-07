@@ -212,3 +212,52 @@ export function useLiveInviteCode(slug: string, enabled: boolean): string | null
   }, [slug, enabled, getAccessToken]);
   return got?.slug === slug ? got.code : undefined;
 }
+
+/** A public squad's join requests, polled: the organizer's pending list, or my own request's status. */
+export function useLiveJoinRequests(slug: string, enabled: boolean): JoinRequests | undefined {
+  const { getAccessToken } = usePrivy();
+  const { address: me } = useMyAccount();
+  return usePoll(enabled && me ? `requests:${me}:${slug}` : null, async () => {
+    const token = await getAccessToken();
+    const r = await fetch(`/api/squads/${encodeURIComponent(slug)}/requests`, { headers: { authorization: `Bearer ${token}` } });
+    if (!r.ok) throw new Error(`requests ${r.status}`);
+    return (await r.json()) as JoinRequests;
+  });
+}
+
+/** One signed-in GET per `key`: the JSON reply, or null when it failed (callers fall back). */
+function useAuthedOnce<T>(url: string, key: string | null): T | null | undefined {
+  const { getAccessToken } = usePrivy();
+  const [got, setGot] = useState<{ key: string; v: T | null }>();
+  useEffect(() => {
+    if (!key) return;
+    let alive = true;
+    (async () => {
+      const r = await fetch(url, { headers: { authorization: `Bearer ${await getAccessToken()}` } });
+      return r.ok ? ((await r.json()) as T) : null;
+    })()
+      .catch(() => null)
+      .then((v) => alive && setGot({ key, v }));
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- key covers url
+  }, [key]);
+  return got?.key === key ? got.v : undefined;
+}
+
+/** Asks the server for the squad's WhatsApp reminder (Kimi, in my language): its wa.me link, or null. One billable call per tap. */
+export function useLiveRemind(): (slug: string) => Promise<string | null> {
+  const { getAccessToken } = usePrivy();
+  return async (slug) => {
+    const r = await fetch(`/api/squads/${encodeURIComponent(slug)}/remind`, { method: "POST", headers: { authorization: `Bearer ${await getAccessToken()}` } });
+    return r.ok ? ((await r.json()) as { waLink: string }).waLink : null;
+  };
+}
+
+export type Nudge = { squad: string; slug: string; squadName: string; body: string; sentAt: string };
+/** My in-app pay nudges, newest first, read once per mount. */
+export function useLiveNotifications(): Nudge[] | undefined {
+  const { address: me } = useMyAccount();
+  return useAuthedOnce<Nudge[]>("/api/notifications", me ? `notices:${me}` : null) ?? undefined;
+}
