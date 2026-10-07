@@ -215,7 +215,7 @@ function RemindSquad({ squad }: { squad: Squad }) {
       href={`https://wa.me/?text=${encodeURIComponent(text)}`}
       onClick={(e) => {
         if (!remind || !squad.address || squad.state !== "Active") return; // demo: the template link as is
-        // Ask the server (Kimi, in my language) only on tap. Open the tab now, inside the click, so it isn't
+        // Ask the server (in my language) only on tap. Open the tab now, inside the click, so it isn't
         // blocked; point it at the server's link, or the template if that takes over 2s or fails.
         e.preventDefault();
         const fallback = e.currentTarget.href;

@@ -110,7 +110,7 @@ export const en = {
   yourSquads: "Your squads",
   homeEmpty: "No squads yet. Start one and invite your people.",
 
-  // Squads list and find a squad
+  // Squads list
   rowPaidAria: "{paid} of {total} paid this round",
   rowRoundYou: "R{round} of {total} · you collect",
   rowRoundOther: "R{round} of {total} · {name} collects",
@@ -124,14 +124,6 @@ export const en = {
   rowCancelled: "Cancelled · deposits returned",
 
   // Create squad
-  newDescribe: "Describe it in your own words",
-  newDescribeExample: "8 of us, 5k every Friday, called CSC 300L Squad",
-  newFill: "Fill the form",
-  newNeedAmount: "how much each person pays",
-  newNeedSize: "how many of you",
-  newNeedPeriod: "weekly or monthly",
-  newFilledSome: "Filled what I could. Still need: {missing}.",
-  newFilledAll: "Filled in below. Check it, then create.",
   newCreateFail: "Couldn't create the squad. Try again.",
   squadName: "Squad name",
   eachPays: "Each person pays",
@@ -187,7 +179,6 @@ export const en = {
   nudgeLate: "Hi {name}, your {amount} for {squad} is late. Pay before {when} or it counts as a miss: {link}",
   inbox: "Reminders",
   inboxEmpty: "No reminders yet.",
-  newFilling: "Filling the form…",
   loadingSquad: "Loading squad",
   loadingSquads: "Loading squads",
   needMore: "You need {short} more. Your balance is {balance}.",

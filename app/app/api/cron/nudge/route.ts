@@ -5,7 +5,7 @@ import { fromUnits, publicClient } from "@/lib/live/chain";
 import { squadAbi } from "@/lib/live/abi";
 import { periodOf } from "@/lib/chain-map";
 import { dueLabel, naira } from "@/lib/format";
-import { compose, payLink, people, tr } from "@/lib/messages";
+import { payLink, people, tr } from "@/lib/messages";
 import { nudgeKey, stageAt, toNudge } from "@/lib/nudge-plan";
 
 const same = (a: string | null, b: string) => {
@@ -29,7 +29,7 @@ export async function GET(req: Request) {
     });
     const now = Math.floor(Date.now() / 1000);
     let sent = 0;
-    // ponytail: one pass over every squad per minute, members written in parallel per squad; queue the Kimi calls past ~100 active squads.
+    // ponytail: one pass over every squad per minute, members written in parallel per squad.
     for (const [i, s] of squads.entries()) {
       const r = views[i];
       if (r.status !== "success" || r.result.state !== 2) continue; // 2 = Active
@@ -57,17 +57,7 @@ export async function GET(req: Request) {
           const { name, lang } = p;
           try {
             const vars = { name, amount, squad: s.name, when: dueLabel(whenAt, lang), link };
-            const template = tr(lang, stage === "missed" ? "nudgeLate" : "nudgeSoon", vars);
-            const body = await compose(
-              stage === "missed"
-                ? "Write one short, kind message to this member: their contribution for this round is late. They can still pay before `when`, after that it counts as a miss and their deposit covers it."
-                : "Write one short, friendly message to this member reminding them their contribution is due at `when`.",
-              vars,
-              lang,
-              link,
-              280,
-              template,
-            );
+            const body = tr(lang, stage === "missed" ? "nudgeLate" : "nudgeSoon", vars);
             const ins = await sql`insert into notifications (member, squad, round, stage, channel, body)
               values (${m}, ${squad}, ${round}, ${stage}, 'inapp', ${body}) on conflict do nothing returning member`;
             sent += ins.length;

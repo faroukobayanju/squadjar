@@ -112,7 +112,7 @@ export const pcm = {
   yourSquads: "Your squads",
   homeEmpty: "You never get squad. Start one, invite your people.",
 
-  // Squads list and find a squad
+  // Squads list
   rowPaidAria: "{paid} of {total} don pay this round",
   rowRoundYou: "R{round} of {total} · na you go collect",
   rowRoundOther: "R{round} of {total} · {name} go collect",
@@ -126,14 +126,6 @@ export const pcm = {
   rowCancelled: "Dem cancel am · deposits don go back",
 
   // Create squad
-  newDescribe: "Talk am the way you like",
-  newDescribeExample: "8 of us, 5k every Friday, called CSC 300L Squad",
-  newFill: "Fill the form",
-  newNeedAmount: "how much each person go pay",
-  newNeedSize: "how many una be",
-  newNeedPeriod: "every week or every month",
-  newFilledSome: "I don fill wetin I fit. E still remain: {missing}.",
-  newFilledAll: "I don fill am below. Check am, then create.",
   newCreateFail: "We no fit create the squad. Try again.",
   squadName: "Squad name",
   eachPays: "Each person go pay",
@@ -189,7 +181,6 @@ export const pcm = {
   nudgeLate: "{name}, your {amount} for {squad} don late. Pay before {when} or e go count as miss: {link}",
   inbox: "Reminders",
   inboxEmpty: "No reminder yet.",
-  newFilling: "I dey fill the form…",
   loadingSquad: "Squad dey load",
   loadingSquads: "Squads dey load",
   needMore: "You need {short} more. Your balance na {balance}.",

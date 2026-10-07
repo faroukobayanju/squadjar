@@ -2,16 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { usePrivy } from "@privy-io/react-auth";
-import { Sparkle } from "@phosphor-icons/react";
 import { BackLink } from "@/components/shell";
-import { parseDraft } from "@/lib/draft";
 import { nextDue } from "@/lib/due";
 import { naira } from "@/lib/format";
 import { DemoError, friendlyError } from "@/lib/errors";
 import { isLive, useActions, type Period } from "@/lib/data";
-import { rich, useLang, useT, type Key, type Lang } from "@/lib/i18n";
-import type { DraftReply } from "@/lib/kimi-draft";
+import { rich, useT, type Key } from "@/lib/i18n";
 
 const PERIODS: { value: Period; label: Key }[] = [
   { value: "Weekly", label: "periodWeekly" },
@@ -26,31 +22,10 @@ const MONTH_DAYS = Array.from({ length: 28 }, (_, i) => i + 1);
 const PILL = "min-h-11 rounded-full border-[1.5px] px-3.5 text-sm font-semibold";
 const pill = (on: boolean) => `${PILL} ${on ? "border-ink bg-ink text-manila" : "border-rule"}`;
 
-type AskKimi = (text: string, language: Lang) => Promise<DraftReply | null>;
-function useLiveKimi(): AskKimi {
-  const { getAccessToken } = usePrivy();
-  return async (text, language) => {
-    const r = await fetch("/api/kimi/draft", {
-      method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${await getAccessToken()}` },
-      body: JSON.stringify({ text, language }),
-    }).catch(() => null);
-    return r?.ok ? ((await r.json()) as DraftReply) : null;
-  };
-}
-// isLive is a build-time constant; the demo has no Kimi and uses the pattern parser.
-const useKimi: () => AskKimi = isLive ? useLiveKimi : () => async () => null;
-
 export default function NewSquad() {
   const router = useRouter();
   const { createSquad } = useActions();
   const t = useT();
-  const lang = useLang();
-  const kimi = useKimi();
-  const [ask, setAsk] = useState("");
-  const [note, setNote] = useState<{ text: string; question: boolean } | null>(null);
-  const [warnings, setWarnings] = useState<string[]>([]);
-  const [filling, setFilling] = useState(false);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("5000");
   const [size, setSize] = useState("8");
@@ -61,35 +36,6 @@ export default function NewSquad() {
   const [monthlyHour, setMonthlyHour] = useState(9);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  async function fill() {
-    setFilling(true);
-    const r = await kimi(ask, lang).catch(() => null);
-    setFilling(false);
-    setWarnings(r?.warnings ?? []);
-    const k = r?.draft;
-    if (k) {
-      if (k.name) setName(k.name);
-      setAmount(String(k.contribution));
-      setSize(String(k.size));
-      setPeriod(k.period);
-      if (k.due?.weekday !== undefined) setWeekday(k.due.weekday);
-      if (k.due?.monthDay !== undefined) setMonthDay(k.due.monthDay);
-      if (k.due) (k.period === "Monthly" ? setMonthlyHour : setWeeklyHour)(k.due.hour);
-      setNote(r.followUp ? { text: r.followUp, question: true } : { text: t("newFilledAll"), question: false });
-      return;
-    }
-    // No draft from Kimi (not set up, slow, or unsure): the pattern parser fills what it can.
-    const d = parseDraft(ask);
-    if (d.name) setName(d.name);
-    if (d.contribution) setAmount(String(d.contribution));
-    if (d.size) setSize(String(d.size));
-    if (d.period) setPeriod(d.period);
-    if (d.weekday !== undefined) setWeekday(d.weekday);
-    const missing = [!d.contribution && t("newNeedAmount"), !d.size && t("newNeedSize"), !d.period && t("newNeedPeriod")].filter(Boolean);
-    if (r?.followUp) setNote({ text: r.followUp, question: true });
-    else setNote({ text: missing.length ? t("newFilledSome", { missing: missing.join(", ") }) : t("newFilledAll"), question: false });
-  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -113,39 +59,6 @@ export default function NewSquad() {
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-[480px] flex-col px-4 pt-2 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       <BackLink href="/home" label={t("home")} />
       <h1 className="mt-2 font-display text-[2.1rem] leading-none font-extrabold tracking-[-0.03em]">{t("startSquad")}</h1>
-
-      <section className="mt-6 rounded-lg border border-rule bg-paper p-4">
-        <label htmlFor="ask" className="flex items-center gap-2 text-sm font-semibold">
-          <Sparkle size={18} weight="fill" className="text-stamp" aria-hidden />
-          {t("newDescribe")}
-        </label>
-        <textarea
-          id="ask"
-          rows={2}
-          value={ask}
-          onChange={(e) => setAsk(e.target.value)}
-          placeholder={t("newDescribeExample")}
-          className="mt-2 w-full resize-none rounded-md border border-rule bg-manila/40 px-3 py-2 placeholder:text-muted/80"
-        />
-        <button
-          type="button"
-          onClick={fill}
-          disabled={!ask.trim() || filling}
-          className="mt-2 min-h-11 rounded-full border-[1.5px] border-ink px-4 text-sm font-semibold disabled:opacity-40"
-        >
-          {filling ? t("newFilling") : t("newFill")}
-        </button>
-        {note && (
-          <p role="status" className={`mt-2 text-sm ${note.question ? "font-semibold" : "text-muted"}`}>
-            {note.text}
-          </p>
-        )}
-        {warnings.map((w) => (
-          <p key={w} className="mt-1 text-sm text-muted">
-            {w}
-          </p>
-        ))}
-      </section>
 
       <form onSubmit={submit} className="mt-6 flex flex-1 flex-col gap-5">
         <Field id="name" label={t("squadName")}>

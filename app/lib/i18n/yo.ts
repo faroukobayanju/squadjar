@@ -114,7 +114,7 @@ export const yo = {
   yourSquads: "Àwọn ẹgbẹ́ rẹ",
   homeEmpty: "O kò tíì ní ẹgbẹ́. Dá ọ̀kan sílẹ̀, kí o sì pe àwọn ènìyàn rẹ.",
 
-  // Squads list and find a squad
+  // Squads list
   rowPaidAria: "{paid} nínú {total} ti san ní ìyípo yìí",
   rowRoundYou: "R{round} nínú {total} · ìwọ ló máa gbà",
   rowRoundOther: "R{round} nínú {total} · {name} ló máa gbà",
@@ -128,14 +128,6 @@ export const yo = {
   rowCancelled: "A ti fagi lé e · owó ìdógò ti padà",
 
   // Create squad
-  newDescribe: "Ṣàlàyé rẹ̀ bí o ṣe fẹ́",
-  newDescribeExample: "8 of us, 5k every Friday, called CSC 300L Squad",
-  newFill: "Kún fọ́ọ̀mù náà",
-  newNeedAmount: "iye tí ẹnìkọ̀ọ̀kan máa san",
-  newNeedSize: "iye yín",
-  newNeedPeriod: "ọ̀sọ̀ọ̀sẹ̀ tàbí oṣooṣù",
-  newFilledSome: "Mo ti kún ohun tí mo lè kún. Ó ṣì kù: {missing}.",
-  newFilledAll: "Mo ti kún un nísàlẹ̀. Yẹ̀ ẹ́ wò, kí o sì dá a sílẹ̀.",
   newCreateFail: "A kò lè dá ẹgbẹ́ náà sílẹ̀. Tún gbìyànjú.",
   squadName: "Orúkọ ẹgbẹ́",
   eachPays: "Ẹnìkọ̀ọ̀kan máa san",
@@ -191,7 +183,6 @@ export const yo = {
   nudgeLate: "{name}, {amount} rẹ fún {squad} ti pẹ́. San ṣáájú {when}, bí bẹ́ẹ̀ kọ́ yóò kà sí àìsan: {link}",
   inbox: "Ìránnilétí",
   inboxEmpty: "Kò sí ìránnilétí síbẹ̀.",
-  newFilling: "Ń kún fọ́ọ̀mù náà…",
   loadingSquad: "Ẹgbẹ́ ń bọ̀",
   loadingSquads: "Àwọn ẹgbẹ́ ń bọ̀",
   needMore: "O nílò {short} sí i. Owó rẹ jẹ́ {balance}.",
