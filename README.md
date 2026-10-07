@@ -132,7 +132,7 @@ Monad testnet, chain 10143. Addresses come from [`contracts/deployments/10143.js
 |---|---|---|
 | AjoNGN (sNGN) | Test naira with a capped faucet, used by Add money | [`0xb7A5...10C9`](https://testnet.monadexplorer.com/address/0xb7A57BeF0DD01A96C7626fDD6F143C9127d110C9) |
 | TrustRegistry | Keeps every member's payment record and works out trust score and tier | [`0xe80e...3eCB`](https://testnet.monadexplorer.com/address/0xe80e9A23B647CD653F3A5ef16222aD6794C23eCB) |
-| SquadFactory | Creates one Squad contract (the jar) per squad and registers it | [`0x7B2a...5d4B`](https://testnet.monadexplorer.com/address/0x7B2aC330515073De9aCB8883ee0AAA8cE11B5d4B) |
+| SquadFactory | Creates one Squad contract (the jar) per squad and registers it | [`0x7bBA...8Ef2`](https://testnet.monadexplorer.com/address/0x7bBADfC407b7eC8941B7A72A4820Ae946dF48Ef2) |
 
 Each squad is its own contract that holds the jar, runs the rounds and pays out. Every payment, payout, refund and trust update happens onchain. Members never see any of that. Contract details are in [contracts/README.md](contracts/README.md).
 
