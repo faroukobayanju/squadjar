@@ -58,6 +58,8 @@ contract Squad {
     event Contributed(address indexed member, uint8 round, bool late);
     event RoundSettled(uint8 round, address indexed collector, uint256 amount, address[] missed);
     event PayoutHeld(address indexed member, uint8 round, uint256 amount);
+    event PaidBack(address indexed member, uint256 amount);
+    event CreditPaid(address indexed member, uint256 amount);
     event Completed();
 
     error WrongState(State current);
@@ -295,6 +297,26 @@ contract Squad {
             missed[mc++] = m;
             missCount[m]++;
             if (countsForTrust) trust.recordMiss(m);
+            if (m == collector) continue; // their own missing contribution just makes the pool smaller
+            // Only the misser's own held money covers the miss; the rest is debt owed to this collector.
+            uint256 cover = locked[m] < c ? locked[m] : c;
+            if (cover > 0) {
+                locked[m] -= cover;
+                totalLocked -= cover;
+                pool += cover;
+            }
+            if (cover < c) {
+                owed[m] += c - cover;
+                credit[collector] += c - cover;
+            }
+        }
+
+        // The collector's own debt comes out of their payout first, before anything is held.
+        uint256 repay = owed[collector] < pool ? owed[collector] : pool;
+        if (repay > 0) {
+            owed[collector] -= repay;
+            pool -= repay;
+            _payCredits(repay);
         }
 
         // Hold back what the collector still owes, less their tier's allowance.
@@ -325,6 +347,33 @@ contract Squad {
             // on-time settle, where the lead is at least roundLength - grace (> roundLength / 2 for every preset).
             if (next < block.timestamp + roundLength / 2) next += roundLength;
             roundDeadline = next;
+        }
+    }
+
+    /// Pay back every missed contribution at once. The money goes straight to the collectors who were
+    /// paid short. Works after the squad completes too, so a late follow-up still makes them whole.
+    function payBack() external onlyMember {
+        if (state != State.Active && state != State.Completed) revert WrongState(state);
+        uint256 amt = owed[msg.sender];
+        if (amt == 0) revert NothingOwed();
+        owed[msg.sender] = 0;
+        token.safeTransferFrom(msg.sender, address(this), amt);
+        _payCredits(amt);
+        emit PaidBack(msg.sender, amt);
+    }
+
+    /// Pays `amount` to members with credit, in turn order. Every unit of debt created an equal unit of
+    /// credit, so total credit always covers a repayment.
+    function _payCredits(uint256 amount) internal {
+        uint256 n = members.length;
+        for (uint256 i; i < n && amount > 0; i++) {
+            address m = members[i];
+            uint256 x = credit[m] < amount ? credit[m] : amount;
+            if (x == 0) continue;
+            credit[m] -= x;
+            amount -= x;
+            token.safeTransfer(m, x);
+            emit CreditPaid(m, x);
         }
     }
 

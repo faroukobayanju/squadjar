@@ -101,6 +101,144 @@ contract SquadRoundsTest is Base {
         assertEq(token.balanceOf(address(s)), 0);
     }
 
+    /// 3 members. Round 1 all pay, so t1 holds 2c. t1 misses round 2: its held money covers it.
+    function test_heldMoneyCoversOwnMissFullPayout() public {
+        Squad s = _active(3, C);
+        address t1 = _turn(s, 1);
+        address t2 = _turn(s, 2);
+        _payAllExcept(s, address(0));
+        uint256 before = token.balanceOf(t2);
+        _missRound(s, t1);
+        assertEq(token.balanceOf(t2) - before, C); // paid c, payout 3c with c held: received 2c
+        assertEq(s.locked(t1), C);
+        assertEq(s.locked(t2), C);
+        assertEq(s.owed(t1), 0);
+        assertEq(s.credit(t2), 0);
+    }
+
+    /// 3 members. t3 misses round 1 and has nothing held, so t1 is paid short and t3 owes it c.
+    function test_roundOneMissRecordsDebtAndCredit() public {
+        Squad s = _active(3, C);
+        address t1 = _turn(s, 1);
+        address t3 = _turn(s, 3);
+        uint256 before = token.balanceOf(t1);
+        _missRound(s, t3);
+        assertEq(s.owed(t3), C);
+        assertEq(s.credit(t1), C);
+        assertEq(s.locked(t1), 2 * C); // pool 2c, all of it held
+        assertEq(before - token.balanceOf(t1), C); // paid c, received 0
+    }
+
+    function test_payBackSendsMoneyToShortCollector() public {
+        Squad s = _active(3, C);
+        address t1 = _turn(s, 1);
+        address t3 = _turn(s, 3);
+        _missRound(s, t3);
+        uint256 before = token.balanceOf(t1);
+        vm.expectEmit(true, false, false, true);
+        emit Squad.CreditPaid(t1, C);
+        vm.expectEmit(true, false, false, true);
+        emit Squad.PaidBack(t3, C);
+        vm.prank(t3);
+        s.payBack();
+        assertEq(token.balanceOf(t1) - before, C);
+        assertEq(s.owed(t3), 0);
+        assertEq(s.credit(t1), 0);
+    }
+
+    /// t3 misses round 1, pays rounds 2 and 3. Its round 3 payout repays t1 first.
+    function test_debtRepaidFromMissersOwnPayout() public {
+        Squad s = _active(3, C);
+        address t1 = _turn(s, 1);
+        address t3 = _turn(s, 3);
+        _missRound(s, t3);
+        _payAllExcept(s, address(0)); // round 2
+        _payAllExcept(s, t3); // round 3: t1 and t2 pay
+        vm.expectEmit(true, false, false, true);
+        emit Squad.CreditPaid(t1, C);
+        vm.expectEmit(true, true, false, true);
+        emit Squad.RoundSettled(3, t3, 2 * C, new address[](0)); // 3c less the c repaid, nothing held
+        vm.prank(t3);
+        s.contribute();
+        assertEq(s.owed(t3), 0);
+        assertEq(s.credit(t1), 0);
+        assertEq(token.balanceOf(address(s)), 0);
+    }
+
+    function test_collectorMissingOwnRoundRecordsNoDebt() public {
+        Squad s = _active(3, C);
+        address t1 = _turn(s, 1);
+        _missRound(s, t1);
+        assertEq(s.owed(t1), 0);
+        assertEq(s.credit(t1), 0);
+        assertEq(s.missCount(t1), 1);
+        assertEq(s.locked(t1), 2 * C);
+    }
+
+    /// Reliable t1 holds 2c * 50% = c in round 1, misses rounds 2 and 3: round 2 is covered, round 3 is debt to t3.
+    function test_payBackAfterCompleted() public {
+        _setScore(users[1], 20);
+        Squad s = _active(3, C);
+        address t1 = _turn(s, 1);
+        address t3 = _turn(s, 3);
+        assertEq(t1, users[1]);
+        _payAllExcept(s, address(0));
+        assertEq(s.locked(t1), C);
+        _missRound(s, t1);
+        assertEq(s.locked(t1), 0);
+        _missRound(s, t1);
+        assertEq(uint8(s.state()), uint8(Squad.State.Completed));
+        assertEq(s.owed(t1), C);
+        assertEq(s.credit(t3), C);
+        uint256 before = token.balanceOf(t3);
+        vm.prank(t1);
+        s.payBack();
+        assertEq(token.balanceOf(t3) - before, C);
+        assertEq(s.owed(t1), 0);
+        assertEq(s.credit(t3), 0);
+        assertEq(token.balanceOf(address(s)), 0);
+    }
+
+    function test_payBackReverts() public {
+        Squad s = _squad(3, C);
+        vm.prank(users[1]);
+        vm.expectRevert(abi.encodeWithSelector(Squad.WrongState.selector, Squad.State.Open));
+        s.payBack();
+        _start(s);
+        vm.prank(users[1]);
+        vm.expectRevert(Squad.NothingOwed.selector);
+        s.payBack();
+        vm.prank(makeAddr("stranger"));
+        vm.expectRevert(Squad.NotMember.selector);
+        s.payBack();
+    }
+
+    function test_payBackWithoutAllowanceRevertsAndKeepsDebt() public {
+        Squad s = _active(3, C);
+        address t1 = _turn(s, 1);
+        address t3 = _turn(s, 3);
+        _missRound(s, t3);
+        vm.startPrank(t3);
+        token.approve(address(s), 0);
+        vm.expectRevert();
+        s.payBack();
+        vm.stopPrank();
+        assertEq(s.owed(t3), C);
+        assertEq(s.credit(t1), C);
+    }
+
+    function test_settleWithEveryoneMissingAdvances() public {
+        Squad s = _active(3, C);
+        _warpPastGrace(s);
+        s.settleRound(1);
+        assertEq(s.currentRound(), 2);
+        assertEq(s.owed(_turn(s, 1)), 0);
+        assertEq(s.owed(_turn(s, 2)), C);
+        assertEq(s.owed(_turn(s, 3)), C);
+        assertEq(s.credit(_turn(s, 1)), 2 * C);
+        assertEq(token.balanceOf(address(s)), 0);
+    }
+
     function test_contributeTwiceReverts() public {
         Squad s = _active(3, C);
         address m = _turn(s, 2);
