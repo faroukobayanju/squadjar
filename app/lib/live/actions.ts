@@ -11,13 +11,12 @@ import { useWrite } from "./tx";
 import { refreshAll, resolveSlug, usePoll } from "./squads";
 import { DemoError } from "../store";
 import { BURN } from "../money-out";
-import type { Actions, JoinRequests, Payout, Period, Person, PublicTerms, RequestStatus } from "../types";
+import type { Actions, Payout, Period, Person } from "../types";
 
 const PERIOD_INDEX: Record<Period, number> = { Demo: 0, Weekly: 1, Monthly: 2 };
 const PAYOUT_KEY = "squadjar-payout";
 const MAX = { amount: maxUint256 };
 const pendingKey = (address: string) => `squadjar-pending-${address.toLowerCase()}`;
-const publicFields = (pub?: PublicTerms) => (pub ? { visibility: "public", ...pub } : {});
 
 /** An error friendlyError() maps by contract error name, without a round trip. */
 const named = (errorName: string) => Object.assign(new Error(errorName), { errorName });
@@ -75,7 +74,7 @@ export function useLiveActions(): Actions {
         await refreshAll().catch(() => {}); // the money has moved: a failed refresh must not show an error
       },
 
-      createSquad: async ({ name, contribution, size, period, due, pub }) => {
+      createSquad: async ({ name, contribution, size, period, due }) => {
         name = name.trim();
         if (!name) throw new DemoError("errNameMissing");
         const code = toHex(crypto.getRandomValues(new Uint8Array(32)));
@@ -93,12 +92,12 @@ export function useLiveActions(): Actions {
         // A failed approve is recovered by the approve-if-needed on lockDeposit / contribute / refill.
         await write({ address: TOKEN, abi: tokenAbi, functionName: "approve", args: [squad, maxUint256] }).catch(() => {});
         try {
-          localStorage.setItem(pendingKey(squad), JSON.stringify({ address: squad, name, code, pub }));
+          localStorage.setItem(pendingKey(squad), JSON.stringify({ address: squad, name, code }));
         } catch {
           // storage blocked: the invite code then only lives in memory
         }
         const register = async () => {
-          const r = await authed("/api/squads", { method: "POST", body: JSON.stringify({ address: squad, name, inviteCode: code, ...publicFields(pub) }) });
+          const r = await authed("/api/squads", { method: "POST", body: JSON.stringify({ address: squad, name, inviteCode: code }) });
           if (!r.ok) throw new Error(`register ${r.status}`);
           const { slug } = (await r.json()) as { slug: string };
           try {
@@ -113,23 +112,6 @@ export function useLiveActions(): Actions {
       },
 
       join,
-      joinPublic: async (slug) => {
-        const r = await authed(`/api/squads/${encodeURIComponent(slug)}/requests`, { method: "POST" });
-        if (r.status === 409) {
-          await refreshAll(); // the squad is no longer Open: the page switches to its "already started" notice
-          throw new DemoError("startedTitle");
-        }
-        if (r.status === 403 && (await r.json().catch(() => null))?.error === "record") throw new DemoError("recordBlocked");
-        if (!r.ok) throw new Error(`request ${r.status}`);
-        const { status, code } = (await r.json()) as { status: RequestStatus; code?: string };
-        await (code ? join(slug, code) : refreshAll()); // the code comes back once accepted; join with it like an invite link
-        return status;
-      },
-      decideRequest: async (slug, member, decision) => {
-        const r = await authed(`/api/squads/${encodeURIComponent(slug)}/requests`, { method: "PATCH", body: JSON.stringify({ member, decision }) });
-        if (!r.ok) throw new Error(`decide ${r.status}`);
-        await refreshAll();
-      },
       leave: (slug) => onSquad(slug, "leave"),
       start: (slug) => onSquad(slug, "start"),
       cancel: (slug) => onSquad(slug, "cancel"),
@@ -211,13 +193,13 @@ export function useLiveInviteCode(slug: string, enabled: boolean): string | null
       const r = await fetch(`/api/squads/${encodeURIComponent(slug)}/invite`, { headers });
       if (r.ok) return set(((await r.json()) as { code: string }).code);
       // Registration failed at creation: use the local code now and retry the registration.
-      let pending: { address: string; name: string; code: string; pub?: PublicTerms } | null = null;
+      let pending: { address: string; name: string; code: string } | null = null;
       try {
         pending = JSON.parse(localStorage.getItem(pendingKey(slug)) ?? "null");
       } catch {}
       if (!pending) return set(null);
       set(pending.code);
-      const reg = await fetch("/api/squads", { method: "POST", headers, body: JSON.stringify({ address: pending.address, name: pending.name, inviteCode: pending.code, ...publicFields(pending.pub) }) });
+      const reg = await fetch("/api/squads", { method: "POST", headers, body: JSON.stringify({ address: pending.address, name: pending.name, inviteCode: pending.code }) });
       if (reg.ok) {
         try {
           localStorage.removeItem(pendingKey(slug));

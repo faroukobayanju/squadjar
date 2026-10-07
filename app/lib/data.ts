@@ -9,7 +9,7 @@ import { useLiveActions, useLiveInviteCode, useLiveJoinRequests, useLiveNotifica
 import type { Actions, JoinRequests, PublicSquad, Squad, Tier } from "./types";
 import type { PayRecord } from "./record-line";
 
-export type { JoinRequest, Member, Payout, Period, Person, PublicSquad, PublicTerms, RequestStatus, Squad, SquadState, Tier } from "./types";
+export type { Member, Payout, Period, Person, Squad, SquadState, Tier } from "./types";
 export { isLive };
 export { ME, DemoError, collectorOf, payoutAmount, myTurn, squadBySlug } from "./store";
 
@@ -42,9 +42,6 @@ export const useRemind: () => ((slug: string) => Promise<string | null>) | null 
 export type { Nudge };
 export const useNotifications: () => Nudge[] | undefined = isLive ? useLiveNotifications : () => undefined;
 export const useInviteCode: (slug: string, enabled: boolean) => string | null | undefined = isLive ? useLiveInviteCode : () => undefined;
-/** Public squads and join requests are live only; demo screens hide them. */
-export const usePublicSquads: () => PublicSquad[] | null | undefined = isLive ? useLivePublicSquads : () => undefined;
-export const useJoinRequests: (slug: string, enabled: boolean) => JoinRequests | undefined = isLive ? useLiveJoinRequests : () => undefined;
 /** Payment records by lowercase id; live only, the demo hides them. */
 export const useRecords: (ids: readonly string[]) => Record<string, PayRecord> | undefined = isLive ? useLiveRecords : () => undefined;
 export const clearJustStamped = store.clearJustStamped;
@@ -62,8 +59,6 @@ const demoActions: Actions = {
   withdraw: notInDemo,
   pay: async (slug) => (await pause(650), store.payRound(slug)),
   join: notInDemo,
-  joinPublic: notInDemo,
-  decideRequest: notInDemo,
   leave: notInDemo,
   start: notInDemo,
   lockDeposit: notInDemo,

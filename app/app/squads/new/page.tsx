@@ -7,7 +7,7 @@ import { Sparkle } from "@phosphor-icons/react";
 import { BackLink } from "@/components/shell";
 import { parseDraft } from "@/lib/draft";
 import { nextDue } from "@/lib/due";
-import { MIN_TIER_KEY, naira } from "@/lib/format";
+import { naira } from "@/lib/format";
 import { DemoError, friendlyError } from "@/lib/errors";
 import { isLive, useActions, type Period } from "@/lib/data";
 import { rich, useLang, useT, type Key, type Lang } from "@/lib/i18n";
@@ -59,10 +59,6 @@ export default function NewSquad() {
   const [monthDay, setMonthDay] = useState(25);
   const [weeklyHour, setWeeklyHour] = useState(18);
   const [monthlyHour, setMonthlyHour] = useState(9);
-  const [isPublic, setIsPublic] = useState(false);
-  const [description, setDescription] = useState("");
-  const [minTier, setMinTier] = useState(0);
-  const [approval, setApproval] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -102,8 +98,7 @@ export default function NewSquad() {
     try {
       const hour = period === "Monthly" ? monthlyHour : weeklyHour;
       const due = nextDue(period, { weekday, monthDay, hour }, new Date());
-      const pub = isPublic ? { description: description.trim() || null, minTier, approval } : undefined;
-      const slug = await createSquad({ name, contribution: Number(amount.replace(/\D/g, "")), size: Number(size), period, due, pub });
+      const slug = await createSquad({ name, contribution: Number(amount.replace(/\D/g, "")), size: Number(size), period, due });
       router.push(`/s/${slug}`);
     } catch (err) {
       setError(isLive || err instanceof DemoError ? friendlyError(err, "other", t) : t("newCreateFail"));
@@ -215,57 +210,6 @@ export default function NewSquad() {
               </select>
               <HourSelect id="monthly-hour" value={monthlyHour} onChange={setMonthlyHour} />
             </div>
-          </fieldset>
-        )}
-
-        {isLive && (
-          <fieldset className="grid gap-3">
-            <legend className="mb-2 text-sm font-semibold">{t("whoCanJoin")}</legend>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { on: false, label: t("private"), note: t("privateNote") },
-                { on: true, label: t("public"), note: t("publicNote") },
-              ].map((o) => (
-                <button
-                  key={o.label}
-                  type="button"
-                  aria-pressed={isPublic === o.on}
-                  onClick={() => setIsPublic(o.on)}
-                  className={`min-h-14 rounded-lg border-[1.5px] px-3 text-left ${isPublic === o.on ? "border-ink bg-ink text-manila" : "border-rule"}`}
-                >
-                  <span className="block text-sm font-semibold">{o.label}</span>
-                  <span className={`block text-xs ${isPublic === o.on ? "text-manila/80" : "text-muted"}`}>{o.note}</span>
-                </button>
-              ))}
-            </div>
-            {isPublic && (
-              <>
-                <Field id="description" label={t("oneLine")}>
-                  <input
-                    id="description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    maxLength={80}
-                    placeholder={t("oneLineExample")}
-                    className={`${INPUT} placeholder:text-muted/80`}
-                  />
-                </Field>
-                <Field id="min-tier" label={t("minTier")}>
-                  <select id="min-tier" value={minTier} onChange={(e) => setMinTier(Number(e.target.value))} className={INPUT}>
-                    {MIN_TIER_KEY.map((label, i) => (
-                      <option key={label} value={i}>
-                        {t(label)}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                {period === "Demo" && <p className="text-sm text-muted">{t("newDemoNoTrust")}</p>}
-                <label className="flex min-h-12 items-center justify-between gap-3 text-sm font-semibold">
-                  {t("approveEach")}
-                  <input type="checkbox" checked={approval} onChange={(e) => setApproval(e.target.checked)} className="size-5 accent-ink" />
-                </label>
-              </>
-            )}
           </fieldset>
         )}
 
