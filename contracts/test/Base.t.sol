@@ -52,17 +52,6 @@ abstract contract Base is Test {
         s.start();
     }
 
-    function _lockAll(Squad s) internal {
-        uint256 n = s.memberCount();
-        for (uint256 i; i < n; i++) {
-            address m = s.memberAt(i);
-            if (s.locked(m) < s.required(m)) {
-                vm.prank(m);
-                s.lockDeposit();
-            }
-        }
-    }
-
     /// Member with turn t (1-based), valid after start().
     function _turn(Squad s, uint256 t) internal view returns (address) {
         return s.memberAt(t - 1);
@@ -75,7 +64,7 @@ abstract contract Base is Test {
         uint256 n = s.memberCount();
         for (uint256 i; i < n; i++) {
             address m = s.memberAt(i);
-            if (m == skip || s.stoppedPaying(m) || s.paid(r, m)) continue;
+            if (m == skip || s.paid(r, m)) continue;
             if (s.currentRound() != r || s.state() != Squad.State.Active) return; // auto-settled
             vm.prank(m);
             s.contribute();
@@ -86,12 +75,25 @@ abstract contract Base is Test {
         vm.warp(uint256(s.roundDeadline()) + s.grace() + 1);
     }
 
-    /// Gives `u` a trust score of 20 (Reliable) by writing as a registered squad.
-    function _makeReliable(address u) internal {
+    /// Everyone except `skip` pays this round; then, if the round is still open, it is settled after grace.
+    function _missRound(Squad s, address skip) internal {
+        uint8 r = s.currentRound();
+        _payAllExcept(s, skip);
+        if (s.state() != Squad.State.Active || s.currentRound() != r) return;
+        _warpPastGrace(s);
+        s.settleRound(r);
+    }
+
+    /// Gives `u` a trust score of `onTime` by writing as a registered squad (5 = Building, 20 = Reliable).
+    function _setScore(address u, uint256 onTime) internal {
         vm.prank(users[7]);
         address dummy = factory.createSquad(C, 3, SquadFactory.Period.Demo, INVITE, 0);
         vm.startPrank(dummy);
-        for (uint256 i; i < 20; i++) registry.recordContribution(u, false);
+        for (uint256 i; i < onTime; i++) registry.recordContribution(u, false);
         vm.stopPrank();
+    }
+
+    function _makeReliable(address u) internal {
+        _setScore(u, 20);
     }
 }

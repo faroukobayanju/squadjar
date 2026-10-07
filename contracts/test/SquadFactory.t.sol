@@ -17,7 +17,6 @@ contract SquadFactoryTest is Base {
         assertEq(Squad(s).inviteHash(), INVITE);
         assertEq(Squad(s).roundLength(), 604800);
         assertEq(Squad(s).grace(), 43200);
-        assertEq(Squad(s).depositWindow(), 172800);
     }
 
     function test_createEmitsOrganizerMembership() public {
@@ -57,10 +56,12 @@ contract SquadFactoryTest is Base {
     }
 
     function test_timingPresets() public view {
-        (uint32 rl, uint32 g, uint32 dw) = factory.timing(SquadFactory.Period.Demo);
-        assertEq(rl, 300); assertEq(g, 60); assertEq(dw, 300);
-        (rl, g, dw) = factory.timing(SquadFactory.Period.Monthly);
-        assertEq(rl, 2592000); assertEq(g, 172800); assertEq(dw, 259200);
+        (uint32 rl, uint32 g) = factory.timing(SquadFactory.Period.Demo);
+        assertEq(rl, 300); assertEq(g, 60);
+        (rl, g) = factory.timing(SquadFactory.Period.Weekly);
+        assertEq(rl, 604800); assertEq(g, 43200);
+        (rl, g) = factory.timing(SquadFactory.Period.Monthly);
+        assertEq(rl, 2592000); assertEq(g, 172800);
     }
 
     function test_noteMembershipOnlyFromSquads() public {

@@ -7,11 +7,15 @@ import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC2
 import {ITrust, IMembership} from "./ITrust.sol";
 
 /// One squad's jar. No member controls the money once rounds begin.
+/// No deposit to join: when a member collects, part of their payout is held in the jar until they
+/// have paid the rounds they still owe. How much is held depends on their tier at start.
 contract Squad {
     using SafeERC20 for IERC20;
 
+    /// Depositing is never entered; it stays so the app's state numbers do not shift.
     enum State { Open, Depositing, Active, Completed, Cancelled }
 
+    uint8 public constant BUILDING = 1;
     uint8 public constant RELIABLE = 2;
     uint256 public constant TRUST_MIN_MEMBERS = 5;
     uint256 public constant TRUST_MIN_CONTRIBUTION = 1000e18;
@@ -25,41 +29,36 @@ contract Squad {
     uint8 public immutable maxMembers;
     uint32 public immutable roundLength;
     uint32 public immutable grace;
-    uint32 public immutable depositWindow;
     bytes32 public immutable inviteHash;
-    uint64 public immutable firstDeadline; // round 1 deadline anchor (weekday/payday); 0 = activation + roundLength
+    uint64 public immutable firstDeadline; // round 1 deadline anchor (weekday/payday); 0 = start + roundLength
 
     State public state;
     address[] internal members; // join order while Open; turn order (index + 1) after start
     mapping(address => bool) public isMember;
     mapping(address => uint8) public turnOf;
-    mapping(address => uint256) public locked;
-    mapping(address => uint256) public required;
-    mapping(address => bool) public stoppedPaying;
+    mapping(address => uint8) public allowanceOf; // % of a payout's remaining obligation not held: 0, 25 or 50
+    mapping(address => uint256) public locked; // held from this member's payout; covers their later misses
     mapping(address => uint8) public missCount;
-    mapping(address => uint8) public refillBy; // round by whose settlement the deposit must be refilled; 0 = none
-    mapping(address => uint256) public owed; // fronted for this member, repaid from their payout
-    mapping(address => uint256) public coverPerRound; // for members who stopped paying after collecting
+    mapping(address => uint256) public owed; // debt: missed contributions not yet paid back
+    mapping(address => uint256) public credit; // what this collector was paid short and is still owed
     mapping(uint256 => mapping(address => bool)) public paid;
-    mapping(address => bool) public cappedAtStart; // Reliable when the squad started (tier is not re-read later)
 
-    bool public countsForTrust; // set at activation: n >= 5 and c >= 1000e18
-    uint64 public depositDeadline;
+    bool public countsForTrust; // set at start: n >= 5, c >= 1000e18, Weekly or longer
     uint64 public roundDeadline;
     uint8 public currentRound;
     uint8 public paidCount;
-    uint8 public activeCount;
     uint256 public roundContributions;
     uint256 public totalLocked;
-    uint256 public frontedTotal;
 
     event Joined(address indexed member);
     event Left(address indexed member);
     event Cancelled();
     event Started(address[] order);
-    event DepositLocked(address indexed member, uint256 amount);
-    event Dropped(address indexed member);
     event Activated(uint64 roundDeadline);
+    event Contributed(address indexed member, uint8 round, bool late);
+    event RoundSettled(uint8 round, address indexed collector, uint256 amount, address[] missed);
+    event PayoutHeld(address indexed member, uint8 round, uint256 amount);
+    event Completed();
 
     error WrongState(State current);
     error NotOrganizer();
@@ -70,7 +69,11 @@ contract Squad {
     error BadInvite();
     error TooFewMembers();
     error NothingOwed();
-    error DepositWindowOpen();
+    error AlreadyPaid();
+    error PastGrace();
+    error TooEarly(uint64 settleableAfter);
+    error RoundNotOpen(uint64 opensAt);
+    error AlreadySettled();
 
     struct SquadView {
         State state;
@@ -78,35 +81,20 @@ contract Squad {
         uint8 maxMembers;
         uint32 roundLength;
         uint32 grace;
-        uint64 depositDeadline;
         uint64 roundDeadline;
         uint8 currentRound;
         address organizer;
         address[] members;
         uint256[] locked;
-        uint256[] required;
+        uint8[] allowance;
         bool[] paidThisRound;
-        bool[] stopped;
         uint8[] misses;
-        uint8[] refillBy;
         uint256[] owed;
+        uint256[] credit;
         bool countsForTrust;
-        uint8 activeCount;
         uint256 totalLocked;
         uint64 settleableAfter;
     }
-
-    event Contributed(address indexed member, uint8 round, bool late);
-    event RoundSettled(uint8 round, address indexed collector, uint256 amount, address[] missed);
-    event StoppedPaying(address indexed member);
-    event Completed();
-
-    error AlreadyPaid();
-    error PastGrace();
-    error MemberStoppedPaying();
-    error TooEarly(uint64 settleableAfter);
-    error RoundNotOpen(uint64 opensAt);
-    error AlreadySettled();
 
     modifier inState(State s) {
         if (state != s) revert WrongState(state);
@@ -127,7 +115,6 @@ contract Squad {
         uint8 _maxMembers,
         uint32 _roundLength,
         uint32 _grace,
-        uint32 _depositWindow,
         bytes32 _inviteHash,
         uint64 _firstDeadline
     ) {
@@ -139,7 +126,6 @@ contract Squad {
         maxMembers = _maxMembers;
         roundLength = _roundLength;
         grace = _grace;
-        depositWindow = _depositWindow;
         inviteHash = _inviteHash;
         firstDeadline = _firstDeadline;
         members.push(_organizer);
@@ -200,87 +186,25 @@ contract Squad {
         emit Left(m);
     }
 
-    function cancel() external {
-        if (msg.sender != organizer || !isMember[organizer]) revert NotOrganizer(); // a dropped organizer has no powers
-        if (state != State.Open && state != State.Depositing) revert WrongState(state);
-        _cancelAndRefund();
-    }
-
-    function _cancelAndRefund() internal {
-        uint256 n = members.length;
-        for (uint256 i; i < n; i++) _refund(members[i]);
+    /// The jar holds no money while Open, so there is nothing to refund.
+    function cancel() external inState(State.Open) {
+        if (msg.sender != organizer) revert NotOrganizer();
         state = State.Cancelled;
         emit Cancelled();
     }
 
-    function _refund(address m) internal {
-        uint256 x = locked[m];
-        if (x == 0) return;
-        locked[m] = 0;
-        totalLocked -= x;
-        token.safeTransfer(m, x);
-    }
-
     function start() external inState(State.Open) {
         if (msg.sender != organizer) revert NotOrganizer();
-        if (members.length < 3) revert TooFewMembers();
-        _sortByTrust();
-        for (uint256 i; i < members.length; i++) cappedAtStart[members[i]] = trust.tier(members[i]) == RELIABLE;
-        _assignTurnsAndDeposits();
-        state = State.Depositing;
-        depositDeadline = uint64(block.timestamp + depositWindow);
-        emit Started(members);
-    }
-
-    function _requiredDepositFor(address m, uint256 n, uint256 p) internal view returns (uint256) {
-        uint256 c = contribution;
-        uint256 full = c * (n - p);
-        if (cappedAtStart[m] && full > 3 * c) full = 3 * c;
-        return full < c ? c : full;
-    }
-
-    function lockDeposit() external inState(State.Depositing) onlyMember {
-        if (locked[msg.sender] >= required[msg.sender]) revert NothingOwed();
-        uint256 amt = required[msg.sender] - locked[msg.sender];
-        _pullDeposit(msg.sender, amt);
-        emit DepositLocked(msg.sender, amt);
-        if (_allLocked()) _activate();
-    }
-
-    function finalizeDeposits() external inState(State.Depositing) {
-        if (block.timestamp <= depositDeadline) revert DepositWindowOpen();
         uint256 n = members.length;
-        address[] memory kept = new address[](n);
-        uint256 k;
+        if (n < 3) revert TooFewMembers();
+        _sortByTrust();
         for (uint256 i; i < n; i++) {
             address m = members[i];
-            if (locked[m] >= required[m]) {
-                kept[k++] = m;
-            } else {
-                _refund(m);
-                isMember[m] = false;
-                factory.noteMembership(m, false);
-                emit Dropped(m);
-            }
+            turnOf[m] = uint8(i + 1);
+            uint8 t = trust.tier(m); // fixed at start, so a tier change mid-squad can't be gamed
+            allowanceOf[m] = t == RELIABLE ? 50 : t == BUILDING ? 25 : 0;
         }
-        delete members;
-        for (uint256 i; i < k; i++) members.push(kept[i]);
-        if (k < 3) {
-            _cancelAndRefund();
-            return;
-        }
-        _assignTurnsAndDeposits();
-        for (uint256 i; i < k; i++) {
-            address m = members[i];
-            if (locked[m] > required[m]) {
-                uint256 x = locked[m] - required[m];
-                locked[m] = required[m];
-                totalLocked -= x;
-                token.safeTransfer(m, x);
-            }
-        }
-        // Dropping members only moves turns up in a smaller squad, so c*(n-p) never rises
-        // and the cap was fixed at start: every kept member is fully locked.
+        emit Started(members);
         _activate();
     }
 
@@ -309,24 +233,6 @@ contract Squad {
         }
     }
 
-    function _assignTurnsAndDeposits() internal {
-        uint256 n = members.length;
-        for (uint256 i; i < n; i++) {
-            address m = members[i];
-            turnOf[m] = uint8(i + 1);
-            required[m] = _requiredDepositFor(m, n, i + 1);
-        }
-        activeCount = uint8(n);
-    }
-
-    function _allLocked() internal view returns (bool) {
-        uint256 n = members.length;
-        for (uint256 i; i < n; i++) {
-            if (locked[members[i]] < required[members[i]]) return false;
-        }
-        return true;
-    }
-
     function _activate() internal {
         state = State.Active;
         // Demo squads (5-minute rounds) never write trust: otherwise sybils farm Reliable in an hour.
@@ -334,23 +240,16 @@ contract Squad {
             && roundLength >= TRUST_MIN_ROUND_LENGTH;
         currentRound = 1;
         uint64 d = firstDeadline;
-        // Keep the chosen weekday/time: if activation ran past the anchor, roll forward whole rounds.
+        // Keep the chosen weekday/time: if the squad started past the anchor, roll forward whole rounds.
         if (d == 0) d = uint64(block.timestamp + roundLength);
         else if (d <= block.timestamp) d += uint64(((block.timestamp - d) / roundLength + 1) * roundLength);
-        // Round 1 gets at least half a round, so the last member to lock can't make it seconds long.
+        // Round 1 gets at least half a round, so a late start can't make it seconds long.
         if (d < block.timestamp + roundLength / 2) d += roundLength;
         roundDeadline = d;
         emit Activated(roundDeadline);
     }
 
-    function _pullDeposit(address m, uint256 amt) internal {
-        token.safeTransferFrom(m, address(this), amt);
-        locked[m] += amt;
-        totalLocked += amt;
-    }
-
     function contribute() external inState(State.Active) onlyMember {
-        if (stoppedPaying[msg.sender]) revert MemberStoppedPaying();
         uint8 r = currentRound;
         if (paid[r][msg.sender]) revert AlreadyPaid();
         if (block.timestamp > settleableAfter()) revert PastGrace();
@@ -364,16 +263,7 @@ contract Squad {
         bool late = block.timestamp > roundDeadline;
         if (countsForTrust) trust.recordContribution(msg.sender, late);
         emit Contributed(msg.sender, r, late);
-        if (paidCount == activeCount) _settle();
-    }
-
-    function refillDeposit() external inState(State.Active) onlyMember {
-        if (stoppedPaying[msg.sender]) revert MemberStoppedPaying();
-        if (locked[msg.sender] >= required[msg.sender]) revert NothingOwed();
-        uint256 amt = required[msg.sender] - locked[msg.sender];
-        _pullDeposit(msg.sender, amt);
-        refillBy[msg.sender] = 0;
-        emit DepositLocked(msg.sender, amt);
+        if (paidCount == members.length) _settle();
     }
 
     /// Timestamp after which settleRound works even if not everyone has paid.
@@ -386,7 +276,7 @@ contract Squad {
         if (state == State.Completed || (state == State.Active && round < currentRound)) revert AlreadySettled();
         if (state != State.Active) revert WrongState(state);
         if (round > currentRound) revert TooEarly(settleableAfter());
-        if (paidCount < activeCount && block.timestamp <= settleableAfter()) revert TooEarly(settleableAfter());
+        if (paidCount < members.length && block.timestamp <= settleableAfter()) revert TooEarly(settleableAfter());
         _settle();
     }
 
@@ -394,55 +284,36 @@ contract Squad {
         uint8 r = currentRound;
         uint256 n = members.length;
         uint256 c = contribution;
-        uint256 payout = roundContributions;
+        uint256 pool = roundContributions;
+        address collector = members[r - 1];
         address[] memory missed = new address[](n);
         uint256 mc;
 
         for (uint256 i; i < n; i++) {
             address m = members[i];
             if (paid[r][m]) continue;
-            // Stopped paying = still owes a refill from an earlier miss AND missed again.
-            if (!stoppedPaying[m] && refillBy[m] != 0 && refillBy[m] <= r && locked[m] < required[m]) {
-                _stop(m, r, n);
-            }
             missed[mc++] = m;
-            if (!stoppedPaying[m]) {
-                if (countsForTrust) trust.recordMiss(m);
-                missCount[m]++;
-                refillBy[m] = r + 1;
-                payout += _cover(m, c, turnOf[m] >= r);
-            } else if (turnOf[m] >= r) {
-                payout += _cover(m, c, true);
-            } else {
-                uint256 cap = r == n ? c : (coverPerRound[m] < c ? coverPerRound[m] : c);
-                payout += _cover(m, cap, false);
-            }
+            missCount[m]++;
+            if (countsForTrust) trust.recordMiss(m);
         }
 
-        address collector = members[r - 1];
-        uint256 gross = payout;
-        uint256 repay = owed[collector] < gross ? owed[collector] : gross;
-        if (repay > 0) {
-            owed[collector] -= repay;
-            frontedTotal -= repay;
-            gross -= repay;
-        }
-        if (stoppedPaying[collector]) {
-            uint256 w = c * (n - r);
-            if (w > gross) w = gross;
-            locked[collector] += w;
-            totalLocked += w;
-            gross -= w;
-            coverPerRound[collector] = c;
+        // Hold back what the collector still owes, less their tier's allowance.
+        uint256 held = c * (n - r) * (100 - allowanceOf[collector]) / 100;
+        if (held > pool) held = pool;
+        if (held > 0) {
+            locked[collector] += held;
+            totalLocked += held;
+            pool -= held;
+            emit PayoutHeld(collector, r, held);
         }
 
         roundContributions = 0;
         paidCount = 0;
-        if (gross > 0) token.safeTransfer(collector, gross);
+        if (pool > 0) token.safeTransfer(collector, pool);
 
         address[] memory missedList = new address[](mc);
         for (uint256 i; i < mc; i++) missedList[i] = missed[i];
-        emit RoundSettled(r, collector, gross, missedList);
+        emit RoundSettled(r, collector, pool, missedList);
 
         if (r == n) {
             _finish();
@@ -457,80 +328,18 @@ contract Squad {
         }
     }
 
-    /// Free jar money that is not already fronted out. Covers and fronts both spend it,
-    /// so a settle can never promise more than the jar actually holds.
-    function _headroom() internal view returns (uint256) {
-        return totalLocked > frontedTotal ? totalLocked - frontedTotal : 0;
-    }
-
-    /// Takes up to `amount` from m's deposit; optionally fronts the rest from jar liquidity.
-    function _cover(address m, uint256 amount, bool canFront) internal returns (uint256 added) {
-        uint256 cov = locked[m] < amount ? locked[m] : amount;
-        uint256 h = _headroom();
-        if (cov > h) cov = h;
-        locked[m] -= cov;
-        totalLocked -= cov;
-        added = cov;
-        if (canFront && cov < amount) {
-            h = _headroom();
-            uint256 f = amount - cov < h ? amount - cov : h;
-            frontedTotal += f;
-            owed[m] += f;
-            added += f;
-        }
-    }
-
-    function _stop(address m, uint8 r, uint256 n) internal {
-        if (countsForTrust) trust.recordMiss(m); // the stopping round is a miss too
-        stoppedPaying[m] = true;
-        activeCount--;
-        if (turnOf[m] < r) coverPerRound[m] = locked[m] / (n - r + 1);
-        emit StoppedPaying(m);
-    }
-
-    /// Ends the squad. Pays only from what the jar actually holds, so it can never revert:
-    /// if unrepaid fronting left the jar short, refunds are scaled down pro rata.
+    /// Ends the squad and returns every member's held money.
     function _finish() internal {
-        uint256 n = members.length;
-        uint256 sumKept; // deposits owed back to members still paying
-        uint256 honest;
-        uint256 payers; // members still paying
-        address lastPayer;
-        for (uint256 i; i < n; i++) {
-            address m = members[i];
-            if (stoppedPaying[m]) {
-                totalLocked -= locked[m]; // forfeited; stays in the jar for the honest pool
-                locked[m] = 0;
-            } else {
-                sumKept += locked[m];
-                lastPayer = m;
-                payers++;
-                if (missCount[m] == 0) honest++;
-            }
-        }
         state = State.Completed;
-        frontedTotal = 0;
-
-        uint256 avail = token.balanceOf(address(this));
-        uint256 pool = avail > sumKept ? avail - sumKept : 0; // forfeits net of unrepaid fronting
-        // Forfeits go to members still paying with zero misses. If none has zero misses, every member
-        // still paying shares them equally, so one arbitrary peer never takes the whole pool.
-        uint256 sharers = honest > 0 ? honest : payers;
-        uint256 share = sharers > 0 ? pool / sharers : 0;
-
+        uint256 n = members.length;
         for (uint256 i; i < n; i++) {
             address m = members[i];
-            if (stoppedPaying[m]) continue;
-            uint256 amt = locked[m];
+            uint256 x = locked[m];
             locked[m] = 0;
-            totalLocked -= amt;
-            if (avail < sumKept) amt = (amt * avail) / sumKept;
-            if (honest == 0 || missCount[m] == 0) amt += share;
+            totalLocked -= x;
             if (missCount[m] == 0 && countsForTrust) trust.recordCompleted(m);
-            if (amt > 0) token.safeTransfer(m, amt);
+            if (x > 0) token.safeTransfer(m, x);
         }
-        uint256 dust = token.balanceOf(address(this));
-        if (dust > 0) token.safeTransfer(lastPayer != address(0) ? lastPayer : members[n - 1], dust);
         emit Completed();
     }
 
@@ -541,32 +350,28 @@ contract Squad {
         v.maxMembers = maxMembers;
         v.roundLength = roundLength;
         v.grace = grace;
-        v.depositDeadline = depositDeadline;
         v.roundDeadline = roundDeadline;
         v.currentRound = currentRound;
         v.organizer = organizer;
         v.members = new address[](n);
         v.locked = new uint256[](n);
-        v.required = new uint256[](n);
+        v.allowance = new uint8[](n);
         v.paidThisRound = new bool[](n);
-        v.stopped = new bool[](n);
         v.misses = new uint8[](n);
-        v.refillBy = new uint8[](n);
         v.owed = new uint256[](n);
+        v.credit = new uint256[](n);
         v.countsForTrust = countsForTrust;
-        v.activeCount = activeCount;
         v.totalLocked = totalLocked;
         v.settleableAfter = settleableAfter();
         for (uint256 i; i < n; i++) {
             address m = members[i];
             v.members[i] = m;
             v.locked[i] = locked[m];
-            v.required[i] = required[m];
+            v.allowance[i] = allowanceOf[m];
             v.paidThisRound[i] = paid[currentRound][m];
-            v.stopped[i] = stoppedPaying[m];
             v.misses[i] = missCount[m];
-            v.refillBy[i] = refillBy[m];
             v.owed[i] = owed[m];
+            v.credit[i] = credit[m];
         }
     }
 }
