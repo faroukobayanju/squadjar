@@ -409,4 +409,6 @@ export const ig = {
   errSquadSize: "Otu bụ mmadụ 3 ruo 20.",
   errSendSelf: "Ị nweghị ike iziga onwe gị ego.",
   errNotInDemo: "Ọ dịbeghị na ngosi.",
+  tryReadyTitle: "Otu ngosi na-akwado.",
+  tryReadyBody: "Nwaa ọzọ mgbe otu nkeji gachara.",
 } satisfies Record<keyof typeof en, string>;

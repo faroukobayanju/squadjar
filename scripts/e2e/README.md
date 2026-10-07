@@ -16,3 +16,5 @@ Scenarios (expected numbers are worked out from `Squad.sol` in comments next to 
 8. `firstDeadline` keeps its weekday and time after a late activation.
 
 Against an anvil you already started: `RPC_URL=http://127.0.0.1:8547 node scripts/e2e/run.mjs`.
+
+`scripts/e2e/judge.sh` plays a judge through a demo squad with the bot planner (`app/lib/judge-plan.ts`): Ada creates, Tunde joins, the judge joins, locks and pays, the squad completes and a fresh demo squad opens. One loop = one `/api/cron/judge` run, 60 seconds apart.

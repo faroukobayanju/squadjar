@@ -62,3 +62,9 @@ create table if not exists notifications (
   primary key (member, squad, round, stage, channel)
 );
 create index if not exists notifications_member_sent on notifications (member, sent_at desc);
+create table if not exists judge_squads (
+  address text primary key references squads(address),
+  invite_code text not null,
+  done boolean not null default false,
+  created_at timestamptz not null default now()
+);
