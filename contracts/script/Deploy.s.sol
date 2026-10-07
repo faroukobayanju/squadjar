@@ -13,12 +13,17 @@ contract Deploy is Script {
     /// Other chains sign with a Foundry keystore, never a raw key:
     /// forge script script/Deploy.s.sol --rpc-url monad_testnet --account <keystore> --sender <address> --broadcast
     ///
-    /// Set TOKEN=<address> to keep an already-deployed sNGN token and replace only
-    /// the trust registry and squad factory.
+    /// Set TOKEN=<address> to keep an already-deployed sNGN token.
+    /// Set REGISTRY=<address> to keep an already-deployed trust registry (and everyone's trust history).
+    /// The deployer must own a reused registry, since the new factory is allowlisted with setWriter.
     function run() external {
         address existing = vm.envOr("TOKEN", address(0));
         if (existing != address(0)) {
             require(existing.code.length > 0, "TOKEN has no code on this chain");
+        }
+        address existingRegistry = vm.envOr("REGISTRY", address(0));
+        if (existingRegistry != address(0)) {
+            require(existingRegistry.code.length > 0, "REGISTRY has no code on this chain");
         }
 
         address deployer;
@@ -31,7 +36,8 @@ contract Deploy is Script {
             vm.startBroadcast();
         }
         AjoNGN token = existing == address(0) ? new AjoNGN() : AjoNGN(existing);
-        TrustRegistry registry = new TrustRegistry(deployer);
+        TrustRegistry registry =
+            existingRegistry == address(0) ? new TrustRegistry(deployer) : TrustRegistry(existingRegistry);
         SquadFactory factory = new SquadFactory(token, registry);
         registry.setWriter(address(factory), true);
         vm.stopBroadcast();
@@ -48,7 +54,7 @@ contract Deploy is Script {
         vm.writeJson(json, path);
 
         console2.log(existing == address(0) ? "token" : "reused token", address(token));
-        console2.log("registry", address(registry));
+        console2.log(existingRegistry == address(0) ? "registry" : "reused registry", address(registry));
         console2.log("factory", address(factory));
         console2.log("wrote", path);
     }

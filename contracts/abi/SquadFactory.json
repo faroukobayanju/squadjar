@@ -169,11 +169,6 @@
         "name": "grace",
         "type": "uint32",
         "internalType": "uint32"
-      },
-      {
-        "name": "depositWindow",
-        "type": "uint32",
-        "internalType": "uint32"
       }
     ],
     "stateMutability": "pure"

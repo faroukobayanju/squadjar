@@ -25,9 +25,6 @@ _Avoid_: Admin, treasurer, owner, class rep
 **Leaving**:
 A member exiting a squad before rounds begin, with no penalty.
 
-**Dropped**:
-A member removed before rounds begin for not locking their deposit in time, with no penalty.
-
 ### Money and rounds
 
 **Contribution**:
@@ -50,9 +47,9 @@ _Avoid_: Recipient, winner
 A member's fixed position in the payout order (turn 1 collects in round 1).
 _Avoid_: Slot, position, rank
 
-**Deposit**:
-Refundable money a member locks before rounds begin, used to cover their missed contributions.
-_Avoid_: Stake, collateral, security
+**Held**:
+The part of a collector's payout kept in the jar until they have paid the rounds they still owe. It covers their own later misses and comes back to them at the end. How much is held depends on their tier.
+_Avoid_: Deposit, stake, collateral, locked funds
 
 **Miss**:
 A contribution not paid by the end of the round's grace window.
@@ -61,14 +58,18 @@ _Avoid_: Default, skip
 **Late**:
 A contribution paid after the round deadline but inside the grace window.
 
-**Stopped paying**:
-The status of a member treated as missing all remaining rounds, because they missed and did not refill their deposit.
-_Avoid_: Defaulter, default, runaway, scammer
+**Debt**:
+A missed contribution that the member's held money did not cover and that they have not paid back yet. Paying back sends it to the collector who was paid short.
+_Avoid_: Loan, arrears, default
+
+**Credit**:
+The amount a collector was paid short because of someone's debt, and is still owed.
+_Avoid_: Balance, refund, IOU
 
 ### Trust
 
 **Trust score**:
-One score per person, built from their payment history across every squad they have been in. It decides turn order and deposit size. Leaving and being dropped do not affect it.
+One score per person, built from their payment history across every squad they have been in. It decides turn order and how much of a payout is held. Leaving does not affect it.
 _Avoid_: Credit score, reputation, rating
 
 **Tier**:
