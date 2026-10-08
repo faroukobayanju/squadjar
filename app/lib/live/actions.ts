@@ -3,7 +3,7 @@
 // Live writes (sponsored, via useWrite) and the signed-in API calls that go with them.
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { usePrivy } from "@privy-io/react-auth";
-import { encodeAbiParameters, keccak256, maxUint256, parseEventLogs, toHex, type Address, type Hex } from "viem";
+import { encodeAbiParameters, keccak256, maxUint256, parseEventLogs, toHex, type Hex } from "viem";
 import { factoryAbi, squadAbi, tokenAbi } from "./abi";
 import { FACTORY, TOKEN, fromUnits, publicClient, toUnits } from "./chain";
 import { useMyAccount } from "./account";
@@ -37,11 +37,10 @@ export function useLiveActions(): Actions {
       const token = await getAccessToken();
       return fetch(url, { ...init, headers: { "content-type": "application/json", authorization: `Bearer ${token}`, ...init?.headers } });
     };
-    // Money-moving calls (lockDeposit, refillDeposit) first make sure this squad may pull sNGN; one approve per squad, later calls only read the allowance.
-    const onSquad = async (slug: string, functionName: "leave" | "start" | "cancel" | "lockDeposit" | "refillDeposit") => {
+    // Money-moving calls (contribute, payBack) first make sure this squad may pull sNGN; one approve per squad, later calls only read the allowance.
+    const onSquad = async (slug: string, functionName: "leave" | "start" | "cancel" | "payBack") => {
       const { address } = await squadAt(slug);
-      const pulls = functionName === "lockDeposit" || functionName === "refillDeposit";
-      await write({ address, abi: squadAbi, functionName }, pulls ? { approve: { spender: address, ...MAX } } : undefined);
+      await write({ address, abi: squadAbi, functionName }, functionName === "payBack" ? { approve: { spender: address, ...MAX } } : undefined);
       await refreshAll();
     };
 
@@ -89,7 +88,7 @@ export function useLiveActions(): Actions {
         if (!created) throw new Error("SquadCreated log missing");
         const squad = created.args.squad;
         // The squad exists now, so nothing below may throw (a retry would create a second one).
-        // A failed approve is recovered by the approve-if-needed on lockDeposit / contribute / refill.
+        // A failed approve is recovered by the approve-if-needed on contribute / payBack.
         await write({ address: TOKEN, abi: tokenAbi, functionName: "approve", args: [squad, maxUint256] }).catch(() => {});
         try {
           localStorage.setItem(pendingKey(squad), JSON.stringify({ address: squad, name, code }));
@@ -115,15 +114,13 @@ export function useLiveActions(): Actions {
       leave: (slug) => onSquad(slug, "leave"),
       start: (slug) => onSquad(slug, "start"),
       cancel: (slug) => onSquad(slug, "cancel"),
-      lockDeposit: (slug) => onSquad(slug, "lockDeposit"),
-      refill: (slug) => onSquad(slug, "refillDeposit"),
+      payBack: (slug) => onSquad(slug, "payBack"),
 
       // ponytail: fallback for when the relayer isn't running; any member can settle, the fee is sponsored.
       settle: async (slug) => {
         const { address } = await squadAt(slug);
         const v = await publicClient.readContract({ address, abi: squadAbi, functionName: "getState" });
         if (v.state === 2) await write({ address, abi: squadAbi, functionName: "settleRound", args: [v.currentRound] });
-        else if (v.state === 1) await write({ address, abi: squadAbi, functionName: "finalizeDeposits" });
         await refreshAll();
       },
 
@@ -134,18 +131,9 @@ export function useLiveActions(): Actions {
         await refreshAll();
         if (!settled || !me || settled.args.collector.toLowerCase() !== me.toLowerCase()) return { settled: false };
         const { round, amount } = settled.args;
-        // The money has moved: nothing below may throw. If the reads fail, covered is 0.
-        let covered = 0;
-        try {
-          const view = await publicClient.readContract({ address, abi: squadAbi, functionName: "getState" });
-          const paid = await publicClient.multicall({
-            allowFailure: false,
-            contracts: view.members.map((m: Address) => ({ address, abi: squadAbi, functionName: "paid", args: [BigInt(round), m] }) as const),
-          });
-          // ponytail: covered comes from the net RoundSettled amount (after owed repayment), so it can under-state the deposit share
-          covered = Math.max(0, fromUnits(amount - BigInt(paid.filter(Boolean).length) * view.contribution)); // the rest came out of deposits
-        } catch {}
-        const payout: Payout = { slug, squadName: name, round, amount: fromUnits(amount), covered, at: Date.now() };
+        // amount is what reached me now; PayoutHeld (same tx) is what waits in the jar.
+        const [held] = parseEventLogs({ abi: squadAbi, eventName: "PayoutHeld", logs: receipt.logs });
+        const payout: Payout = { slug, squadName: name, round, amount: fromUnits(amount), held: held ? fromUnits(held.args.amount) : 0, at: Date.now() };
         try {
           sessionStorage.setItem(PAYOUT_KEY, JSON.stringify(payout));
         } catch {
@@ -243,8 +231,9 @@ export function useLiveRemind(): (slug: string) => Promise<string | null> {
   };
 }
 
-export type Nudge = { squad: string; slug: string; squadName: string; body: string; sentAt: string };
-/** My in-app pay nudges, newest first, read once per mount. */
+/** `stage`: t24h / t1h / missed are pay nudges (link to Pay); the rest are settlement alerts (link to the squad). */
+export type Nudge = { squad: string; slug: string; squadName: string; stage: string; body: string; sentAt: string };
+/** My in-app pay nudges and alerts, newest first, read once per mount. */
 export function useLiveNotifications(): Nudge[] | undefined {
   const { address: me } = useMyAccount();
   return useAuthedOnce<Nudge[]>("/api/notifications", me ? `notices:${me}` : null) ?? undefined;

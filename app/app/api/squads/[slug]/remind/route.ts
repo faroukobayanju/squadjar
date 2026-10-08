@@ -16,7 +16,7 @@ export const POST = route(async (req: Request, ctx: { params: Promise<{ slug: st
   const members = v.members.map((m) => m.toLowerCase());
   if (!members.includes(me.address)) return bad("forbidden", 403);
   if (v.state !== 2) return bad("not active", 409); // 2 = Active: only then does anyone owe a contribution
-  const waiting = members.filter((m, i) => !v.paidThisRound[i] && !v.stopped[i] && m !== me.address);
+  const waiting = members.filter((m, i) => !v.paidThisRound[i] && m !== me.address);
   if (!waiting.length) return bad("everyone has paid", 409);
 
   const who = await people([...waiting, members[v.currentRound - 1], me.address]); // turn order: index r-1 collects round r

@@ -72,7 +72,16 @@ async function createNext(): Promise<Action> {
 }
 
 type Row = { address: Address; slug: string; invite_code: Hex };
-const openRows = async () => (await sql`select j.address, s.slug, j.invite_code from judge_squads j join squads s using (address) where not j.done order by j.created_at`) as Row[];
+const allRows = async () => (await sql`select j.address, s.slug, j.invite_code from judge_squads j join squads s using (address) where not j.done order by j.created_at`) as Row[];
+const isOurs = (address: Address) => publicClient.readContract({ address: FACTORY, abi: factoryAbi, functionName: "isSquad", args: [address] });
+/** Unfinished rows from this factory. Rows from an older factory (its ABI no longer decodes) are marked done. */
+async function openRows(): Promise<Row[]> {
+  const rows = await allRows();
+  const ours = await Promise.all(rows.map((r) => isOurs(r.address)));
+  const old = rows.filter((_, i) => !ours[i]).map((r) => r.address);
+  if (old.length) await sql`update judge_squads set done = true where address = any(${old})`;
+  return rows.filter((_, i) => ours[i]);
+}
 const viewOf = (address: Address) => publicClient.readContract({ address, abi: squadAbi, functionName: "getState" }) as Promise<JudgeView>;
 
 // One run at a time per instance, one send at a time inside a run, so a bot never reuses a nonce.
@@ -122,7 +131,7 @@ export function runJudge(): Promise<{ actions: Action[] }> {
       const { bot, fn, approve } = step;
       await attempt({ do: fn, by: NAMES[bot], squad: row.slug }, async () => {
         if (approve > BigInt(0)) await approveIfNeeded(bot, row.address, approve);
-        const args: Record<BotFn, readonly unknown[] | undefined> = { join: [row.invite_code], start: undefined, lockDeposit: undefined, contribute: undefined };
+        const args: Record<BotFn, readonly unknown[] | undefined> = { join: [row.invite_code], start: undefined, contribute: undefined, payBack: undefined };
         return send(bot, { address: row.address, abi: squadAbi, functionName: fn, args: args[fn] });
       });
     }

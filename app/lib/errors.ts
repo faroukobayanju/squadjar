@@ -11,7 +11,11 @@ export const KNOWN: Record<string, Key> = {
   AlreadyMember: "errAlreadyMember",
   TooFewMembers: "errTooFewMembers",
   NothingOwed: "errNothingOwed",
-  MemberStoppedPaying: "errStoppedPaying",
+  WrongState: "errWrongState",
+  NotMember: "errNotMember",
+  NotOrganizer: "errNotOrganizer",
+  OrganizerCannotLeave: "errOrganizerCannotLeave",
+  AlreadySettled: "errAlreadySettled",
   FaucetCapExceeded: "errTopUpCap",
   ERC20InsufficientBalance: "errNotEnough",
 };

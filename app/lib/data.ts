@@ -11,7 +11,7 @@ import type { PayRecord } from "./record-line";
 
 export type { Member, Payout, Period, Person, Squad, SquadState, Tier } from "./types";
 export { isLive };
-export { ME, DemoError, collectorOf, payoutAmount, myTurn, squadBySlug } from "./store";
+export { ME, DemoError, collectorOf, heldAtMyTurn, payoutAmount, myTurn, squadBySlug } from "./store";
 
 export type Me = { name: string; tier: Tier; score: number; onTime: number; balance: number };
 
@@ -61,8 +61,7 @@ const demoActions: Actions = {
   join: notInDemo,
   leave: notInDemo,
   start: notInDemo,
-  lockDeposit: notInDemo,
-  refill: notInDemo,
+  payBack: async (slug) => (await pause(650), store.payBack(slug)),
   cancel: notInDemo,
   settle: async () => {},
 };

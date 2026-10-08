@@ -6,11 +6,10 @@ export type AutopayView = {
   roundLength: number;
   members: readonly string[];
   paidThisRound: readonly boolean[];
-  stopped: readonly boolean[];
 };
 
 export function dueMembers(v: AutopayView, enabled: readonly string[], nowSec: bigint): string[] {
   if (v.state !== 2 || nowSec < v.roundDeadline - BigInt(v.roundLength)) return [];
   const want = new Set(enabled.map((m) => m.toLowerCase()));
-  return v.members.filter((m, i) => want.has(m.toLowerCase()) && !v.paidThisRound[i] && !v.stopped[i]);
+  return v.members.filter((m, i) => want.has(m.toLowerCase()) && !v.paidThisRound[i]);
 }
