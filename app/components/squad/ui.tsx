@@ -7,7 +7,7 @@ import { AppShell } from "@/components/shell";
 import { friendlyError } from "@/lib/errors";
 import { naira } from "@/lib/format";
 import type { Squad } from "@/lib/data";
-import { rich, useT, type Key } from "@/lib/i18n";
+import { rich, useT } from "@/lib/i18n";
 
 const PRESS = "flex w-full items-center justify-center rounded-lg active:scale-[0.98] disabled:opacity-70";
 export const INK_BTN = `${PRESS} min-h-14 bg-ink font-semibold text-manila`;
@@ -127,6 +127,3 @@ export function Notice({ title, body }: { title: string; body: string }) {
     </AppShell>
   );
 }
-
-/** How long members get to lock deposits after start (Squad.depositWindow per period). */
-export const DEPOSIT_WINDOW: Record<Squad["period"], Key> = { Demo: "windowDemo", Weekly: "windowWeekly", Monthly: "windowMonthly" };

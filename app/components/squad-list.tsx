@@ -73,19 +73,8 @@ function SquadRow({ squad: q }: { squad: Squad }) {
           {t("rowInviting", { count: q.members.length, max: q.maxMembers })}
         </p>
       )}
-      {q.state === "Depositing" && (
-        <p className="mt-2 flex justify-between gap-3 font-mono text-xs">
-          <span className="text-muted">{t("rowLocking")}</span>
-          {q.myDeposit < q.myRequired ? (
-            <span className="font-medium text-ink">
-              {rich(t("rowLockYours"), { time: <Countdown to={q.depositDeadline} /> })}
-            </span>
-          ) : (
-            <span className="text-stamp">{t("rowDepositIn")}</span>
-          )}
-        </p>
-      )}
       {q.state === "Completed" && <p className="mt-2 font-mono text-xs text-muted">{t("rowCompleted")}</p>}
+      {q.myOwed > 0 && <p className="mt-2 font-mono text-xs font-medium text-bad">{t("rowPayBack", { amount: naira(q.myOwed) })}</p>}
       {q.state === "Cancelled" && <p className="mt-2 font-mono text-xs text-muted">{t("rowCancelled")}</p>}
     </Link>
   );
