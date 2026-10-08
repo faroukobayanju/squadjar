@@ -57,7 +57,7 @@ create index if not exists notifications_member_sent on notifications (member, s
 -- Pay nudges (t24h, t1h, missed) and settlement alerts: debt, covered (held money paid the miss), short (payout short), credit.
 alter table notifications drop constraint if exists notifications_stage_check;
 alter table notifications add constraint notifications_stage_check check (stage in ('t24h','t1h','missed','debt','covered','short','credit'));
--- ref tells apart alerts that share a round (one per CreditPaid log: tx:logIndex); '' for everything else.
+-- ref tells apart alerts that share a round (one per CreditPaid log: tx:logIndex), '' for everything else.
 alter table notifications add column if not exists ref text not null default '';
 alter table notifications drop constraint if exists notifications_pkey;
 alter table notifications add primary key (member, squad, round, stage, channel, ref);
