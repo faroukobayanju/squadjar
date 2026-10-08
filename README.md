@@ -94,12 +94,14 @@ The app has to feel like any normal money app. No new words to learn. It's in En
 - **Jar.** The squad's money. Its own contract holds it, so no member, not even the organizer, can take it out.
 - **Rounds.** Each round every member pays the same **contribution**. When everyone has paid, or the grace period ends, the jar pays the whole **payout** to that round's **collector**. A squad of n members runs n rounds, and everyone collects once.
 - **Turn order by trust score.** Turns are set when the squad starts. Better payment record collects earlier. Ties are broken at random.
-- **Deposit (being removed).** Today each member locks a refundable deposit before round 1. If someone misses, their deposit covers the contribution, so the collector is still paid in full. Deposits come back at the end. We are replacing this with a payout hold-back, so nobody pays a deposit to join (see [section 14](#14-what-well-integrate-next)).
-- **Stopped paying.** A member who misses and doesn't refill is treated as missing all remaining rounds. What they owe is covered, and what's left goes to the members who never missed.
+- **No deposit to join.** Rounds begin as soon as the organizer starts the squad. When it's your turn you get your payout. If you're new, part of it waits in the jar until you've paid your share, then it comes back to you.
+- **Held money.** When you collect, the jar holds back the rounds you still owe, less an allowance from your tier at start: New holds 100%, Building 75%, Reliable 50%. The last turn holds nothing. Held money covers your own later misses and comes back in full at the end.
+- **Debt and pay back.** A miss your held money can't cover becomes debt, and that round's collector is paid that much less for now (their credit). Pay back clears the whole debt at once and the money goes straight to the members who were paid short. If you collect while you still owe, the debt comes out of your payout first. Pay back works after the squad completes too.
+- **Alerts.** When a round settles with a miss, the member who missed gets an in-app alert with what to pay back, and the short-paid collector is told why. They're told again when the money comes back.
 - **Trust score and tiers.** Built from your payments across every squad: on time adds, late and missed subtract, finishing a squad adds. Tiers are New, Building and Reliable. Only real squads count (5+ members, ₦1,000+ contribution, weekly or monthly). Quick demo squads don't.
 - **Auto-pay.** Turn it on and the app pays your contribution when the round opens. The signer it uses can only pay contributions, nothing else.
 - **Reminders.** In-app nudges before a payment is due, and a one-tap WhatsApp reminder for the organizer.
-- **History.** Every add, payment, payout, refund, send and withdrawal, with dates in Nigeria time.
+- **History.** Every add, payment, payout, held amount, held money back, pay back, send and withdrawal, with dates in Nigeria time.
 
 ## 7. Try it (judges)
 
@@ -107,7 +109,7 @@ The app has to feel like any normal money app. No new words to learn. It's in En
 2. Tap **Add money**. This is a test-mode checkout that credits test naira.
 3. Open https://squadjar.vercel.app/try. It takes you to a live demo squad with the invite code filled in. Join it.
 4. Two bot members, Ada and Tunde, are already in the squad. Once you join, they start it and pay every round with you.
-5. Demo rounds are 5 minutes. A full squad takes about 15 to 20 minutes. You'll see: locking your deposit, paying a round, your payout receipt when it's your turn, your deposit coming back, and the history showing who paid.
+5. Demo rounds are 5 minutes. A full squad takes about 15 to 20 minutes. You'll see: round 1 starting right away, paying a round, your payout receipt when it's your turn (what you got now and what waits in the jar), the held money coming back at the end, and the history showing who paid.
 
 All money is test money on Monad testnet.
 
@@ -117,7 +119,7 @@ All money is test money on Monad testnet.
 
 - **Phone.** The app is a Next.js 16 web app that installs to the home screen.
 - **Login and accounts.** Privy handles email and Google login and creates an embedded account for each member. Fees are sponsored, so a new user with no MON can do everything.
-- **Contracts on Monad.** They hold the money, the membership, the turn order, the deposits and the trust record. That's the only source of truth for money.
+- **Contracts on Monad.** They hold the money, the membership, the turn order, held money and debt, and the trust record. That's the only source of truth for money.
 - **Neon Postgres.** Holds display data only: names and usernames, invite codes, notifications, and an index of past activity for the history screen.
 - **Cron jobs.** Every minute: settle rounds whose grace has ended, run auto-pay, send nudges, and keep the judge demo squad going.
 - **Relayer.** A server account that only pokes overdue rounds to settle. It never touches member money. If no relayer is set, members' own apps settle the round when they open it.
@@ -148,7 +150,7 @@ Each squad is its own contract that holds the jar, runs the rounds and pays out.
 ## 11. Testing
 
 - **Contracts:** `cd contracts && forge test` runs 74 tests, including 2 invariant tests that check the jar always balances.
-- **End to end:** `scripts/e2e/run.sh` runs 11 scenarios against the deployed contracts on a Monad testnet fork: happy path, misses, stopped paying, cancelled squads, late settle, trust score and round timing. Every jar ends at ₦0. `scripts/e2e/judge.sh` plays a full demo squad with the bot members. See [scripts/e2e/README.md](scripts/e2e/README.md).
+- **End to end:** `scripts/e2e/run.sh` runs 11 scenarios against the deployed contracts on a Monad testnet fork: happy path, a round 1 miss turning into debt and being paid back, a collector missing their own round, held money covering later misses, debt taken from a payout, cancelled squads, late settle, trust score and round timing. Every jar ends at ₦0. `scripts/e2e/judge.sh` plays a full demo squad with the bot members. See [scripts/e2e/README.md](scripts/e2e/README.md).
 - **App:** `cd app && npx tsc --noEmit && npm run build && npm run check:copy`, plus `node lib/<name>.check.ts` for each logic module.
 
 ## 12. Run it locally
@@ -188,7 +190,6 @@ This is planned for mainnet. None of it is live, and the testnet app charges not
 
 ## 14. What we'll integrate next
 
-- **No deposit to join.** Replace the upfront deposit with a payout hold-back. When it's your turn you get your payout. If you're new, part of it waits in the jar until you've paid your share, then comes back to you. Reliable members get it all at once (issue #27).
 - **Real naira in and out.** Bank transfer deposits and withdrawals through a licensed Nigerian payment partner. Today Add money is test mode.
 - **Monad mainnet.**
 - **Phone number login.** Many traders don't use email.

@@ -17,7 +17,7 @@ export type State = {
 };
 
 export const ME = "me";
-const KEY = "squadjar-demo-v2";
+const KEY = "squadjar-demo-v3"; // v3: no deposit (held money and debt)
 const H = 3_600_000;
 const D = 24 * H;
 
@@ -25,20 +25,17 @@ export const PERIOD_MS: Record<Period, number> = { Demo: 5 * 60_000, Weekly: 7 *
 const GRACE_MS: Record<Period, number> = { Demo: 60_000, Weekly: 12 * H, Monthly: 2 * D };
 
 // Fields the chain view adds; the demo derives them so screens see one shape.
-function full(q: Omit<Squad, "organizerId" | "amMember" | "roundOpensAt" | "settleableAfter" | "depositDeadline" | "stopped" | "depositsIn" | "myRequired" | "myOwed">): Squad {
+function full(q: Omit<Squad, "organizerId" | "amMember" | "roundOpensAt" | "settleableAfter">): Squad {
   return {
     ...q,
     organizerId: q.members[0]?.id ?? ME,
     amMember: true,
     roundOpensAt: q.roundDeadline - PERIOD_MS[q.period],
     settleableAfter: q.roundDeadline + GRACE_MS[q.period],
-    depositDeadline: 0,
-    stopped: [],
-    depositsIn: q.members.map((m) => m.id),
-    myRequired: q.myDeposit,
-    myOwed: 0,
   };
 }
+const CLEAR = { myHeld: 0, myOwed: 0, myCredit: 0, creditors: [] as string[] };
+const ALLOWANCE = { New: 0, Building: 25, Reliable: 50 } as const;
 
 function seed(): State {
   const now = Date.now();
@@ -57,8 +54,8 @@ function seed(): State {
     { id: "ngozi", name: "Ngozi", tier: "Reliable" },
     { id: "aisha", name: "Aisha", tier: "Building" },
     { id: "tomi", name: "Tomi", tier: "New" },
-    { id: "ruth", name: "Ruth", tier: "New" },
     { id: ME, name: "Amaka", tier: "Reliable" },
+    { id: "ruth", name: "Ruth", tier: "New" },
   ];
   const everyone = (ms: Member[]) => ms.map((m) => m.id);
   return {
@@ -77,7 +74,8 @@ function seed(): State {
         roundDeadline: now + 2 * D + 4 * H,
         paid: { 1: everyone(csc), 2: everyone(csc), 3: ["tolu", "chidi", "femi", "zainab", "kelechi"] },
         missed: {},
-        myDeposit: 10000,
+        ...CLEAR,
+        myAllowance: ALLOWANCE.Reliable,
       }),
       full({
         slug: "moremi-hall",
@@ -87,18 +85,21 @@ function seed(): State {
         maxMembers: 6,
         members: moremi,
         state: "Active",
-        currentRound: 6,
+        currentRound: 5,
         roundDeadline: now + 4 * 60_000,
         paid: {
           1: everyone(moremi),
           2: everyone(moremi),
-          3: everyone(moremi),
-          4: everyone(moremi).filter((id) => id !== "tomi"),
-          5: everyone(moremi),
-          6: ["dami", "ngozi", "aisha", "tomi", "ruth"],
+          // I missed round 3 with nothing held yet, so it is debt: Aisha, round 3's collector, was paid short.
+          3: everyone(moremi).filter((id) => id !== ME),
+          4: everyone(moremi).filter((id) => id !== "tomi"), // Tomi missed their own round: a smaller payout, no debt
+          5: ["dami", "ngozi", "aisha", "tomi", "ruth"],
         },
-        missed: { 4: ["tomi"] },
-        myDeposit: 2000,
+        missed: { 3: [ME], 4: ["tomi"] },
+        ...CLEAR,
+        myAllowance: ALLOWANCE.Reliable,
+        myOwed: 2000,
+        creditors: ["aisha"],
       }),
     ],
   };
@@ -165,6 +166,12 @@ export function myTurn(q: Squad) {
   return q.members.findIndex((m) => m.id === ME) + 1;
 }
 
+/** What the jar holds back from my payout (Squad._settle): the rounds I still owe after my turn, less my tier's allowance. */
+export function heldAtMyTurn(q: Squad) {
+  const left = q.members.length - myTurn(q);
+  return Math.min(payoutAmount(q), (q.contribution * left * (100 - q.myAllowance)) / 100);
+}
+
 export { DemoError };
 
 export function addMoney(amount: number) {
@@ -190,20 +197,34 @@ export function payRound(slug: string): { settled: boolean; payout?: Payout } {
 
   if (paid[r].length === q.members.length) {
     const collector = collectorOf(q, r);
-    const amount = payoutAmount(q);
+    let { myHeld, myOwed, creditors } = q;
     if (collector.id === ME) {
+      // Like Squad._settle: my debt comes out of my payout first, then the held part stays in the jar.
+      const repay = Math.min(myOwed, payoutAmount(q));
+      const held = Math.min(payoutAmount(q) - repay, heldAtMyTurn(q));
+      const amount = payoutAmount(q) - repay - held;
       balance += amount;
-      payout = { slug, squadName: q.name, round: r, amount, covered: 0, at: Date.now() };
+      myHeld += held;
+      myOwed -= repay;
+      if (!myOwed) creditors = [];
+      payout = { slug, squadName: q.name, round: r, amount, held, at: Date.now() };
     }
     const done = r === q.members.length;
-    if (done && collector.id === ME) balance += q.myDeposit; // deposit refunded at the end
+    if (done) {
+      balance += myHeld; // held money comes back at the end
+      myHeld = 0;
+    }
     const deadline = done ? q.roundDeadline : Math.max(q.roundDeadline + PERIOD_MS[q.period], Date.now() + PERIOD_MS[q.period]);
+    // The demo's other members are not real, so they pay the next round as soon as it opens.
+    if (!done) paid[r + 1] = q.members.filter((m) => m.id !== ME).map((m) => m.id);
     next = full({
       ...next,
       state: done ? "Completed" : "Active",
       currentRound: done ? r : r + 1,
       roundDeadline: deadline,
-      myDeposit: done ? 0 : q.myDeposit,
+      myHeld,
+      myOwed,
+      creditors,
     });
   }
 
@@ -216,6 +237,15 @@ export function payRound(slug: string): { settled: boolean; payout?: Payout } {
     justStamped: { slug, round: r },
   });
   return { settled: !!payout, payout };
+}
+
+/** Pays my whole debt in a squad; in the demo it simply leaves my balance. */
+export function payBack(slug: string) {
+  const s = load();
+  const q = squadBySlug(s, slug);
+  if (!q || q.myOwed <= 0) throw new DemoError("errNothingOwed");
+  if (s.balance < q.myOwed) throw new DemoError("errAddToPay", { amount: `₦${(q.myOwed - s.balance).toLocaleString("en-NG")}` });
+  commit({ ...s, balance: s.balance - q.myOwed, squads: s.squads.map((x) => (x.slug === slug ? { ...x, myOwed: 0, creditors: [] } : x)) });
 }
 
 export function clearJustStamped() {
@@ -245,7 +275,8 @@ export function createSquad(input: { name: string; contribution: number; size: n
     roundDeadline: 0,
     paid: {},
     missed: {},
-    myDeposit: 0,
+    ...CLEAR,
+    myAllowance: ALLOWANCE[s.me.tier],
   });
   commit({ ...s, squads: [squad, ...s.squads] });
   return slug;

@@ -5,7 +5,8 @@ import type { Period, Squad, SquadState, Tier } from "./types";
 
 export type SquadView = ContractFunctionReturnType<typeof squadAbi, "view", "getState">;
 
-const STATES: SquadState[] = ["Open", "Depositing", "Active", "Completed", "Cancelled"];
+// On-chain State: 0 Open, 1 Depositing (never entered since the no-deposit contracts), 2 Active, 3 Completed, 4 Cancelled.
+const STATES: SquadState[] = ["Open", "Open", "Active", "Completed", "Cancelled"];
 export const TIERS: Tier[] = ["New", "Building", "Reliable"];
 const ME = "me"; // same value as store.ts ME; duplicated so this file stays dependency-free for node
 const naira = (x: bigint) => Number(formatUnits(x, 18)); // sNGN has 18 decimals
@@ -55,13 +56,12 @@ export function toSquad(input: {
     roundDeadline: ms(v.roundDeadline),
     roundOpensAt: ms(v.roundDeadline - BigInt(v.roundLength)),
     settleableAfter: ms(v.settleableAfter),
-    depositDeadline: state === "Depositing" ? ms(v.depositDeadline) : 0,
     paid,
     missed,
-    stopped: v.members.filter((_, i) => v.stopped[i]).map(id),
-    depositsIn: v.members.filter((_, i) => v.locked[i] >= v.required[i]).map(id),
-    myDeposit: mine >= 0 ? naira(v.locked[mine]) : 0,
-    myRequired: mine >= 0 ? naira(v.required[mine]) : 0,
+    myHeld: mine >= 0 ? naira(v.locked[mine]) : 0,
+    myAllowance: mine >= 0 ? v.allowance[mine] : 0,
     myOwed: mine >= 0 ? naira(v.owed[mine]) : 0,
+    myCredit: mine >= 0 ? naira(v.credit[mine]) : 0,
+    creditors: v.members.filter((_, i) => v.credit[i] > BigInt(0)).map(id),
   };
 }

@@ -24,19 +24,15 @@ const serialized = <T>(fn: () => Promise<T>): Promise<T> => {
   return run;
 };
 
-export type PokeResult = "settled" | "finalized" | "nothing";
+export type PokeResult = "settled" | "nothing";
 
-/** Settles an overdue round or finalizes expired deposits. Never sends a write whose simulation reverted. */
+/** Settles an overdue round. Never sends a write whose simulation reverted. */
 export async function poke(squad: Address): Promise<PokeResult> {
   const account = relayerAccount();
   if (!account || !isAddress(squad)) throw new Error("relayer not configured");
   const v = await publicClient.readContract({ address: squad, abi: squadAbi, functionName: "getState" });
-  const what = plan(v, (await publicClient.getBlock()).timestamp);
-  if (!what) return "nothing";
-  const call =
-    what === "settle"
-      ? ({ address: squad, abi: squadAbi, functionName: "settleRound", args: [v.currentRound], account } as const)
-      : ({ address: squad, abi: squadAbi, functionName: "finalizeDeposits", account } as const);
+  if (!plan(v, (await publicClient.getBlock()).timestamp)) return "nothing";
+  const call = { address: squad, abi: squadAbi, functionName: "settleRound", args: [v.currentRound], account } as const;
   let request: object;
   let gas: bigint;
   try {
@@ -54,5 +50,5 @@ export async function poke(squad: Address): Promise<PokeResult> {
     return ok;
   });
   if (!ok) throw new Error("transaction reverted");
-  return what === "settle" ? "settled" : "finalized";
+  return "settled";
 }

@@ -40,7 +40,7 @@ export async function GET(req: Request) {
       if (!stage) continue;
       const squad = (s.address as string).toLowerCase();
       const round = v.currentRound;
-      const unpaid = v.members.filter((_, j) => !v.paidThisRound[j] && !v.stopped[j]).map((m) => m.toLowerCase());
+      const unpaid = v.members.filter((_, j) => !v.paidThisRound[j]).map((m) => m.toLowerCase());
       const done = await sql`select member from notifications where squad = ${squad} and round = ${round} and stage = ${stage} and channel = 'inapp'`;
       const todo = toNudge(unpaid, squad, round, stage, new Set(done.map((d) => nudgeKey(d.member, squad, round, stage))));
       if (!todo.length) continue;

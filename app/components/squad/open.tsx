@@ -9,7 +9,7 @@ import { ME, isLive, useActions, useInviteCode, useRecords, type Squad } from "@
 import { useMyAccount } from "@/lib/live/account";
 import { stoppedLine } from "@/lib/record-line";
 import { useT } from "@/lib/i18n";
-import { ConfirmButton, DEPOSIT_WINDOW, ErrorNote, GHOST_BTN, INK_BTN, SquadTitle, useRun } from "./ui";
+import { ConfirmButton, ErrorNote, GHOST_BTN, INK_BTN, SquadTitle, useRun } from "./ui";
 
 /** Open, and I'm in it: invite, then the organizer starts (3+ members). */
 export function OpenView({ squad }: { squad: Squad }) {
@@ -37,7 +37,7 @@ export function OpenView({ squad }: { squad: Squad }) {
     <ConfirmButton
       label={t("startSquadBtn")}
       busyLabel={t("starting")}
-      body={t("startBody", { window: t(DEPOSIT_WINDOW[squad.period]) })}
+      body={t("startBody")}
       busy={busy}
       className={INK_BTN}
       onConfirm={() => run(() => actions.start(squad.slug))}

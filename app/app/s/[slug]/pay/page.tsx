@@ -54,7 +54,7 @@ export default function PayPage({ params }: { params: Promise<{ slug: string }> 
   const collector = collectorOf(squad);
   const paidCount = (squad.paid[r] ?? []).length;
   const notOpenYet = now !== null && now < squad.roundOpensAt;
-  const closed = now !== null && now > squad.settleableAfter; // past grace: paying reverts; the deposit covers it at settle
+  const closed = now !== null && now > squad.settleableAfter; // past grace: paying reverts; after the settle it is held money or debt
 
   async function pay() {
     setBusy(true);

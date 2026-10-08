@@ -17,7 +17,6 @@ export async function GET(req: Request) {
   try {
     const n = Number(await publicClient.readContract({ address: FACTORY, abi: factoryAbi, functionName: "squadCount" }));
     let settled = 0;
-    let finalized = 0;
     // ponytail: sequential walk of every squad; fine at hundreds, shard or index by state past ~1k.
     for (let i = 0; i < n; i++) {
       const r = await publicClient
@@ -28,9 +27,8 @@ export async function GET(req: Request) {
           return "nothing";
         }); // one squad failing must not stop the rest
       if (r === "settled") settled++;
-      else if (r === "finalized") finalized++;
     }
-    return json({ settled, finalized }, 200);
+    return json({ settled }, 200);
   } catch (e) {
     console.error("cron settle failed", e);
     return json({ error: "server error" }, 500);

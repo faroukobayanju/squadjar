@@ -4,60 +4,66 @@ import { formatUnits, parseEventLogs, type Hex, type PublicClient, type Transact
 
 export const EVENTS = [
   {type:"event",name:"Transfer",anonymous:false,inputs:[{indexed:true,name:"from",type:"address"},{indexed:true,name:"to",type:"address"},{indexed:false,name:"value",type:"uint256"}]},
-  {type:"event",name:"DepositLocked",anonymous:false,inputs:[{indexed:true,name:"member",type:"address"},{indexed:false,name:"amount",type:"uint256"}]},
   {type:"event",name:"Contributed",anonymous:false,inputs:[{indexed:true,name:"member",type:"address"},{indexed:false,name:"round",type:"uint8"},{indexed:false,name:"late",type:"bool"}]},
   {type:"event",name:"RoundSettled",anonymous:false,inputs:[{indexed:false,name:"round",type:"uint8"},{indexed:true,name:"collector",type:"address"},{indexed:false,name:"amount",type:"uint256"},{indexed:false,name:"missed",type:"address[]"}]},
-  {type:"event",name:"StoppedPaying",anonymous:false,inputs:[{indexed:true,name:"member",type:"address"}]},
+  {type:"event",name:"PayoutHeld",anonymous:false,inputs:[{indexed:true,name:"member",type:"address"},{indexed:false,name:"round",type:"uint8"},{indexed:false,name:"amount",type:"uint256"}]},
+  {type:"event",name:"PaidBack",anonymous:false,inputs:[{indexed:true,name:"member",type:"address"},{indexed:false,name:"amount",type:"uint256"}]},
+  {type:"event",name:"CreditPaid",anonymous:false,inputs:[{indexed:true,name:"member",type:"address"},{indexed:false,name:"amount",type:"uint256"}]},
 ] as const;
-const STOPPED = [{type:"function",name:"stoppedPaying",inputs:[{name:"",type:"address"}],outputs:[{name:"",type:"bool"}],stateMutability:"view"}] as const;
 const ISSQUAD = [{type:"function",name:"isSquad",inputs:[{name:"",type:"address"}],outputs:[{name:"",type:"bool"}],stateMutability:"view"}] as const;
-const CONTRIBUTION = [{type:"function",name:"contribution",inputs:[],outputs:[{name:"",type:"uint256"}],stateMutability:"view"}] as const;
 
-/** The factory before the 2026-10-04 redeploy; its squads have real history. */
-export const LEGACY_FACTORY = "0x2bf6b051e25E3Aa65AE55D8367500BBcBA50fdf5";
+/** Superseded factories (deposit era); their squads keep real history. Oldest first. */
+export const LEGACY_FACTORIES = ["0x2bf6b051e25E3Aa65AE55D8367500BBcBA50fdf5", "0x7B2aC330515073De9aCB8883ee0AAA8cE11B5d4B"];
 export const LEGACY_DEPLOY_BLOCK = BigInt(68377230);
 
 const ZERO = "0x0000000000000000000000000000000000000000";
 const DEAD = "0x000000000000000000000000000000000000dead";
 
-export type Kind = "topup" | "deposit" | "contribution" | "payout" | "refund" | "covered" | "withdraw" | "sent" | "received" | "stopped";
+/**
+ * held: part of a payout kept in the jar (no money moves). refund: held money back at the end. payback: a member
+ * clearing their debt. credit: a short-paid collector getting it back. covered and stopped exist only in rows
+ * indexed from deposit-era squads; nothing produces them now.
+ */
+export type Kind = "topup" | "contribution" | "payout" | "held" | "refund" | "payback" | "credit" | "withdraw" | "sent" | "received" | "covered" | "stopped";
 /** `counterparty` only on sent/received: the other member. */
 export type Row = { logIndex: number; member: string; kind: Kind; amount: bigint; squad: string | null; round: number | null; counterparty?: string };
 type RawLog = { address: string; topics: readonly Hex[] | [Hex, ...Hex[]] | []; data: Hex; logIndex: number | null };
-/** `stoppedBefore(squad, member)`: the member was already marked stopped paying before this tx. */
-export type Ctx = { token: string; isSquad: (a: string) => boolean; contribution: (squad: string) => bigint; stoppedBefore?: (squad: string, member: string) => boolean };
+export type Ctx = { token: string; isSquad: (a: string) => boolean };
 
-function decode(logs: readonly RawLog[]) {
+export function decode(logs: readonly RawLog[]) {
   return parseEventLogs({ abi: EVENTS, logs: logs as never, strict: true }).map((l) => ({ ...l, address: l.address.toLowerCase(), logIndex: Number(l.logIndex) }));
 }
 
-/** Every address whose isSquad answer classify() needs, and the squads whose contribution() it needs. */
-export function lookups(logs: readonly RawLog[], token: string) {
-  const ev = decode(logs);
+/** Every address whose isSquad answer classify() needs. */
+export function lookups(logs: readonly RawLog[], token: string): string[] {
   const addrs = new Set<string>();
-  for (const l of ev) {
+  for (const l of decode(logs)) {
     if (l.eventName === "Transfer") {
       if (l.address !== token.toLowerCase()) continue;
       for (const a of [l.args.from, l.args.to].map((x) => x.toLowerCase())) if (a !== ZERO && a !== DEAD) addrs.add(a);
     } else addrs.add(l.address);
   }
-  const settled = ev.filter((l) => l.eventName === "RoundSettled" && l.args.missed.length).map((l) => l.address);
-  return { addrs: [...addrs], settled: [...new Set(settled)] };
+  return [...addrs];
 }
 
 /** Pure. Amounts stay in base units; squad events count only when emitted by a squad. */
-export function classify(logs: readonly RawLog[], { token, isSquad, contribution, stoppedBefore = () => false }: Ctx): Row[] {
+export function classify(logs: readonly RawLog[], { token, isSquad }: Ctx): Row[] {
   const ev = decode(logs);
   const sq = (a: string) => a !== ZERO && a !== DEAD && isSquad(a);
   const transfers = ev.flatMap((l) => (l.eventName === "Transfer" && l.address === token.toLowerCase() ? [{ i: l.logIndex, from: l.args.from.toLowerCase(), to: l.args.to.toLowerCase(), v: l.args.value }] : []));
   const fromSquad = ev.filter((l) => l.address !== token.toLowerCase() && sq(l.address));
-  const deposited = new Set(fromSquad.flatMap((l) => (l.eventName === "DepositLocked" ? [`${l.address}:${l.args.member.toLowerCase()}`] : [])));
-  const roundOf = new Map<string, number>(fromSquad.flatMap((l) => (l.eventName === "Contributed" ? [[`${l.address}:${l.args.member.toLowerCase()}`, l.args.round] as const] : [])));
+  const key = (squad: string, member: string) => `${squad}:${member.toLowerCase()}`;
+  const paidBack = new Set(fromSquad.flatMap((l) => (l.eventName === "PaidBack" ? [key(l.address, l.args.member)] : [])));
+  const roundOf = new Map<string, number>(fromSquad.flatMap((l) => (l.eventName === "Contributed" ? [[key(l.address, l.args.member), l.args.round] as const] : [])));
+  // _payCredits emits CreditPaid right after each transfer it makes.
+  const credits = new Set(
+    fromSquad.flatMap((l) => (l.eventName === "CreditPaid" ? transfers.filter((t) => t.i < l.logIndex && t.from === l.address && t.to === l.args.member.toLowerCase()).slice(-1).map((t) => t.i) : [])),
+  );
   const settles = fromSquad.flatMap((l) => (l.eventName === "RoundSettled" ? [{ ...l, args: l.args }] : []));
-  // The payout is the squad -> collector transfer right before its RoundSettled; later ones in the tx are _finish refunds.
+  // The payout is the squad -> collector transfer right before its RoundSettled; later ones in the tx return held money.
   const payouts = new Map<number, number>();
   for (const s of settles) {
-    const t = transfers.filter((t) => t.i < s.logIndex && t.from === s.address && t.to === s.args.collector.toLowerCase()).at(-1);
+    const t = transfers.filter((t) => t.i < s.logIndex && t.from === s.address && t.to === s.args.collector.toLowerCase() && !credits.has(t.i)).at(-1);
     if (t) payouts.set(t.i, s.args.round);
   }
 
@@ -69,12 +75,12 @@ export function classify(logs: readonly RawLog[], { token, isSquad, contribution
     if (from === ZERO) {
       if (!sq(to)) add(i, to, "topup", v);
     } else if (sq(to) && !sq(from)) {
-      const k = `${to}:${from}`;
-      if (deposited.has(k)) add(i, from, "deposit", v, to);
+      const k = key(to, from);
+      if (paidBack.has(k)) add(i, from, "payback", v, to);
       else add(i, from, "contribution", v, to, roundOf.get(k) ?? null);
     } else if (sq(from) && !sq(to) && to !== ZERO && to !== DEAD) {
       const r = payouts.get(i);
-      add(i, to, r === undefined ? "refund" : "payout", v, from, r ?? null);
+      add(i, to, credits.has(i) ? "credit" : r === undefined ? "refund" : "payout", v, from, r ?? null);
     } else if (!sq(from) && to === DEAD) {
       add(i, from, "withdraw", v);
     } else if (!sq(from) && !sq(to) && to !== ZERO) {
@@ -82,19 +88,8 @@ export function classify(logs: readonly RawLog[], { token, isSquad, contribution
       rows.push({ logIndex: i, member: to, kind: "received", amount: v, squad: null, round: null, counterparty: from });
     }
   }
-  // A miss moves no sNGN (the deposit covers it inside the jar), so it gets its own row. Members who stopped paying
-  // (now or earlier) get no row: the contract covers them partly or not at all, so a full contribution would be wrong.
-  const stops = fromSquad.flatMap((l) => (l.eventName === "StoppedPaying" ? [{ i: l.logIndex, squad: l.address, member: l.args.member.toLowerCase() }] : []));
-  const stoppedNow = new Set(stops.map((s) => `${s.squad}:${s.member}`));
-  for (const s of settles)
-    for (const raw of s.args.missed) {
-      const m = raw.toLowerCase();
-      if (stoppedNow.has(`${s.address}:${m}`) || stoppedBefore(s.address, m)) continue;
-      add(s.logIndex, m, "covered", contribution(s.address), s.address, s.args.round);
-    }
-  // Stopped paying follows the member (the record), whatever the squad's size or period. _stop runs inside _settle,
-  // so the round is that of the RoundSettled after it in the same tx.
-  for (const s of stops) add(s.i, s.member, "stopped", BigInt(0), s.squad, settles.find((x) => x.address === s.squad && x.logIndex > s.i)?.args.round ?? null);
+  // Held money stays in the jar, so no sNGN moves: it gets its own row.
+  for (const l of fromSquad) if (l.eventName === "PayoutHeld") add(l.logIndex, l.args.member.toLowerCase(), "held", l.args.amount, l.address, l.args.round);
   return rows;
 }
 
@@ -103,8 +98,7 @@ export type DbRow = { tx: string; log_index: number; member: string; kind: Kind;
 /** Reads what classify() needs from the chain (isSquad on every factory, cached in `cache`), then classifies. */
 export async function rowsFor(client: PublicClient, receipt: TransactionReceipt, factories: readonly string[], token: string, cache = new Map<string, boolean>()): Promise<DbRow[]> {
   if (receipt.status !== "success") return [];
-  const { addrs, settled } = lookups(receipt.logs, token);
-  const todo = addrs.filter((a) => !cache.has(a));
+  const todo = lookups(receipt.logs, token).filter((a) => !cache.has(a));
   if (todo.length) {
     const res = await client.multicall({
       allowFailure: false,
@@ -112,23 +106,7 @@ export async function rowsFor(client: PublicClient, receipt: TransactionReceipt,
     });
     todo.forEach((a, j) => cache.set(a, res.slice(j * factories.length, (j + 1) * factories.length).some(Boolean)));
   }
-  const isSquad = (a: string) => cache.get(a) ?? false;
-  const contrib = new Map<string, bigint>();
-  for (const s of settled.filter(isSquad)) contrib.set(s, await client.readContract({ address: s as Hex, abi: CONTRIBUTION, functionName: "contribution" }));
-  // Who was already stopped before this tx: read stoppedPaying at the previous block for each missed member.
-  const stopped = new Set<string>();
-  for (const l of decode(receipt.logs)) {
-    if (l.eventName !== "RoundSettled" || !isSquad(l.address)) continue;
-    const missed = (l.args as { missed: readonly Hex[] }).missed;
-    if (!missed.length) continue;
-    const res = await client.multicall({
-      allowFailure: false,
-      blockNumber: receipt.blockNumber - BigInt(1),
-      contracts: missed.map((m) => ({ address: l.address as Hex, abi: STOPPED, functionName: "stoppedPaying", args: [m] }) as const),
-    });
-    missed.forEach((m, j) => res[j] && stopped.add(`${l.address}:${m.toLowerCase()}`));
-  }
-  const rows = classify(receipt.logs, { token, isSquad, contribution: (s) => contrib.get(s) ?? BigInt(0), stoppedBefore: (s, m) => stopped.has(`${s}:${m}`) });
+  const rows = classify(receipt.logs, { token, isSquad: (a) => cache.get(a) ?? false });
   if (!rows.length) return [];
   const { timestamp } = await client.getBlock({ blockNumber: receipt.blockNumber });
   const at = new Date(Number(timestamp) * 1000).toISOString();

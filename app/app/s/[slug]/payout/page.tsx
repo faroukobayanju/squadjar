@@ -6,7 +6,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { WhatsappLogo } from "@phosphor-icons/react";
 import { dueLabel, naira } from "@/lib/format";
 import { useLastPayout } from "@/lib/data";
-import { useLang, useT } from "@/lib/i18n";
+import { rich, useLang, useT } from "@/lib/i18n";
 
 export default function PayoutPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -35,9 +35,13 @@ export default function PayoutPage({ params }: { params: Promise<{ slug: string 
         {t("yourTurnLanded")}
       </h1>
       <p className="mt-5 font-money text-[clamp(3.6rem,19vw,5rem)] leading-none font-bold tnum">{naira(payout.amount)}</p>
+      {payout.held > 0 && (
+        <p className="mt-2 font-mono text-[13px]">{rich(t("payoutNowHeld"), { now: <b className="font-money">{naira(payout.amount)}</b>, held: <b className="font-money">{naira(payout.held)}</b> })}</p>
+      )}
       <p className="mt-2 font-mono text-xs text-muted">
         {t("payoutMeta", { squad: payout.squadName, round: payout.round })}
       </p>
+      {payout.held > 0 && <p className="mt-3 max-w-[38ch] text-sm text-muted">{t("heldWhy")}</p>}
 
       <div className="relative mt-8 overflow-hidden rounded-lg border border-rule bg-paper px-4 pt-2 pb-16">
         <motion.span
@@ -50,9 +54,8 @@ export default function PayoutPage({ params }: { params: Promise<{ slug: string 
           {t("collectedMark")}
         </motion.span>
         <dl className="divide-y divide-dashed divide-rule font-mono text-[13px]">
-          <Row k={t("fromSquad")} v={naira(payout.amount - payout.covered)} />
-          <Row k={t("coveredByDeposits")} v={naira(payout.covered)} />
           <Row k={t("sentTo")} v={t("yourBalance")} />
+          {payout.held > 0 && <Row k={t("waitsInJar")} v={naira(payout.held)} />}
           <Row k={t("time")} v={dueLabel(payout.at, lang)} />
         </dl>
       </div>

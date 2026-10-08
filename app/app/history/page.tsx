@@ -25,21 +25,27 @@ function useLiveHistory(): Item[] | undefined {
 // isLive is a build-time constant; the demo has no history.
 const useHistory: () => Item[] | undefined = isLive ? useLiveHistory : () => [];
 
-const IN = new Set<Kind>(["topup", "payout", "refund", "received"]);
+const IN = new Set<Kind>(["topup", "payout", "refund", "credit", "received"]);
+// No money left the balance: held money stays in the jar, and a deposit-era covered miss came out of the jar.
+const QUIET = new Set<Kind>(["held", "covered"]);
 
 function label({ kind, round, squadName, counterpartyName: who }: Item, t: T) {
   const v = { squad: squadName ?? t("aSquad"), round: round ?? "", name: who ?? "" };
   switch (kind) {
     case "topup":
       return t("hAdded");
-    case "deposit":
-      return t("hDeposit", v);
     case "contribution":
       return t(round ? "hPaidRound" : "hPaid", v);
     case "payout":
       return t("hPayout", v);
+    case "held":
+      return t("hHeld", v);
     case "refund":
       return t("hRefund", v);
+    case "payback":
+      return t("hPayBack", v);
+    case "credit":
+      return t("hCredit", v);
     case "covered":
       return t("hCovered", v);
     case "withdraw":
@@ -82,7 +88,7 @@ export default function History() {
             <ul className="divide-y divide-rule rounded-lg border border-rule bg-paper">
               {items.map((it) => {
                 const plus = IN.has(it.kind);
-                const fromDeposit = it.kind === "covered"; // came out of the locked deposit, not the balance
+                const quiet = QUIET.has(it.kind);
                 return (
                   <li key={`${it.tx}:${it.logIndex}:${it.kind}`} className="flex min-h-14 items-center justify-between gap-4 px-4 py-3">
                     <span className="min-w-0">
@@ -92,8 +98,8 @@ export default function History() {
                       </span>
                     </span>
                     {it.kind !== "stopped" && (
-                      <span className={`shrink-0 font-money text-lg font-bold tnum ${plus ? "text-stamp" : fromDeposit ? "text-muted" : "text-ink"}`}>
-                        {plus ? "+" : fromDeposit ? "" : "−"}
+                      <span className={`shrink-0 font-money text-lg font-bold tnum ${plus ? "text-stamp" : quiet ? "text-muted" : "text-ink"}`}>
+                        {plus ? "+" : quiet ? "" : "−"}
                         {naira(it.amount)}
                       </span>
                     )}

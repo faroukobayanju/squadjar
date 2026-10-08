@@ -9,14 +9,13 @@ import { Countdown, useNow } from "@/components/countdown";
 import { EmptyBox, Stamp } from "@/components/stamp";
 import { StampCard } from "@/components/stamp-card";
 import { Bar } from "@/components/skeleton";
-import { DepositingView } from "@/components/squad/depositing";
 import { JoinView, OpenView } from "@/components/squad/open";
 import { AddMoneyNote, ErrorNote, Notice, PAID_LABEL, PALM_BTN, useRun } from "@/components/squad/ui";
-import { dueLabel, naira } from "@/lib/format";
+import { naira } from "@/lib/format";
 import { useOrigin } from "@/lib/origin";
 import { refreshAll } from "@/lib/live/squads";
-import { rich, useLang, useT } from "@/lib/i18n";
-import { ME, clearJustStamped, collectorOf, myTurn, payoutAmount, useActions, useJustStamped, useMe, useRemind, useSquad, type Squad } from "@/lib/data";
+import { rich, useT } from "@/lib/i18n";
+import { ME, clearJustStamped, collectorOf, heldAtMyTurn, myTurn, payoutAmount, useActions, useJustStamped, useMe, useRemind, useSquad, type Squad, type Tier } from "@/lib/data";
 
 export default function SquadPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ code?: string }> }) {
   const { slug } = use(params);
@@ -25,10 +24,9 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
   const me = useMe();
   const fresh = useJustStamped(slug);
   const now = useNow();
-  const { refill, settle } = useActions();
-  const topUp = useRun("payment");
+  const { payBack, settle } = useActions();
+  const back = useRun("payment");
   const t = useT();
-  const lang = useLang();
 
   useEffect(() => {
     if (!fresh) return;
@@ -38,14 +36,7 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
   }, [fresh]);
 
   // Overdue: ask the relayer once per deadline per page view, then refresh. Demo squads have no address.
-  const overdue =
-    squad && squad.address && now !== null
-      ? squad.state === "Active" && now > squad.settleableAfter
-        ? `a${squad.currentRound}`
-        : squad.state === "Depositing" && now > squad.depositDeadline
-          ? "d"
-          : null
-      : null;
+  const overdue = squad && squad.address && now !== null && squad.state === "Active" && now > squad.settleableAfter ? `a${squad.currentRound}` : null;
   const poked = useRef<string | null>(null);
   const addr = squad?.address;
   useEffect(() => {
@@ -69,7 +60,6 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
     );
   }
   if (squad.state === "Open") return <OpenView squad={squad} />;
-  if (squad.state === "Depositing") return <DepositingView squad={squad} />;
 
   const r = squad.currentRound;
   const paidIds = squad.paid[r] ?? [];
@@ -77,12 +67,9 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
   const collector = collectorOf(squad);
   const done = squad.state === "Completed";
   const notOpenYet = now !== null && now < squad.roundOpensAt;
-  const iStopped = squad.stopped.includes(ME);
-  const refillOwed = Math.max(0, squad.myRequired - squad.myDeposit);
+  const owed = squad.myOwed;
 
-  const action = done ? null : iStopped ? (
-    <p className={PAID_LABEL}>{t("errStoppedPaying")}</p>
-  ) : iPaid ? (
+  const action = done ? null : iPaid ? (
     <p className={PAID_LABEL}>{t("paidRound", { round: r })}</p>
   ) : notOpenYet ? (
     <p className={PAID_LABEL}>
@@ -107,18 +94,16 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
         </p>
       </header>
 
-      {!done && !iStopped && refillOwed > 0 && (
-        <section aria-label={t("topUpAria")} className="mt-8 rounded-md border border-warn/40 bg-warn/8 p-4">
-          <p className="text-sm">
-            {rich(t("topUpBody", { when: dueLabel(squad.settleableAfter, lang) }), { amount: <span className="font-money font-bold">{naira(refillOwed)}</span> })}
-          </p>
+      {owed > 0 && (
+        <section aria-label={t("payBackAria")} className="mt-8 rounded-md border border-bad/40 bg-bad/8 p-4">
+          <p className="text-sm">{rich(t("payBackBody", { round: lastMiss(squad), names: creditorNames(squad, t("aMember")) }), { amount: <span className="font-money font-bold">{naira(owed)}</span> })}</p>
           <div className="mt-3">
-            <ErrorNote error={topUp.error} />
-            {me && me.balance < refillOwed ? (
-              <AddMoneyNote short={refillOwed - me.balance} balance={me.balance} next={`/s/${slug}`} />
+            <ErrorNote error={back.error} />
+            {me && me.balance < owed ? (
+              <AddMoneyNote short={owed - me.balance} balance={me.balance} next={`/s/${slug}`} />
             ) : (
-              <button type="button" disabled={topUp.busy} onClick={() => topUp.run(() => refill(slug))} className={PALM_BTN}>
-                {topUp.busy ? t("toppingUp") : t(topUp.error ? "retryAmount" : "topUpAmount", { amount: naira(refillOwed) })}
+              <button type="button" disabled={back.busy} onClick={() => back.run(() => payBack(slug))} className={PALM_BTN}>
+                {back.busy ? t("payingBack") : t(back.error ? "retryAmount" : "payBackAmount", { amount: naira(owed) })}
               </button>
             )}
           </div>
@@ -169,7 +154,6 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
                   <span className={`max-w-full truncate text-xs ${m.id === ME ? "font-bold" : ""}`}>
                     {m.id === ME ? t("you") : m.name}
                   </span>
-                  {squad.stopped.includes(m.id) && <span className="font-mono text-[10px] text-bad">{t("stoppedPaying")}</span>}
                 </li>
               );
             })}
@@ -178,22 +162,43 @@ export default function SquadPage({ params, searchParams }: { params: Promise<{ 
         </section>
       )}
 
-      {!done && !iStopped && <AutopayToggle squad={squad} />}
+      {!done && <AutopayToggle squad={squad} />}
 
       <section aria-labelledby="card" className="mt-12">
         <h2 id="card" className="mb-3 font-semibold">
           {t("theCard")}
         </h2>
         <StampCard squad={squad} fresh={fresh} />
-        <p className="mt-3 flex items-center gap-2 text-sm text-muted">
-          <LockSimple size={16} aria-hidden />
-          {squad.myDeposit > 0
-            ? t("depositLockedTurn", { amount: naira(squad.myDeposit), turn: myTurn(squad) })
-            : t("depositReturned")}
+        <p className="mt-3 flex items-start gap-2 text-sm text-muted">
+          <LockSimple size={16} className="mt-0.5 shrink-0" aria-hidden />
+          <span>
+            <HeldLine squad={squad} />
+          </span>
         </p>
+        {squad.myCredit > 0 && <p className="mt-2 text-sm text-muted">{t("creditLine", { amount: naira(squad.myCredit) })}</p>}
       </section>
     </AppShell>
   );
+}
+
+const TIER_OF_ALLOWANCE: Record<number, Tier> = { 0: "New", 25: "Building", 50: "Reliable" };
+
+/** The latest round I missed that someone else collected: the one my debt most likely comes from. */
+const lastMiss = (q: Squad) => Math.max(0, ...Object.entries(q.missed).filter(([r, ids]) => ids.includes(ME) && collectorOf(q, Number(r))?.id !== ME).map(([r]) => Number(r)));
+/** Who a pay back reaches: members with credit, in turn order. */
+const creditorNames = (q: Squad, fallback: string) => q.members.filter((m) => q.creditors.includes(m.id)).map((m) => m.name).join(", ") || fallback;
+
+/** My held money: what will wait in the jar at my turn, what waits now, or that it came back. */
+function HeldLine({ squad: q }: { squad: Squad }) {
+  const t = useT();
+  const turn = myTurn(q);
+  if (q.state === "Completed") return t("heldReturned");
+  if (q.currentRound <= turn) {
+    const held = heldAtMyTurn(q);
+    const tier = t(`tier${TIER_OF_ALLOWANCE[q.myAllowance] ?? "New"}`);
+    return held > 0 ? t("heldPreview", { amount: naira(held), tier, turn }) : t("heldNoneLast", { turn });
+  }
+  return q.myHeld > 0 ? t("heldWaits", { amount: naira(q.myHeld), turn }) : t("heldNone", { turn });
 }
 
 function RemindSquad({ squad }: { squad: Squad }) {

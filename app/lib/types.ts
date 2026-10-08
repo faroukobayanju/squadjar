@@ -1,6 +1,6 @@
 export type Tier = "New" | "Building" | "Reliable";
 export type Period = "Demo" | "Weekly" | "Monthly";
-export type SquadState = "Open" | "Depositing" | "Active" | "Completed" | "Cancelled";
+export type SquadState = "Open" | "Active" | "Completed" | "Cancelled";
 
 export type Member = { id: string; name: string; tier: Tier };
 
@@ -19,20 +19,20 @@ export type Squad = {
   roundDeadline: number; // epoch ms
   roundOpensAt: number; // epoch ms = roundDeadline - roundLength; contributing earlier reverts RoundNotOpen
   settleableAfter: number; // epoch ms
-  depositDeadline: number; // epoch ms, 0 when not Depositing
   paid: Record<number, string[]>; // round -> member ids
   missed: Record<number, string[]>;
-  stopped: string[];
-  depositsIn: string[]; // member ids whose deposit is fully locked
-  myDeposit: number;
-  myRequired: number;
-  myOwed: number;
+  myHeld: number; // held from my payout; comes back at the end
+  myAllowance: number; // 0, 25 or 50: % of what I still owe after my turn that is not held (fixed at start by tier)
+  myOwed: number; // debt: missed contributions my held money didn't cover
+  myCredit: number; // what I was paid short and am still owed
+  creditors: string[]; // member ids with credit, in turn order: who a pay back reaches first
 };
 
 /** Someone found by @username, to send money to. */
 export type Person = { displayName: string; username: string; address: `0x${string}` };
 
-export type Payout = { slug: string; squadName: string; round: number; amount: number; covered: number; at: number };
+/** `amount` reached my balance now; `held` waits in the jar until the end. */
+export type Payout = { slug: string; squadName: string; round: number; amount: number; held: number; at: number };
 
 /** Screens call these through useActions(); demo and live implement the same shape. `due` is round 1's deadline anchor (epoch seconds, 0 = none). */
 export type Actions = {
@@ -46,10 +46,10 @@ export type Actions = {
   join(slug: string, code: string): Promise<void>;
   leave(slug: string): Promise<void>;
   start(slug: string): Promise<void>;
-  lockDeposit(slug: string): Promise<void>;
   pay(slug: string): Promise<{ settled: boolean; payout?: Payout }>;
-  refill(slug: string): Promise<void>;
+  /** Pays my whole debt in this squad; it goes straight to the members with credit. */
+  payBack(slug: string): Promise<void>;
   cancel(slug: string): Promise<void>;
-  /** Settle an overdue round (or finalize overdue deposits) from this member's own account. */
+  /** Settle an overdue round from this member's own account. */
   settle(slug: string): Promise<void>;
 };
