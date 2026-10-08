@@ -1,5 +1,5 @@
 // Drives app/lib/judge-plan.ts against an anvil fork: bots Ada and Tunde keep a demo squad open, a judge joins,
-// and the squad plays to Completed while a fresh demo squad opens. Each loop = one cron run, then 60s pass.
+// start goes straight to round 1, and the squad plays to Completed while a fresh demo squad opens. Each loop = one cron run, then 60s pass.
 // Usage: scripts/e2e/judge.sh   (or: RPC_URL=http://127.0.0.1:8547 node scripts/e2e/judge.mjs with anvil already forking)
 // The send/approve steps mirror app/lib/judge.ts; the DB side (squads, judge_squads, users) is not exercised here.
 import { readFileSync } from 'node:fs';
@@ -105,7 +105,7 @@ let joined = null;
 let paidRounds = 0;
 for (let run = 1; run <= 40; run++) {
   const log = await cronRun();
-  // The judge: joins the handed-out squad, locks when asked, pays each round as soon as it opens.
+  // The judge: joins the handed-out squad and pays each round as soon as it opens (no deposit after start).
   if (!joined) {
     const row = await current();
     if (row && (await view(row.address)).members.length === 2) {
@@ -116,11 +116,7 @@ for (let run = 1; run <= 40; run++) {
   } else {
     const v = await view(joined.address);
     const i = v.members.indexOf(JUDGE);
-    if (v.state === 1 && v.locked[i] < v.required[i]) {
-      await approveIfNeeded(JUDGE, joined.address, v.required[i]);
-      await send(JUDGE, joined.address, squadAbi, 'lockDeposit');
-      log.push('judge locks');
-    } else if (v.state === 2 && !v.paidThisRound[i] && (await now()) >= v.roundDeadline - BigInt(v.roundLength)) {
+    if (v.state === 2 && !v.paidThisRound[i] && (await now()) >= v.roundDeadline - BigInt(v.roundLength)) {
       await approveIfNeeded(JUDGE, joined.address, v.contribution);
       await send(JUDGE, joined.address, squadAbi, 'contribute');
       paidRounds++;
@@ -137,7 +133,9 @@ const final = await view(joined.address);
 assert.equal(final.state, 3, 'demo squad completed');
 assert.equal(joined.done, true, 'finished squad marked done');
 assert.equal(paidRounds, 3, 'judge paid 3 rounds');
-assert.equal(await bal(JUDGE), judgeStart, 'judge ends level: paid 3 x 2,000, collected 6,000, deposit back');
+assert.equal(await bal(JUDGE), judgeStart, 'judge ends level: paid 3 x 2,000, collected 6,000 (any held part came back at the end)');
+assert.ok(final.owed.every((x) => x === 0n) && final.credit.every((x) => x === 0n), 'no debt or credit left');
+assert.equal(await bal(joined.address), 0n, 'jar ends at 0');
 const next = await current();
 assert.ok(next && next !== joined, 'a fresh demo squad has a free seat');
 const nv = await view(next.address);
