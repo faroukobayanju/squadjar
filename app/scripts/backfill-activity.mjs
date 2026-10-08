@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { neon } from "@neondatabase/serverless";
 import { createPublicClient, http, parseAbiItem } from "viem";
 import { monadTestnet } from "viem/chains";
-import { LEGACY_DEPLOY_BLOCK, LEGACY_FACTORY, insertRows, rowsFor } from "../lib/activity-classify.ts";
+import { LEGACY_DEPLOY_BLOCK, LEGACY_FACTORIES, insertRows, rowsFor } from "../lib/activity-classify.ts";
 
 try {
   process.loadEnvFile(".env.local");
@@ -39,7 +39,7 @@ const cache = new Map();
 let rows = 0;
 for (const hash of hashes) {
   const receipt = await client.getTransactionReceipt({ hash });
-  rows += await insertRows(sql, await rowsFor(client, receipt, [dep.factory, LEGACY_FACTORY], dep.token, cache));
+  rows += await insertRows(sql, await rowsFor(client, receipt, [dep.factory, ...LEGACY_FACTORIES], dep.token, cache));
 }
 const [{ n }] = await sql`select count(*)::int as n from activity`;
 console.log(`inserted ${rows} new rows; activity has ${n}`);

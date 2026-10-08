@@ -67,7 +67,9 @@ export default function Home() {
   );
 }
 
-/** In-app pay nudges from the nudge cron, behind a bell. */
+const PAY_NUDGES = new Set(["t24h", "t1h", "missed"]);
+
+/** In-app pay nudges (nudge cron) and miss / pay back alerts (activity indexing), behind a bell. */
 function Inbox() {
   const list = useNotifications();
   const t = useT();
@@ -85,7 +87,7 @@ function Inbox() {
           <ul className="grid gap-3">
             {list.map((n) => (
               <li key={`${n.squad}:${n.sentAt}:${n.body}`} className="text-sm">
-                <Link href={`/s/${n.slug}/pay`} className="block">
+                <Link href={PAY_NUDGES.has(n.stage) ? `/s/${n.slug}/pay` : `/s/${n.slug}`} className="block">
                   <span className="block font-mono text-xs text-muted">
                     {n.squadName} · {dayLabel(Date.parse(n.sentAt), undefined, lang, [t("today"), t("yesterday")])} {timeLabel(Date.parse(n.sentAt), lang)}
                   </span>
