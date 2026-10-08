@@ -163,7 +163,7 @@ The system is dense where it records (the card, the ledger meta) and loud in onl
 - People come before money. The squad screen leads with who collects next. Home is the one exception: it carries the balance block (amount in Zilla Slab plus the Add money / Send / Withdraw / History row), below the greeting and tier.
 - Payments are ink stamps with initials, not checkmarks.
 - Paper and ink materials: a raster fiber ground, 40px ruled ledger lines, raster ink-pressure masks on every stamp.
-- One loud color. Palm-oil orange belongs to Pay, Add money and the current-round tint, nothing else.
+- One loud color. Palm-oil orange belongs to Pay (including Pay back), Add money and the current-round tint, nothing else.
 - One authored motion: the stamp thunk.
 
 ## Colors
@@ -171,7 +171,7 @@ The system is dense where it records (the card, the ledger meta) and loud in onl
 Manila and ink set the room; palm orange means "money moves"; stamp blue means "done and recorded".
 
 ### Primary
-- **Palm-Oil Orange** (primary, pressed primary-press): the Pay button, the Add money action (filled on its own screen, a palm text link on Home), and the current round's 10% tint on the card. Also the text caret in inputs.
+- **Palm-Oil Orange** (primary, pressed primary-press): the Pay button (and Pay back, which pays a debt), the Add money action (filled on its own screen, a palm text link on Home), and the current round's 10% tint on the card. Also the text caret in inputs.
 
 ### Secondary
 - **Stamp-Pad Blue** (accent): stamp rings and initials, the PAID OUT and COLLECTED marks, the focus ring, the selection tint (22%), the active trust tier pill (10% fill) and paid dots on squad list rows (15% fill).
@@ -190,7 +190,7 @@ Manila and ink set the room; palm orange means "money moves"; stamp blue means "
 Lives in `globals.css` under `prefers-color-scheme: dark`, using the `dark-*` tokens. The manila becomes warm charcoal, surfaces stay one step lighter than the page, stamp blue lifts to a periwinkle for contrast, and text on palm flips to the dark ground. The paper tile is inverted at 25% opacity. It is not a straight inversion.
 
 ### Named Rules
-**The Money Moves Rule.** Palm orange appears only on Pay, Add money and the current-round tint. Every other CTA ("Start a squad", "Invite on WhatsApp", "Tell the squad", "Add ₦X" when short) is an ink button.
+**The Money Moves Rule.** Palm orange appears only on Pay, Pay back, Add money and the current-round tint. Every other CTA ("Start a squad", "Invite on WhatsApp", "Tell the squad", "Add ₦X" when short) is an ink button.
 
 **The Ink Means Recorded Rule.** Stamp blue marks something already done. Never use it for a pending action.
 
@@ -224,7 +224,7 @@ One centered column, max 480px, 16px side gutters. Blocks are separated by 32 to
 1. Header: squad name in Display, then a mono meta line "Round 3 of 8 · ₦5,000 each · Weekly".
 2. Next payout: the Headline "Bola collects in 2d 4h" with a live countdown ticking each second, the payout figure in Money hero, then one muted line saying the jar pays automatically.
 3. This round: a four-column grid of large stamps (64px) or empty boxes with names beneath, a mono "N of M paid" count, and a WhatsApp "Remind" link when anyone is outstanding.
-4. The card: the full stamp card, starting below the fold, then a lock-icon line about the deposit.
+4. The card: the full stamp card, starting below the fold, then a lock-icon line about held money (what waits in the jar at your turn, what waits now, or that it came back).
 5. Dock: "Pay ₦5,000" in palm, or the muted paid label once stamped.
 
 **The card** is a ledger table: members down the side in turn order, rounds across, the name column pinned while rounds scroll sideways. Rows are 40px so they land on the ruled lines.
@@ -283,7 +283,7 @@ A rectangular stamp-blue mark with a 2px border, 8px mono, tilted −6°, set ac
 ## Do's and Don'ts
 
 ### Do:
-- **Do** keep palm orange for Pay, Add money and the current-round tint only.
+- **Do** keep palm orange for Pay, Pay back, Add money and the current-round tint only.
 - **Do** render every amount in Zilla Slab with `₦` and thousands separators.
 - **Do** name people. "Bola collects this round" beats "Recipient: 0x…".
 - **Do** size empty boxes to the stamp they wait for, so the row reads as gaps in ink.

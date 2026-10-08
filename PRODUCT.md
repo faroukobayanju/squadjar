@@ -16,7 +16,7 @@ Anyone in Nigeria who already does ajo/esusu: students, young workers, traders, 
 
 ## Product Purpose
 
-Squadjar runs ajo/esusu (rotating savings) with no treasurer. Members contribute a fixed amount each round into a jar no person controls; the jar pays that round's collector on schedule; refundable deposits cover anyone who misses; a trust score earned from payment history gives earlier turns. Success for the hackathon (deadline 2026-10-14): a real squad of 5+ classmates completes Demo rounds, and judges complete the core flow without sensing crypto.
+Squadjar runs ajo/esusu (rotating savings) with no treasurer. Members contribute a fixed amount each round into a jar no person controls; the jar pays that round's collector on schedule; there is no deposit to join: part of a newer member's payout is held in the jar until they've paid their share, covers their own later misses and comes back at the end, and a miss it can't cover is debt they pay back to the short-paid collector; a trust score earned from payment history gives earlier turns. Success for the hackathon (deadline 2026-10-14): a real squad of 5+ classmates completes Demo rounds, and judges complete the core flow without sensing crypto.
 
 ## Positioning
 
@@ -30,8 +30,8 @@ No person ever holds the money. Other group-savings apps digitize the ledger but
 
 ## Capabilities and Constraints
 
-- Core flow: login (email/Google) → add money (simulated test card checkout) → create squad → invite via WhatsApp → join → start → lock deposit → pay each round → automatic payout → deposit refund.
-- Terminology follows `CONTEXT.md` (squad, jar, contribution, round, payout, collector, turn, deposit, missed, stopped paying, trust score, tier).
+- Core flow: login (email/Google) → add money (simulated test card checkout) → create squad → invite via WhatsApp → join → start (round 1 begins) → pay each round → automatic payout (part held for newer members) → pay back any debt → held money back at the end.
+- Terminology follows `CONTEXT.md` (squad, jar, contribution, round, payout, collector, turn, held, miss, debt, credit, trust score, tier).
 - UI must never show: wallet, crypto, token, gas, transaction, blockchain, stake, address, default.
 - Currency is naira (₦) only. Network is Monad testnet.
 - Reminders and nudges use fixed templates in English, Pidgin, Yoruba, Igbo and Hausa.
