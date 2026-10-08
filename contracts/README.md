@@ -17,17 +17,26 @@ Rotating savings (ajo) where no member holds the jar. Foundry, Solidity 0.8.24.
 
 Addresses: `deployments/<chainId>.json` (10143 = Monad testnet, 31337 = local anvil).
 
-### Monad testnet deployment (2026-10-05)
+### Monad testnet deployment (2026-10-07, no deposit)
 
 | Contract | Address |
 |---|---|
 | AjoNGN (sNGN) | `0xb7A57BeF0DD01A96C7626fDD6F143C9127d110C9` |
 | TrustRegistry | `0xe80e9A23B647CD653F3A5ef16222aD6794C23eCB` |
-| SquadFactory | `0x7B2aC330515073De9aCB8883ee0AAA8cE11B5d4B` |
+| SquadFactory | `0x7bBADfC407b7eC8941B7A72A4820Ae946dF48Ef2` |
 
-The token is from the first deployment (blocks 68377315 to 68377316). The registry and factory were redeployed on 2026-10-05 in blocks 68461404 to 68461405 with `TOKEN` set, after the fix that stops a factory revocation from freezing squads; `deployBlock` in the JSON (68461309) is the simulation block, a safe lower bound for event scans. All three are verified on Sourcify (exact match). Registry owner and deployer: `0xfAc4f942A7c8232c7a7D8b654F8580e00a368dF6`. Consecutive blocks have different `mixHash` values, so `block.prevrandao` varies on Monad testnet.
+The no-deposit factory was deployed on 2026-10-07 in block 69087050 (`deployBlock` in the JSON) with `TOKEN` and `REGISTRY` set, so the token and registry are unchanged and trust history carries over. The registry allows it as a writer (`isWriter` is true). It is verified on Sourcify (exact match).
 
-Superseded first deployment, still on chain: TrustRegistry `0x43fC7e538D865A9eaf3c634888E61c8d3D16f7f7`, SquadFactory `0x2bf6b051e25E3Aa65AE55D8367500BBcBA50fdf5`. Squads created by the old factory keep working on chain, but the app reads only the factory in `NEXT_PUBLIC_FACTORY`.
+The token is from the first deployment (blocks 68377315 to 68377316). The registry was redeployed on 2026-10-05 in blocks 68461404 to 68461405, after the fix that stops a factory revocation from freezing squads. Token and registry are verified on Sourcify (exact match). Registry owner and deployer: `0xfAc4f942A7c8232c7a7D8b654F8580e00a368dF6`. Consecutive blocks have different `mixHash` values, so `block.prevrandao` varies on Monad testnet.
+
+Superseded factories, still on chain (each is still a writer on its own registry):
+
+| Factory | Registry | Deploy block | Model |
+|---|---|---|---|
+| `0x7B2aC330515073De9aCB8883ee0AAA8cE11B5d4B` | `0xe80e9A23B647CD653F3A5ef16222aD6794C23eCB` | 68461309 (simulation block, a safe lower bound) | Deposits |
+| `0x2bf6b051e25E3Aa65AE55D8367500BBcBA50fdf5` | `0x43fC7e538D865A9eaf3c634888E61c8d3D16f7f7` | 68377230 | Deposits |
+
+Squads created by an old factory keep working on chain with the old ABI, but the app reads only the factory in `NEXT_PUBLIC_FACTORY`.
 
 ## Squad lifecycle
 
