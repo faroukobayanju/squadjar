@@ -24,12 +24,14 @@ export const judgeConfigured = () => botAccounts() !== null;
 
 type Action = { do: string; by?: string; squad?: string; tx?: Hex; error?: string };
 
-/** Simulate, send with a 1.5x gas margin (Monad charges the limit; start() varies with prevrandao), wait, index. */
+/** Simulate, send, wait, index. Monad charges the gas limit, so margins cost the bots MON:
+ *  1.5x only for start() (its trust sort varies with prevrandao), 1.15x for everything else. */
 async function send(bot: 0 | 1, call: { address: Address; abi: readonly unknown[]; functionName: string; args?: readonly unknown[] }): Promise<Hex> {
   const account = botAccounts()![bot];
   const c = { ...call, account } as never;
   const { request } = await publicClient.simulateContract(c);
-  const gas = ((await publicClient.estimateContractGas(c)) * BigInt(3)) / BigInt(2);
+  const [num, den] = call.functionName === "start" ? [BigInt(3), BigInt(2)] : [BigInt(23), BigInt(20)];
+  const gas = ((await publicClient.estimateContractGas(c)) * num) / den;
   const wallet = createWalletClient({ account, chain: monadTestnet, transport: http(RPC) });
   const hash = await wallet.writeContract({ ...(request as object), gas } as never);
   const r = await publicClient.waitForTransactionReceipt({ hash, timeout: 30_000 });
