@@ -77,6 +77,24 @@ Everyone in Nigeria who does ajo. We're starting with three groups:
 - **Workers.** Salaried and freelance workers run weekly or monthly ajo with colleagues and friends [18][19].
 - **Students.** Class reps, hostel mates and course mates who pool money for fees, rent and gadgets. This is our launch group: one class rep can bring a whole squad. We haven't found a published study on student ajo, so we treat this as our own bet to test.
 
+### Early signal
+
+We have no public users yet. When Farouk posted an 18-second demo on his WhatsApp Status, friends replied on their own (shared with their permission):
+
+- **Stephen:** "Omo if na like this AJOR Dey ah for no lose 350k this year." (If ajo worked like this, I wouldn't have lost ₦350k this year.)
+- **OluTobi:** "Ehhh. Kin wa maa da ajo." (Yorùbá, roughly: "let's start doing ajo.")
+- **Metro:** "I wan do ajo ohh." (I want to do ajo.)
+- **Sefunmi:** "Make we dey reshare am dey go." (Let's keep sharing it.) A course mate of hers, someone we don't know, then asked for the video and the link.
+
+Earlier, when we tested Squadjar with friends, two of them missed round 1. That test is why Squadjar holds part of a new member's payout and turns a miss into debt you can pay back.
+
+<p>
+  <img src="docs/early-signal/stephen-350k.jpg" alt="Stephen: if ajo worked like this I wouldn't have lost 350k this year" width="220">
+  <img src="docs/early-signal/olutobi.jpg" alt="OluTobi: let's start doing ajo" width="220">
+  <img src="docs/early-signal/metro.jpg" alt="Metro: I want to do ajo" width="220">
+  <img src="docs/early-signal/sefunmi-reshare.jpg" alt="Sefunmi: let's keep resharing it; a course mate asks for the link" width="220">
+</p>
+
 ## 5. Why we built it
 
 Ajo already works. The money and the habit are there; only the treasurer is the weak point. Squadjar keeps everything people like about ajo (friends, a fixed amount, a lump sum on a date) and removes the one person who can run off with it.
